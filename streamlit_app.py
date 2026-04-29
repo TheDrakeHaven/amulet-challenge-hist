@@ -138,7 +138,6 @@ with st.spinner("Processing main deck sheet…"):
          amulet_int.reset_index(drop=True)],
         axis=1
     )
-amulet_comb["next_ban"] = pd.to_datetime(amulet_comb["next_ban"])
 
 numeric = amulet_int.select_dtypes(include="number")
 col_sums = numeric.sum()
@@ -195,20 +194,16 @@ with tab3:
     # Heatmap only
     st.markdown("**Heatmap of Mean Counts**")
 
-    heat_data = mean_deck.set_index("next_ban")[num_cols]
+ amulet_comb["next_ban"] = pd.to_datetime(amulet_comb["next_ban"])
 
-    fig_heat = px.imshow(
-        heat_data,
-        aspect="auto",
-        color_continuous_scale="Viridis",
-        labels={
-            "x": "Card",
-            "y": "Era",
-            "color": "Mean"
-        },
-        title="Mean Card Counts by Ban Era"
-    )
+mean_deck = (
+    amulet_comb.groupby("next_ban")[num_cols]
+    .mean()
+    .reset_index()
+    .sort_values("next_ban")
+)
 
+heat_data = mean_deck.set_index("next_ban")[num_cols]
     fig_heat.update_layout(height=750)
 
     st.plotly_chart(fig_heat, use_container_width=True)

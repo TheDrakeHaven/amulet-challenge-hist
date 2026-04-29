@@ -377,27 +377,6 @@ ax.scatter(
     species_scores[1]
 )
 
-# label points (like autoplot species layer)
-for label, x, y in zip(
-    species_scores.index,
-    species_scores[0],
-    species_scores[1]
-):
-    ax.text(x, y, label, fontsize=8)
-
-# styling similar to theme_classic()
-ax.spines["top"].set_visible(False)
-ax.spines["right"].set_visible(False)
-
-# optional y-limit like your R code
-ax.set_ylim(-1, 1.6)
-
-ax.set_xlabel("Dim 1")
-ax.set_ylabel("Dim 2")
-ax.set_title("Species Ordination (CA)")
-
-st.pyplot(fig)
-
 np.random.seed(42)  # makes jitter reproducible
 
 jitter_strength = 0.02  # adjust if labels still overlap
@@ -413,3 +392,18 @@ for label, x, y in zip(
         label,
         fontsize=8
     )
+
+# styling similar to theme_classic()
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+
+# optional y-limit like your R code
+ax.set_ylim(-1, 1.6)
+
+ax.set_xlabel("Dim 1")
+ax.set_ylabel("Dim 2")
+ax.set_title("Species Ordination (CA)")
+
+st.pyplot(fig)
+
+

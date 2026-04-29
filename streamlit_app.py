@@ -9,6 +9,8 @@ import io
 from datetime import date, datetime
 import re
 from io import BytesIO
+import matplotlib.pyplot as plt
+from skbio.stats.ordination import cca
 
 st.set_page_config(page_title="Amulet Challenge Analysis", layout="wide")
 st.title("🪬 Amulet Challenge Analysis")
@@ -323,13 +325,9 @@ with tab5:
             .reset_index()
         )
 
-# ── Tab 5: NMDS – Card Inclusion ──────────
-with tab5:
+# ── Tab 6: NMDS – Card Inclusion ──────────
+with tab6:
     st.subheader("Card Similarity")
-import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-from skbio.stats.ordination import cca
 
 st.title("CCA Analysis")
 

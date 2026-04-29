@@ -371,7 +371,7 @@ with tab4:
  
         # ── 10 Most Dissimilar Sites ──────────────────────────────────────
         st.markdown("---")
-        st.markdown("### 🔀 10 Most Dissimilar Sites")
+        st.markdown("### 🔀 10 Most Dissimilar Lists")
         st.caption(
             "Pairs ranked by Euclidean distance in CA space. "
             "Large distances indicate decks with very different card compositions."
@@ -388,7 +388,20 @@ with tab4:
                 pairs.append((i, j, dist))
  
         pairs_df = pd.DataFrame(pairs, columns=["idx_a", "idx_b", "ca_distance"])
-        top10 = pairs_df.nlargest(10, "ca_distance").reset_index(drop=True)
+        pairs_df = pairs_df.sort_values("ca_distance", ascending=False).reset_index(drop=True)
+ 
+        # Greedily pick pairs so each site appears at most once
+        used = set()
+        selected = []
+        for row in pairs_df.itertuples():
+            a, b = int(row.idx_a), int(row.idx_b)
+            if a not in used and b not in used:
+                selected.append({"idx_a": a, "idx_b": b, "ca_distance": row.ca_distance})
+                used.add(a)
+                used.add(b)
+            if len(selected) == 10:
+                break
+        top10 = pd.DataFrame(selected)
  
         # Build a readable display table
         name_col    = "Name"    if "Name"    in ord_data.columns else None

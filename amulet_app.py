@@ -117,46 +117,6 @@ if uploaded_file is None:
     st.stop()
 
 # ─────────────────────────────────────────
-# LOAD & COMBINE SHEETS (sheets 3-42 → index 2-41)
-# ─────────────────────────────────────────
-
-with st.spinner("Loading sheets…"):
-    xl = pd.ExcelFile(uploaded_file)
-    total_sheets = len(xl.sheet_names)
-
-    # Load challenge sheets (R sheets 3–42 = 0-indexed 2–41)
-    frames = []
-    for i in range(2, min(42, total_sheets)):
-        try:
-            df = xl.parse(i)
-            frames.append(df)
-        except Exception:
-            pass
-
-    if not frames:
-        st.error("No challenge sheets found (expected sheets 3–42).")
-        st.stop()
-
-    combined_data = pd.concat(frames, ignore_index=True)
-    # Fill NAs by type to avoid Arrow/string dtype errors
-    for col in combined_data.columns:
-        if pd.api.types.is_numeric_dtype(combined_data[col]):
-            combined_data[col] = combined_data[col].fillna(0)
-        else:
-            combined_data[col] = combined_data[col].fillna("")
-
-    # Sort columns: Name, Place, Date first, then rest alphabetically
-    priority = [c for c in ["Name", "Place", "Date"] if c in combined_data.columns]
-    rest = sorted([c for c in combined_data.columns if c not in priority])
-    combined_data = combined_data[priority + rest]
-
-    # Parse dates
-    if "Date" in combined_data.columns:
-        combined_data["Date"] = combined_data["Date"].apply(parse_date)
-        combined_data.dropna(subset=["Date"], inplace=True)
-        combined_data.sort_values("Date", inplace=True)
-
-# ─────────────────────────────────────────
 # LOAD MAIN SHEET (sheet 1 = index 0)
 # ─────────────────────────────────────────
 

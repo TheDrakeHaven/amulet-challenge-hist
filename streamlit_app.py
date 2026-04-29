@@ -138,6 +138,7 @@ with st.spinner("Processing main deck sheet…"):
          amulet_int.reset_index(drop=True)],
         axis=1
     )
+amulet_comb["next_ban"] = pd.to_datetime(amulet_comb["next_ban"])
 
 numeric = amulet_int.select_dtypes(include="number")
 col_sums = numeric.sum()

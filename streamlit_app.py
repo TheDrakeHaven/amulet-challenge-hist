@@ -335,14 +335,6 @@ with tab5:
         fig2.update_layout(height=600)
         st.plotly_chart(fig2, use_container_width=True)
 
-        # Summary: mean NMDS position by copy count
-        st.markdown(f"**Mean NMDS position by {selected_card} copies**")
-        summary = (
-            ord_data.groupby(selected_card)[["NMDS1", "NMDS2"]]
-            .agg(["mean", "count"])
-            .reset_index()
-        )
-
 # ── Tab 6: NMDS – Card Inclusion ──────────
 with tab6:
     st.subheader("Card Similarity")

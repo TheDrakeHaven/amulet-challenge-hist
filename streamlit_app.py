@@ -274,7 +274,7 @@ with tab4:
 
         color_by = st.selectbox(
             "Color points by:",
-            ["next_ban", "current_set", "Date"],
+            ["next_ban", "current_set", "Place"],
             key="nmds_color_tab4"
         )
         show_ellipse = st.checkbox("Show group ellipses", value=True, key="ellipse_tab4")

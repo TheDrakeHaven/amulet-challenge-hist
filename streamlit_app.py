@@ -171,8 +171,8 @@ with st.spinner("Processing main deck sheet…"):
 tab2, tab3, tab4, tab5 = st.tabs([
     "🃏 Deck Data",
     "📈 Median by Era",
-    "🗺️ NMDS Ordination",
-    "⬇️ Downloads"
+    "🗺️ NMDS – Era & Set",
+    "🎴 NMDS – Card Inclusion",
 ])
 
 # ── Tab 2: Deck Data ─────────────────────
@@ -221,46 +221,64 @@ with tab3:
     fig_heat.update_layout(height=400)
     st.plotly_chart(fig_heat, use_container_width=True)
 
-# ── Tab 4: NMDS ──────────────────────────
+# ── Shared NMDS compute helper ────────────
+def run_nmds_computation():
+    with st.spinner("Computing Bray-Curtis distances and MDS (this may take a moment)…"):
+        X = amulet_int.values.astype(float)
+        row_sums = X.sum(axis=1)
+        valid_mask = row_sums > 0
+        X_valid = X[valid_mask]
+        D = bray_curtis_distance(X_valid)
+        mds = MDS(n_components=2, dissimilarity="precomputed",
+                  random_state=42, max_iter=500, n_init=1)
+        coords = mds.fit_transform(D)
+        ord_data = amulet_comb[valid_mask].copy().reset_index(drop=True)
+        ord_data["NMDS1"] = coords[:, 0]
+        ord_data["NMDS2"] = coords[:, 1]
+        st.session_state["nmds_result"] = ord_data
+        st.session_state["stress"] = mds.stress_
+
+def draw_ellipses(fig, ord_data, color_by, show_labels):
+    if ord_data[color_by].nunique() <= 15:
+        for grp, gdf in ord_data.groupby(color_by):
+            if len(gdf) < 3:
+                continue
+            cx, cy = gdf["NMDS1"].mean(), gdf["NMDS2"].mean()
+            sx, sy = gdf["NMDS1"].std(), gdf["NMDS2"].std()
+            theta = np.linspace(0, 2 * np.pi, 100)
+            ex = cx + 2 * sx * np.cos(theta)
+            ey = cy + 2 * sy * np.sin(theta)
+            fig.add_trace(go.Scatter(
+                x=ex, y=ey, mode="lines",
+                name=str(grp) + " ellipse",
+                showlegend=False,
+                line=dict(dash="dash", width=1)
+            ))
+            if show_labels:
+                fig.add_annotation(x=cx, y=cy, text=str(grp),
+                                   showarrow=False, font=dict(size=10))
+    return fig
+
+# ── Tab 4: NMDS – Era & Set ───────────────
 with tab4:
-    st.subheader("NMDS Ordination (Bray-Curtis)")
+    st.subheader("NMDS Ordination – Era & Set (Bray-Curtis)")
 
-    run_nmds = st.button("▶ Run NMDS", type="primary")
+    if st.button("▶ Run NMDS", type="primary", key="run_nmds_tab4"):
+        run_nmds_computation()
 
-    if run_nmds or "nmds_result" in st.session_state:
-        if run_nmds:
-            with st.spinner("Computing Bray-Curtis distances and MDS (this may take a moment)…"):
-                X = amulet_int.values.astype(float)
-                # Guard against all-zero rows
-                row_sums = X.sum(axis=1)
-                valid_mask = row_sums > 0
-                X_valid = X[valid_mask]
-
-                D = bray_curtis_distance(X_valid)
-                mds = MDS(n_components=2, dissimilarity="precomputed",
-                          random_state=42, max_iter=500, n_init=1)
-                coords = mds.fit_transform(D)
-
-                ord_data = amulet_comb[valid_mask].copy().reset_index(drop=True)
-                ord_data["NMDS1"] = coords[:, 0]
-                ord_data["NMDS2"] = coords[:, 1]
-                st.session_state["nmds_result"] = ord_data
-                st.session_state["stress"] = mds.stress_
-
+    if "nmds_result" in st.session_state:
         ord_data = st.session_state["nmds_result"]
-        stress = st.session_state.get("stress", None)
+        stress = st.session_state.get("stress")
         if stress is not None:
             st.metric("Stress", f"{stress:.4f}")
 
         color_by = st.selectbox(
             "Color points by:",
-            ["next_ban", "current_set", "Date", "The One Ring"]
-            if "The One Ring" in ord_data.columns
-            else ["next_ban", "current_set", "Date"],
-            key="nmds_color"
+            ["next_ban", "current_set", "Date"],
+            key="nmds_color_tab4"
         )
-        show_ellipse = st.checkbox("Show group ellipses", value=True)
-        show_labels  = st.checkbox("Show group centroid labels", value=True)
+        show_ellipse = st.checkbox("Show group ellipses", value=True, key="ellipse_tab4")
+        show_labels  = st.checkbox("Show group centroid labels", value=True, key="labels_tab4")
 
         fig = px.scatter(
             ord_data, x="NMDS1", y="NMDS2",
@@ -270,26 +288,8 @@ with tab4:
             template="plotly_white"
         )
         fig.update_traces(marker=dict(size=8))
-
-        if show_ellipse and ord_data[color_by].nunique() <= 15:
-            for grp, gdf in ord_data.groupby(color_by):
-                if len(gdf) < 3:
-                    continue
-                cx, cy = gdf["NMDS1"].mean(), gdf["NMDS2"].mean()
-                sx, sy = gdf["NMDS1"].std(), gdf["NMDS2"].std()
-                theta = np.linspace(0, 2 * np.pi, 100)
-                ex = cx + 2 * sx * np.cos(theta)
-                ey = cy + 2 * sy * np.sin(theta)
-                fig.add_trace(go.Scatter(
-                    x=ex, y=ey, mode="lines",
-                    name=str(grp) + " ellipse",
-                    showlegend=False,
-                    line=dict(dash="dash", width=1)
-                ))
-                if show_labels:
-                    fig.add_annotation(x=cx, y=cy, text=str(grp),
-                                       showarrow=False, font=dict(size=10))
-
+        if show_ellipse:
+            fig = draw_ellipses(fig, ord_data, color_by, show_labels)
         fig.update_layout(height=600)
         st.plotly_chart(fig, use_container_width=True)
 
@@ -302,15 +302,50 @@ with tab4:
     else:
         st.info("Click **Run NMDS** to compute the ordination.")
 
-# ── Tab 5: Downloads ─────────────────────
+# ── Tab 5: NMDS – Card Inclusion ──────────
 with tab5:
-    st.subheader("Download Results")
+    st.subheader("NMDS Ordination – Card Inclusion (Bray-Curtis)")
 
-    # Median deck CSV
-    csv2 = median_deck.to_csv(index=False).encode()
-    st.download_button("⬇️ median_deck.csv", csv2, "median_deck.csv", "text/csv")
+    if st.button("▶ Run NMDS", type="primary", key="run_nmds_tab5"):
+        run_nmds_computation()
 
-    # NMDS scores (if computed)
     if "nmds_result" in st.session_state:
-        csv3 = st.session_state["nmds_result"].to_csv(index=False).encode()
-        st.download_button("⬇️ nmds_scores.csv", csv3, "nmds_scores.csv", "text/csv")
+        ord_data = st.session_state["nmds_result"]
+        stress = st.session_state.get("stress")
+        if stress is not None:
+            st.metric("Stress", f"{stress:.4f}")
+
+        card_options = sorted(amulet_int.columns.tolist())
+        selected_card = st.selectbox(
+            "Color points by card count:",
+            card_options,
+            key="nmds_card_select"
+        )
+
+        color_col = ord_data[selected_card] if selected_card in ord_data.columns else None
+
+        fig2 = px.scatter(
+            ord_data, x="NMDS1", y="NMDS2",
+            color=selected_card,
+            color_continuous_scale="Viridis",
+            hover_data=["Name", "Date", "next_ban"] if "Name" in ord_data.columns else None,
+            title=f"NMDS – colored by copies of {selected_card}",
+            template="plotly_white"
+        )
+        fig2.update_traces(marker=dict(size=8))
+        fig2.update_layout(height=600)
+        st.plotly_chart(fig2, use_container_width=True)
+
+        # Summary: mean NMDS position by copy count
+        st.markdown(f"**Mean NMDS position by {selected_card} copies**")
+        summary = (
+            ord_data.groupby(selected_card)[["NMDS1", "NMDS2"]]
+            .agg(["mean", "count"])
+            .reset_index()
+        )
+        summary.columns = [selected_card, "NMDS1 mean", "NMDS1 n", "NMDS2 mean", "NMDS2 n"]
+        st.dataframe(summary[[selected_card, "NMDS1 mean", "NMDS2 mean", "NMDS1 n"]]
+                     .rename(columns={"NMDS1 n": "n"}),
+                     use_container_width=True)
+    else:
+        st.info("Click **Run NMDS** to compute the ordination.")

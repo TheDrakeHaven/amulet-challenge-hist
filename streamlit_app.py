@@ -334,74 +334,74 @@ with tab5:
 # ── Tab 6: NMDS – Card Inclusion ──────────
 with tab6:
     st.subheader("Card Similarity")
-
-import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-
-st.title("Maindeck Correspondence Analysis")
-
-# --------------------------------------------------
-# EXPECTED INPUT
-# amulet_int should be a pandas DataFrame
-# rows = samples, columns = species/features
-# --------------------------------------------------
-
-
-# --------------------------------------------------
-# RUN ANALYSIS (R vegan-style CA approximation)
-# --------------------------------------------------
-
-ca1 = prince.CA(
-    n_components=2,
-    random_state=42
-)
-
-ca1 = ca1.fit(amulet_filtered)
-
-# --------------------------------------------------
-# EXTRACT SCORES (THIS REPLACES ca1$species in R)
-# --------------------------------------------------
-species_scores = ca1.column_coordinates(amulet_filtered)
-site_scores = ca1.row_coordinates(amulet_filtered)
-
-# --------------------------------------------------
-# PLOT (similar to autoplot(..., layers="species"))
-# --------------------------------------------------
-st.subheader("Card Ordination Plot")
-
-import plotly.express as px
-
-
-# ---- Build plotting dataframe ----
-plot_df = species_scores.copy()
-plot_df = plot_df.reset_index()
-plot_df.columns = ["species", "Dim1", "Dim2"]
-
-# ---- Plotly interactive scatter ----
-fig = px.scatter(
-    plot_df,
-    x="Dim1",
-    y="Dim2",
-    text="species",
-    hover_name="species"
-)
-
-# Remove dots but keep hover + labels (optional)
-fig.update_traces(
-    mode="text",  # labels only
-    textposition="top center"
-)
-
-# ---- Layout styling (similar to theme_classic) ----
-fig.update_layout(
-    title="Interactive Species Ordination",
-    xaxis_title="Dim 1",
-    yaxis_title="Dim 2",
-    template="simple_white"
-)
-
-# ---- Streamlit render ----
-st.plotly_chart(fig, use_container_width=True)
+    
+    import streamlit as st
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    
+    st.title("Maindeck Correspondence Analysis")
+    
+    # --------------------------------------------------
+    # EXPECTED INPUT
+    # amulet_int should be a pandas DataFrame
+    # rows = samples, columns = species/features
+    # --------------------------------------------------
+    
+    
+    # --------------------------------------------------
+    # RUN ANALYSIS (R vegan-style CA approximation)
+    # --------------------------------------------------
+    
+    ca1 = prince.CA(
+        n_components=2,
+        random_state=42
+    )
+    
+    ca1 = ca1.fit(amulet_filtered)
+    
+    # --------------------------------------------------
+    # EXTRACT SCORES (THIS REPLACES ca1$species in R)
+    # --------------------------------------------------
+    species_scores = ca1.column_coordinates(amulet_filtered)
+    site_scores = ca1.row_coordinates(amulet_filtered)
+    
+    # --------------------------------------------------
+    # PLOT (similar to autoplot(..., layers="species"))
+    # --------------------------------------------------
+    st.subheader("Card Ordination Plot")
+    
+    import plotly.express as px
+    
+    
+    # ---- Build plotting dataframe ----
+    plot_df = species_scores.copy()
+    plot_df = plot_df.reset_index()
+    plot_df.columns = ["species", "Dim1", "Dim2"]
+    
+    # ---- Plotly interactive scatter ----
+    fig = px.scatter(
+        plot_df,
+        x="Dim1",
+        y="Dim2",
+        text="species",
+        hover_name="species"
+    )
+    
+    # Remove dots but keep hover + labels (optional)
+    fig.update_traces(
+        mode="text",  # labels only
+        textposition="top center"
+    )
+    
+    # ---- Layout styling (similar to theme_classic) ----
+    fig.update_layout(
+        title="Interactive Species Ordination",
+        xaxis_title="Dim 1",
+        yaxis_title="Dim 2",
+        template="simple_white"
+    )
+    
+    # ---- Streamlit render ----
+    st.plotly_chart(fig, use_container_width=True)
 
 

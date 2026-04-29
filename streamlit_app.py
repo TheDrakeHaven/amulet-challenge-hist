@@ -369,71 +369,52 @@ with tab4:
         display_cols = [c for c in ["Name", "Date", "next_ban", "current_set", "CA1", "CA2"] if c in ord_data.columns]
         st.dataframe(ord_data[display_cols].sort_values("CA1"), use_container_width=True)
  
-        # ── 10 Most Dissimilar Sites ──────────────────────────────────────
+        # ── Most Dissimilar Sites per Ban Era ────────────────────────────
         st.markdown("---")
-        st.markdown("### 🔀 10 Most Dissimilar Lists")
+        st.markdown("### 🔀 Most Dissimilar Pair per Ban Era")
         st.caption(
-            "Pairs ranked by Euclidean distance in CA space. "
-            "Large distances indicate decks with very different card compositions."
+            "Within each ban era, the single most dissimilar pair of decks by "
+            "Euclidean distance in CA space. Eras with only one deck are excluded."
         )
  
-        coords = ord_data[["CA1", "CA2"]].values
-        n = len(coords)
+        name_col  = "Name"     if "Name"     in ord_data.columns else None
+        date_col  = "Date"     if "Date"     in ord_data.columns else None
+        place_col = "Place"    if "Place"    in ord_data.columns else None
  
-        # Compute all pairwise Euclidean distances in CA space
-        pairs = []
-        for i in range(n):
-            for j in range(i + 1, n):
-                dist = np.sqrt((coords[i, 0] - coords[j, 0])**2 + (coords[i, 1] - coords[j, 1])**2)
-                pairs.append((i, j, dist))
+        def site_label(idx):
+            parts = []
+            if name_col:  parts.append(str(ord_data.iloc[idx][name_col]))
+            if date_col:  parts.append(f"({ord_data.iloc[idx][date_col]})")
+            return " ".join(parts) if parts else f"Site {idx}"
  
-        pairs_df = pd.DataFrame(pairs, columns=["idx_a", "idx_b", "ca_distance"])
-        pairs_df = pairs_df.sort_values("ca_distance", ascending=False).reset_index(drop=True)
- 
-        # Greedily pick pairs so each site appears at most once
-        used = set()
-        selected = []
-        for row in pairs_df.itertuples():
-            a, b = int(row.idx_a), int(row.idx_b)
-            if a not in used and b not in used:
-                selected.append({"idx_a": a, "idx_b": b, "ca_distance": row.ca_distance})
-                used.add(a)
-                used.add(b)
-            if len(selected) == 10:
-                break
-        top10 = pd.DataFrame(selected)
- 
-        # Build a readable display table
-        name_col    = "Name"    if "Name"    in ord_data.columns else None
-        date_col    = "Date"    if "Date"    in ord_data.columns else None
-        era_col     = "next_ban"     if "next_ban"     in ord_data.columns else None
-        place_col   = "Place"   if "Place"   in ord_data.columns else None
+        def site_place(idx):
+            return ord_data.iloc[idx][place_col] if place_col else "—"
  
         rows = []
-        for rank, row in enumerate(top10.itertuples(), 1):
-            a, b = int(row.idx_a), int(row.idx_b)
+        for era in ERA_ORDER:
+            era_idx = ord_data.index[ord_data["next_ban"] == era].tolist()
+            if len(era_idx) < 2:
+                continue
  
-            def site_label(idx):
-                parts = []
-                if name_col:  parts.append(ord_data.iloc[idx][name_col])
-                if date_col:  parts.append(f"({ord_data.iloc[idx][date_col]})")
-                return " ".join(str(p) for p in parts) if parts else f"Site {idx}"
- 
-            def site_era(idx):
-                return ord_data.iloc[idx][era_col] if era_col else "—"
- 
-            def site_place(idx):
-                return ord_data.iloc[idx][place_col] if place_col else "—"
+            # Find the most dissimilar pair within this era
+            best_dist, best_a, best_b = -1, None, None
+            for ii in range(len(era_idx)):
+                for jj in range(ii + 1, len(era_idx)):
+                    a, b = era_idx[ii], era_idx[jj]
+                    ca1_a, ca2_a = ord_data.loc[a, "CA1"], ord_data.loc[a, "CA2"]
+                    ca1_b, ca2_b = ord_data.loc[b, "CA1"], ord_data.loc[b, "CA2"]
+                    dist = np.sqrt((ca1_a - ca1_b)**2 + (ca2_a - ca2_b)**2)
+                    if dist > best_dist:
+                        best_dist, best_a, best_b = dist, a, b
  
             rows.append({
-                "Rank":        rank,
-                "Site A":      site_label(a),
-                "Era A":       site_era(a),
-                "Place A":     site_place(a),
-                "Site B":      site_label(b),
-                "Era B":       site_era(b),
-                "Place B":     site_place(b),
-                "CA Distance": f"{row.ca_distance:.4f}",
+                "Era":         era,
+                "Site A":      site_label(best_a),
+                "Place A":     site_place(best_a),
+                "Site B":      site_label(best_b),
+                "Place B":     site_place(best_b),
+                "CA Distance": f"{best_dist:.4f}",
+                "Era N":       len(era_idx),
             })
  
         dissim_df = pd.DataFrame(rows)
@@ -441,6 +422,7 @@ with tab4:
  
     else:
         st.info("CCA computation failed. Check your data.")
+
 
 # ── Tab 5: CCA – Card Inclusion ───────────
 with tab5:

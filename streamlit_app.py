@@ -115,9 +115,6 @@ file_path = "amulet_chal.xlsx"   # make sure this file is in your Streamlit app 
 
 df = pd.read_excel(file_path, sheet_name="Sheet1")
 
-# Display as dataframe in Streamlit
-st.title("Sheet1 Data")
-
 output = BytesIO()
 with pd.ExcelWriter(output, engine="openpyxl") as writer:
     df.to_excel(writer, index=False, sheet_name="Sheet1")

@@ -370,34 +370,24 @@ site_scores = ca1.row_coordinates(amulet_filtered)
 # --------------------------------------------------
 st.subheader("Card Ordination Plot")
 
-fig, ax = plt.subplots(figsize=(12, 12))
-
-np.random.seed(42)  # makes jitter reproducible
-
-jitter_strength = 0.02  # adjust if labels still overlap
+fig, ax = plt.subplots(figsize=(10, 10))
 
 for label, x, y in zip(
     species_scores.index,
     species_scores[0],
     species_scores[1]
 ):
-    ax.text(
-        x + np.random.uniform(-jitter_strength, jitter_strength),
-        y + np.random.uniform(-jitter_strength, jitter_strength),
-        label,
-        fontsize=8
-    )
+    ax.text(x, y, label, fontsize=8)
 
 # styling similar to theme_classic()
 ax.spines["top"].set_visible(False)
 ax.spines["right"].set_visible(False)
 
-# optional y-limit like your R code
-ax.set_ylim(-1, 1.6)
+ax.set_ylim(-0.8, 1.2)
 
 ax.set_xlabel("Dim 1")
 ax.set_ylabel("Dim 2")
-ax.set_title("Species Ordination (CA)")
+ax.set_title("Species Ordination (Labels Only)")
 
 st.pyplot(fig)
 

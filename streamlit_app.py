@@ -136,11 +136,12 @@ with st.spinner("Processing main deck sheet…"):
 # TABS
 # ─────────────────────────────────────────
 
-tab2, tab3, tab4, tab5 = st.tabs([
+tab2, tab3, tab4, tab5, tab6= st.tabs([
     "🃏 Deck Data",
     "📈 Median by Era",
     "🗺️ NMDS – Era & Set",
     "🎴 NMDS – Card Inclusion",
+    "Card Similarity"
 ])
 
 # ── Tab 2: Deck Data ─────────────────────
@@ -321,9 +322,62 @@ with tab5:
             .agg(["mean", "count"])
             .reset_index()
         )
-        summary.columns = [selected_card, "NMDS1 mean", "NMDS1 n", "NMDS2 mean", "NMDS2 n"]
-        st.dataframe(summary[[selected_card, "NMDS1 mean", "NMDS2 mean", "NMDS1 n"]]
+
+# ── Tab 5: NMDS – Card Inclusion ──────────
+with tab5:
+    st.subheader("Card Similarity")
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+from skbio.stats.ordination import cca
+
+    st.title("CCA Analysis")
+
+    # ---- Run CCA ----
+    st.subheader("Running CCA")
+
+    ca1 = cca(amulet_int)
+    st.write(ca1)
+
+    # ---- Extract species scores ----
+    species_scores = ca1.features
+
+st.subheader("Species Scores")
+st.dataframe(species_scores)
+
+# ---- Plot ----
+st.subheader("CCA Species Plot")
+
+fig, ax = plt.subplots(figsize=(10, 10))
+
+ax.scatter(
+    species_scores["CCA1"],
+    species_scores["CCA2"]
+)
+
+# Label points
+for label, x, y in zip(
+        species_scores.index,
+        species_scores["CCA1"],
+        species_scores["CCA2"]
+    ):
+        ax.text(x, y, label, fontsize=8)
+
+    # Styling similar to theme_classic()
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    
+    # Match R ylim
+    ax.set_ylim(-0.8, 1.2)
+
+    ax.set_xlabel("CCA1")
+    ax.set_ylabel("CCA2")
+    ax.set_title("CCA Species Plot")
+
+    st.pyplot(fig)
+            summary.columns = [selected_card, "NMDS1 mean", "NMDS1 n", "NMDS2 mean", "NMDS2 n"]
+            st.dataframe(summary[[selected_card, "NMDS1 mean", "NMDS2 mean", "NMDS1 n"]]
                      .rename(columns={"NMDS1 n": "n"}),
                      use_container_width=True)
-    else:
-        st.info("Click **Run NMDS** to compute the ordination.")
+        else:
+            st.info("Click **Run NMDS** to compute the ordination.")

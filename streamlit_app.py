@@ -118,8 +118,6 @@ df = pd.read_excel(file_path, sheet_name="Sheet1")
 st.title("Sheet1 Data")
 st.dataframe(df, use_container_width=True)
 
-# Read into bytes so the buffer can be reused across multiple pd.ExcelFile calls
-file_bytes = io.BytesIO(uploaded_file.read())
 
 # ─────────────────────────────────────────
 # LOAD MAIN SHEET (sheet 1 = index 0)

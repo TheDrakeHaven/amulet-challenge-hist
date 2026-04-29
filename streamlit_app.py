@@ -334,7 +334,7 @@ st.title("CCA Analysis")
 # ---- Run CCA ----
 st.subheader("Running CCA")
 
-ca1 = cca(amulet_int)
+ca1 = CCA(amulet_int)
 st.write(ca1)
 
 # ---- Extract species scores ----

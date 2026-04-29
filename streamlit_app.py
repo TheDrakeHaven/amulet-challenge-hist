@@ -189,13 +189,15 @@ with tab2:
         st.dataframe(means.rename("Mean").reset_index().rename(columns={"index": "Card"}),
                      use_container_width=True)
     with col2:
-        st.markdown("**NA check**")
-        na_counts = amulet_df.isna().sum()
-        st.write(f"Total NAs: {na_counts.sum()}")
-        if na_counts.sum() > 0:
-            st.dataframe(na_counts[na_counts > 0], use_container_width=True)
-        else:
-            st.success("No NAs found ✅")
+    st.markdown("**Name counts**")
+
+    name_counts = (
+        amulet_df["name"]
+        .value_counts(dropna=False)
+        .sort_values(ascending=False)
+    )
+
+    st.dataframe(name_counts, use_container_width=True)
 
 # ── Tab 3: Median by Era ─────────────────
 with tab3:

@@ -120,6 +120,14 @@ if uploaded_file is None:
 file_bytes = io.BytesIO(uploaded_file.read())
 
 # ─────────────────────────────────────────
+# LOAD & COMBINE SHEETS (sheets 3-42 → index 2-41)
+# ─────────────────────────────────────────
+
+with st.spinner("Loading sheets…"):
+    xl = pd.ExcelFile(file_bytes)
+    total_sheets = len(xl.sheet_names)
+
+# ─────────────────────────────────────────
 # LOAD MAIN SHEET (sheet 1 = index 0)
 # ─────────────────────────────────────────
 

@@ -369,26 +369,27 @@ with tab4:
         display_cols = [c for c in ["Name", "Date", "next_ban", "current_set", "CA1", "CA2"] if c in ord_data.columns]
         st.dataframe(ord_data[display_cols].sort_values("CA1"), use_container_width=True)
  
-        # ── Most Dissimilar Sites per Ban Era ────────────────────────────
+        # ── Most Dissimilar Site per Ban Era ─────────────────────────────
         st.markdown("---")
-        st.markdown("### 🔀 Most Dissimilar Pair per Ban Era")
+        st.markdown("### 🔀 Most Dissimilar Deck per Ban Era")
         st.caption(
-            "Within each ban era, the single most dissimilar pair of decks by "
-            "Euclidean distance in CA space. Eras with only one deck are excluded."
+            "Within each ban era, the deck with the highest mean CA distance "
+            "to all other decks in that era — i.e. the biggest outlier. "
+            "Eras with only one deck are excluded."
         )
  
-        name_col  = "Name"     if "Name"     in ord_data.columns else None
-        date_col  = "Date"     if "Date"     in ord_data.columns else None
-        place_col = "Place"    if "Place"    in ord_data.columns else None
+        name_col  = "Name"  if "Name"  in ord_data.columns else None
+        date_col  = "Date"  if "Date"  in ord_data.columns else None
+        place_col = "Place" if "Place" in ord_data.columns else None
  
         def site_label(idx):
             parts = []
-            if name_col:  parts.append(str(ord_data.iloc[idx][name_col]))
-            if date_col:  parts.append(f"({ord_data.iloc[idx][date_col]})")
+            if name_col: parts.append(str(ord_data.loc[idx, name_col]))
+            if date_col: parts.append(f"({ord_data.loc[idx, date_col]})")
             return " ".join(parts) if parts else f"Site {idx}"
  
         def site_place(idx):
-            return ord_data.iloc[idx][place_col] if place_col else "—"
+            return ord_data.loc[idx, place_col] if place_col else "—"
  
         rows = []
         for era in ERA_ORDER:
@@ -396,25 +397,26 @@ with tab4:
             if len(era_idx) < 2:
                 continue
  
-            # Find the most dissimilar pair within this era
-            best_dist, best_a, best_b = -1, None, None
-            for ii in range(len(era_idx)):
-                for jj in range(ii + 1, len(era_idx)):
-                    a, b = era_idx[ii], era_idx[jj]
-                    ca1_a, ca2_a = ord_data.loc[a, "CA1"], ord_data.loc[a, "CA2"]
-                    ca1_b, ca2_b = ord_data.loc[b, "CA1"], ord_data.loc[b, "CA2"]
-                    dist = np.sqrt((ca1_a - ca1_b)**2 + (ca2_a - ca2_b)**2)
-                    if dist > best_dist:
-                        best_dist, best_a, best_b = dist, a, b
+            era_coords = ord_data.loc[era_idx, ["CA1", "CA2"]].values
+ 
+            # For each site, compute mean distance to all others in the era
+            best_mean_dist, best_idx = -1, None
+            for ii, idx in enumerate(era_idx):
+                others = np.delete(era_coords, ii, axis=0)
+                dists = np.sqrt(
+                    (era_coords[ii, 0] - others[:, 0])**2 +
+                    (era_coords[ii, 1] - others[:, 1])**2
+                )
+                mean_dist = dists.mean()
+                if mean_dist > best_mean_dist:
+                    best_mean_dist, best_idx = mean_dist, idx
  
             rows.append({
-                "Era":         era,
-                "Site A":      site_label(best_a),
-                "Place A":     site_place(best_a),
-                "Site B":      site_label(best_b),
-                "Place B":     site_place(best_b),
-                "CA Distance": f"{best_dist:.4f}",
-                "Era N":       len(era_idx),
+                "Era":              era,
+                "Outlier Deck":     site_label(best_idx),
+                "Place":            site_place(best_idx),
+                "Mean CA Distance": f"{best_mean_dist:.4f}",
+                "Era N":            len(era_idx),
             })
  
         dissim_df = pd.DataFrame(rows)
@@ -422,7 +424,6 @@ with tab4:
  
     else:
         st.info("CCA computation failed. Check your data.")
-
 
 # ── Tab 5: CCA – Card Inclusion ───────────
 with tab5:

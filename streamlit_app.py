@@ -206,7 +206,7 @@ with tab3:
         title="Mean Card Counts by Ban Era"
     )
 
-    fig_heat.update_layout(height=400)
+    fig_heat.update_layout(height=750)
 
     st.plotly_chart(fig_heat, use_container_width=True)
 

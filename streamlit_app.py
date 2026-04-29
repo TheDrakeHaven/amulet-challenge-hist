@@ -129,10 +129,6 @@ with st.spinner("Processing main deck sheet…"):
     xl = pd.ExcelFile(BytesIO(file_bytes))
     amulet_df = xl.parse(0)
 
-    # Convert card columns to int, Place to int
-    drop_cols = [c for c in ["Amulet of Vigor", "Primeval Titan", "Arboreal Grazer",
-                              "Urzas Saga", "Vesuva"] if c in amulet_df.columns]
-    amulet_df.drop(columns=drop_cols, inplace=True)
 
     meta_cols = [c for c in ["Name", "Place", "Date"] if c in amulet_df.columns]
     card_cols = [c for c in amulet_df.columns if c not in meta_cols]

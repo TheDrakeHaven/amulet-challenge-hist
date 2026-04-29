@@ -333,14 +333,14 @@ from skbio.stats.ordination import cca
 
 st.title("CCA Analysis")
 
-    # ---- Run CCA ----
-    st.subheader("Running CCA")
+# ---- Run CCA ----
+st.subheader("Running CCA")
 
-    ca1 = cca(amulet_int)
-    st.write(ca1)
+ca1 = cca(amulet_int)
+st.write(ca1)
 
-    # ---- Extract species scores ----
-    species_scores = ca1.features
+# ---- Extract species scores ----
+species_scores = ca1.features
 
 st.subheader("Species Scores")
 st.dataframe(species_scores)
@@ -363,20 +363,20 @@ for label, x, y in zip(
     ):
         ax.text(x, y, label, fontsize=8)
 
-    # Styling similar to theme_classic()
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+# Styling similar to theme_classic()
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
     
-    # Match R ylim
-    ax.set_ylim(-0.8, 1.2)
+# Match R ylim
+ax.set_ylim(-0.8, 1.2)
 
-    ax.set_xlabel("CCA1")
-    ax.set_ylabel("CCA2")
-    ax.set_title("CCA Species Plot")
+ax.set_xlabel("CCA1")
+ax.set_ylabel("CCA2")
+ax.set_title("CCA Species Plot")
 
-    st.pyplot(fig)
-            summary.columns = [selected_card, "NMDS1 mean", "NMDS1 n", "NMDS2 mean", "NMDS2 n"]
-            st.dataframe(summary[[selected_card, "NMDS1 mean", "NMDS2 mean", "NMDS1 n"]]
+st.pyplot(fig)
+        summary.columns = [selected_card, "NMDS1 mean", "NMDS1 n", "NMDS2 mean", "NMDS2 n"]
+        st.dataframe(summary[[selected_card, "NMDS1 mean", "NMDS2 mean", "NMDS1 n"]]
                      .rename(columns={"NMDS1 n": "n"}),
                      use_container_width=True)
         else:

@@ -375,9 +375,9 @@ ax.set_ylabel("CCA2")
 ax.set_title("CCA Species Plot")
 
 st.pyplot(fig)
-        summary.columns = [selected_card, "NMDS1 mean", "NMDS1 n", "NMDS2 mean", "NMDS2 n"]
-        st.dataframe(summary[[selected_card, "NMDS1 mean", "NMDS2 mean", "NMDS1 n"]]
-                     .rename(columns={"NMDS1 n": "n"}),
-                     use_container_width=True)
-        else:
-            st.info("Click **Run NMDS** to compute the ordination.")
+summary.columns = [selected_card, "NMDS1 mean", "NMDS1 n", "NMDS2 mean", "NMDS2 n"]
+st.dataframe(summary[[selected_card, "NMDS1 mean", "NMDS2 mean", "NMDS1 n"]]
+             .rename(columns={"NMDS1 n": "n"}),
+             use_container_width=True)
+    else:
+        st.info("Click **Run NMDS** to compute the ordination.")

@@ -243,27 +243,6 @@ def run_nmds_computation():
 if "nmds_result" not in st.session_state:
     run_nmds_computation()
 
-def draw_ellipses(fig, ord_data, color_by, show_labels):
-    if ord_data[color_by].nunique() <= 15:
-        for grp, gdf in ord_data.groupby(color_by):
-            if len(gdf) < 3:
-                continue
-            cx, cy = gdf["NMDS1"].mean(), gdf["NMDS2"].mean()
-            sx, sy = gdf["NMDS1"].std(), gdf["NMDS2"].std()
-            theta = np.linspace(0, 2 * np.pi, 100)
-            ex = cx + 2 * sx * np.cos(theta)
-            ey = cy + 2 * sy * np.sin(theta)
-            fig.add_trace(go.Scatter(
-                x=ex, y=ey, mode="lines",
-                name=str(grp) + " ellipse",
-                showlegend=False,
-                line=dict(dash="dash", width=1)
-            ))
-            if show_labels:
-                fig.add_annotation(x=cx, y=cy, text=str(grp),
-                                   showarrow=False, font=dict(size=10))
-    return fig
-
 # ── Tab 4: NMDS – Era & Set ───────────────
 with tab4:
     st.subheader("NMDS Ordination – Era & Set (Bray-Curtis)")

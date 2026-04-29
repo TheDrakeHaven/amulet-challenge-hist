@@ -269,8 +269,6 @@ with tab4:
             template="plotly_white"
         )
         fig.update_traces(marker=dict(size=8))
-        if show_ellipse:
-            fig = draw_ellipses(fig, ord_data, color_by, show_labels)
         fig.update_layout(height=600)
         st.plotly_chart(fig, use_container_width=True)
 

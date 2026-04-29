@@ -331,7 +331,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from skbio.stats.ordination import cca
 
-    st.title("CCA Analysis")
+st.title("CCA Analysis")
 
     # ---- Run CCA ----
     st.subheader("Running CCA")

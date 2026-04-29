@@ -192,7 +192,7 @@ with tab2:
         st.markdown("**Name counts**")
 
         name_counts = (
-            amulet_df["name"]
+            amulet_df["Name"]
             .value_counts(dropna=False)
             .sort_values(ascending=False)
         )

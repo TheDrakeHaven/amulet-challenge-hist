@@ -328,7 +328,7 @@ with tab5:
             ord_data, x="NMDS1", y="NMDS2",
             color=selected_card,
             color_continuous_scale="Viridis",
-            hover_data=["Name", "Date", "next_ban"] if "Name" in ord_data.columns else None,
+            hover_data=["Name", "Date", "next_ban","current_set"] if "Name" in ord_data.columns else None,
             title=f"NMDS – colored by copies of {selected_card}",
             template="plotly_white"
         )

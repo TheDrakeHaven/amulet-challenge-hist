@@ -308,20 +308,6 @@ with tab4:
 with tab5:
     st.subheader("NMDS Ordination – Card Inclusion (Bray-Curtis)")
 
-    col_btn1, col_btn2 = st.columns([1, 3])
-    with col_btn1:
-        if st.button("🔄 Re-run NMDS", key="run_nmds_tab5"):
-            run_nmds_computation()
-    with col_btn2:
-        if "nmds_excel" in st.session_state:
-            st.download_button(
-                label="⬇️ Download NMDS Results (.xlsx)",
-                data=st.session_state["nmds_excel"],
-                file_name="nmds_results.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="download_nmds_tab5"
-            )
-
     if "nmds_result" in st.session_state:
         ord_data = st.session_state["nmds_result"]
         stress = st.session_state.get("stress")

@@ -347,13 +347,10 @@ st.title("Canonical Correspondence / Correspondence Analysis")
 # rows = samples, columns = species/features
 # --------------------------------------------------
 
-st.subheader("Input Data")
-st.dataframe(amulet_filtered)
 
 # --------------------------------------------------
 # RUN ANALYSIS (R vegan-style CA approximation)
 # --------------------------------------------------
-st.subheader("Running Ordination (prince CA)")
 
 ca1 = prince.CA(
     n_components=2,
@@ -368,18 +365,12 @@ ca1 = ca1.fit(amulet_filtered)
 species_scores = ca1.column_coordinates(amulet_filtered)
 site_scores = ca1.row_coordinates(amulet_filtered)
 
-st.write("Species Scores")
-st.dataframe(species_scores)
-
-st.write("Site Scores")
-st.dataframe(site_scores)
-
 # --------------------------------------------------
 # PLOT (similar to autoplot(..., layers="species"))
 # --------------------------------------------------
-st.subheader("Species Ordination Plot")
+st.subheader("Card Ordination Plot")
 
-fig, ax = plt.subplots(figsize=(10, 10))
+fig, ax = plt.subplots(figsize=(12, 12))
 
 ax.scatter(
     species_scores[0],
@@ -399,7 +390,7 @@ ax.spines["top"].set_visible(False)
 ax.spines["right"].set_visible(False)
 
 # optional y-limit like your R code
-ax.set_ylim(-0.8, 1.2)
+ax.set_ylim(-1, 1.5)
 
 ax.set_xlabel("Dim 1")
 ax.set_ylabel("Dim 2")

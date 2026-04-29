@@ -42,13 +42,14 @@ ban_events = pd.DataFrame({
         "Pre-Preordain Unban",
         "Pre-Fury/Bean Ban",
         "Pre-Outburst Ban",
+        "Pre-MH3",
         "Pre-Nadu/Grief Ban",
         "Pre-GSZ Unban/Ring Ban",
         "Pre-Breach Ban",
         "Current"
     ],
     "date": pd.to_datetime([
-        "2023-08-07", "2023-12-04", "2024-03-11",
+        "2023-08-07", "2023-12-04", "2024-03-11", "2024-06-14",
         "2024-08-26", "2024-12-16", "2025-03-31", "2026-04-30"
     ])
 })

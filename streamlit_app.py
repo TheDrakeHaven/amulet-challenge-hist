@@ -130,7 +130,7 @@ file_bytes = output.getvalue()
 # ─────────────────────────────────────────
 
 with st.spinner("Processing main deck sheet…"):
-   xl = pd.ExcelFile(BytesIO(file_bytes))
+    xl = pd.ExcelFile(BytesIO(file_bytes))
     amulet_df = xl.parse(0)
 
     # Convert card columns to int, Place to int

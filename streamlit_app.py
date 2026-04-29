@@ -117,7 +117,6 @@ df = pd.read_excel(file_path, sheet_name="Sheet1")
 
 # Display as dataframe in Streamlit
 st.title("Sheet1 Data")
-st.dataframe(df, use_container_width=True)
 
 output = BytesIO()
 with pd.ExcelWriter(output, engine="openpyxl") as writer:

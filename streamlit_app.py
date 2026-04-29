@@ -10,7 +10,7 @@ from datetime import date, datetime
 import re
 from io import BytesIO
 import matplotlib.pyplot as plt
-from skbio.stats.ordination import cca
+from sklearn.cross_decomposition import CCA
 
 st.set_page_config(page_title="Amulet Challenge Analysis", layout="wide")
 st.title("🪬 Amulet Challenge Analysis")

@@ -185,6 +185,7 @@ with tab3:
         num_cols.remove("Place")
     # Filter to cards with more than 12 total occurrences
     num_cols = [c for c in num_cols if amulet_comb[c].sum() > 12]
+    num_cols = [c for c in num_cols if amulet_comb[c].sum() < 1800]
     mean_deck = (
         amulet_comb.groupby("next_ban")[num_cols]
         .mean()

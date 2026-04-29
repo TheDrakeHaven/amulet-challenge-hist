@@ -194,19 +194,22 @@ with tab3:
     # Heatmap only
     st.markdown("**Heatmap of Mean Counts**")
 
-    amulet_comb["next_ban"] = pd.to_datetime(amulet_comb["next_ban"])
-
-    mean_deck = (
-        amulet_comb.groupby("next_ban")[num_cols]
-        .mean()
-        .reset_index()
-        .sort_values("next_ban")
-    )
-    
     heat_data = mean_deck.set_index("next_ban")[num_cols]
-    
+
+    fig_heat = px.imshow(
+        heat_data,
+        aspect="auto",
+        color_continuous_scale="Viridis",
+        labels={
+            "x": "Card",
+            "y": "Era",
+            "color": "Mean"
+        },
+        title="Mean Card Counts by Ban Era"
+    )
+
     fig_heat.update_layout(height=750)
-    
+
     st.plotly_chart(fig_heat, use_container_width=True)
 
 # ── Shared NMDS compute helper ────────────
@@ -404,5 +407,8 @@ with tab6:
     
     # ---- Streamlit render ----
     st.plotly_chart(fig, use_container_width=True)
+
+
+
 
 

@@ -180,15 +180,16 @@ with tab2:
 # ── Tab 3: Median by Era ─────────────────
 with tab3:
     st.subheader("Mean Card Counts by Ban Era")
-    num_cols = amulet_filtered.select_dtypes(include="number").columns.tolist()
+    num_cols = amulet_comb.select_dtypes(include="number").columns.tolist()
     if "Place" in num_cols:
         num_cols.remove("Place")
+    # Filter to cards with more than 12 total occurrences
+    num_cols = [c for c in num_cols if amulet_comb[c].sum() > 12]
     mean_deck = (
-        amulet_filtered.groupby("next_ban")[num_cols]
+        amulet_comb.groupby("next_ban")[num_cols]
         .mean()
         .reset_index()
     )
-    # Heatmap only
     st.markdown("**Heatmap of Mean Counts**")
     heat_data = mean_deck.set_index("next_ban")[num_cols]
     era_order = [
@@ -206,11 +207,7 @@ with tab3:
         heat_data,
         aspect="auto",
         color_continuous_scale="Greens",
-        labels={
-            "x": "Card",
-            "y": "Era",
-            "color": "Mean"
-        },
+        labels={"x": "Card", "y": "Era", "color": "Mean"},
         title="Mean Card Counts by Ban Era"
     )
     fig_heat.update_layout(height=750)

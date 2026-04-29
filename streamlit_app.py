@@ -195,7 +195,7 @@ with tab2:
             .value_counts(dropna=False)
             .sort_values(ascending=False)
         )
-    st.dataframe(name_counts, use_container_width=True)
+        st.dataframe(name_counts, use_container_width=True)
 
 # ── Tab 3: Median by Era ─────────────────
 with tab3:

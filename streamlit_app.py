@@ -116,14 +116,6 @@ with st.spinner("Processing main deck sheet…"):
     if "Place" in amulet_df.columns:
         amulet_df["Place"] = pd.to_numeric(amulet_df["Place"], errors="coerce").fillna(0).astype(int)
 
-    # Parse dates
-    if "Date" in amulet_df.columns:
-        amulet_df["Date"] = amulet_df["Date"].apply(parse_date)
-        amulet_df.dropna(subset=["Date"], inplace=True)
-
-    amulet_df.reset_index(drop=True, inplace=True)
-    amulet_df.insert(0, "row_number", amulet_df.index + 1)
-
     # Split into env and int
     env_cols = ["row_number", "Name", "Place", "Date"]
     amulet_env = amulet_df[[c for c in env_cols if c in amulet_df.columns]].copy()

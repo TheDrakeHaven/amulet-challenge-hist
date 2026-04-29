@@ -54,28 +54,6 @@ ban_events = pd.DataFrame({
 # HELPER FUNCTIONS
 # ─────────────────────────────────────────
 
-def parse_date(val):
-    """Replicate R's multi-format date parsing logic."""
-    if pd.isna(val) or str(val).strip() in ("", "Date"):
-        return pd.NaT
-    s = str(val).strip()
-    # Excel serial number
-    if re.match(r"^\d+$", s):
-        try:
-            return pd.Timestamp("1899-12-30") + pd.Timedelta(days=int(s))
-        except Exception:
-            return pd.NaT
-    # dd/mm/yy or mm/dd/yy style
-    if re.match(r"^\d{1,2}/\d{1,2}/\d{2,4}$", s):
-        parts = s.split("/")
-        day_part, mid_part = int(parts[0]), int(parts[1])
-        if day_part > 12:
-            return pd.to_datetime(s, dayfirst=True, errors="coerce")
-        if mid_part > 12:
-            return pd.to_datetime(s, dayfirst=False, errors="coerce")
-        return pd.to_datetime(s, dayfirst=True, errors="coerce")
-    return pd.to_datetime(s, errors="coerce", dayfirst=True)
-
 
 def assign_current_set(d):
     """Return the most recent set released on or before date d."""

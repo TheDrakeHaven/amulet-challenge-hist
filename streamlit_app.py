@@ -219,6 +219,40 @@ with tab3:
     fig_heat.update_layout(height=400)
     st.plotly_chart(fig_heat, use_container_width=True)
 
+    st.subheader("Mean Card Counts by Ban Era")
+
+    num_cols = amulet_comb.select_dtypes(include="number").columns.tolist()
+
+    if "Place" in num_cols:
+        num_cols.remove("Place")
+
+    mean_deck = (
+        amulet_comb.groupby("next_ban")[num_cols]
+        .mean()
+        .reset_index()
+    )
+
+    # Heatmap only
+    st.markdown("**Heatmap of Mean Counts**")
+
+    heat_data = mean_deck.set_index("next_ban")[num_cols]
+
+    fig_heat = px.imshow(
+        heat_data,
+        aspect="auto",
+        color_continuous_scale="Viridis",
+        labels={
+            "x": "Card",
+            "y": "Era",
+            "color": "Mean"
+        },
+        title="Mean Card Counts by Ban Era"
+    )
+
+    fig_heat.update_layout(height=400)
+
+    st.plotly_chart(fig_heat, use_container_width=True)
+
 # ── Shared NMDS compute helper ────────────
 def run_nmds_computation():
     with st.spinner("Computing Bray-Curtis distances and MDS (this may take a moment)…"):

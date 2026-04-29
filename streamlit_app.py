@@ -337,7 +337,6 @@ with tab6:
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import prince
 
 st.title("Canonical Correspondence / Correspondence Analysis")
 
@@ -369,32 +368,39 @@ site_scores = ca1.row_coordinates(amulet_filtered)
 # PLOT (similar to autoplot(..., layers="species"))
 # --------------------------------------------------
 st.subheader("Card Ordination Plot")
-fig, ax = plt.subplots(figsize=(10, 10))
 
-# set plot limits FIRST (defines your "original plot size")
-ax.set_xlim(species_scores[0].min(), species_scores[0].max())
-ax.set_ylim(species_scores[1].min(), species_scores[1].max())
+import plotly.express as px
 
-for label, x, y in zip(
-    species_scores.index,
-    species_scores[0],
-    species_scores[1]
-):
-    ax.text(
-        x,
-        y,
-        label,
-        fontsize=8,
-        clip_on=True   # <-- prevents drawing outside axes
-    )
 
-# styling similar to theme_classic()
-ax.spines["top"].set_visible(False)
-ax.spines["right"].set_visible(False)
+# ---- Build plotting dataframe ----
+plot_df = species_scores.copy()
+plot_df = plot_df.reset_index()
+plot_df.columns = ["species", "Dim1", "Dim2"]
 
-ax.set_xlabel("Dim 1")
-ax.set_ylabel("Dim 2")
-ax.set_title("Species Ordination (Clipped Labels)")
+# ---- Plotly interactive scatter ----
+fig = px.scatter(
+    plot_df,
+    x="Dim1",
+    y="Dim2",
+    text="species",
+    hover_name="species"
+)
 
-st.pyplot(fig)
+# Remove dots but keep hover + labels (optional)
+fig.update_traces(
+    mode="text",  # labels only
+    textposition="top center"
+)
+
+# ---- Layout styling (similar to theme_classic) ----
+fig.update_layout(
+    title="Interactive Species Ordination",
+    xaxis_title="Dim 1",
+    yaxis_title="Dim 2",
+    template="simple_white"
+)
+
+# ---- Streamlit render ----
+st.plotly_chart(fig, use_container_width=True)
+
 

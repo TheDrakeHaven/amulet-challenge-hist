@@ -231,6 +231,18 @@ def run_nmds_computation():
         st.session_state["nmds_result"] = ord_data
         st.session_state["stress"] = mds.stress_
 
+        # Save results to Excel in session state for download
+        nmds_output = BytesIO()
+        with pd.ExcelWriter(nmds_output, engine="openpyxl") as writer:
+            scores_df = ord_data[["Name", "Date", "next_ban", "current_set", "Place", "NMDS1", "NMDS2"]]
+            scores_df.to_excel(writer, index=False, sheet_name="NMDS_Scores")
+            pd.DataFrame({"Stress": [mds.stress_]}).to_excel(writer, index=False, sheet_name="Stress")
+        st.session_state["nmds_excel"] = nmds_output.getvalue()
+
+# ── Auto-run NMDS on app load ─────────────
+if "nmds_result" not in st.session_state:
+    run_nmds_computation()
+
 def draw_ellipses(fig, ord_data, color_by, show_labels):
     if ord_data[color_by].nunique() <= 15:
         for grp, gdf in ord_data.groupby(color_by):
@@ -256,8 +268,19 @@ def draw_ellipses(fig, ord_data, color_by, show_labels):
 with tab4:
     st.subheader("NMDS Ordination – Era & Set (Bray-Curtis)")
 
-    if st.button("▶ Run NMDS", type="primary", key="run_nmds_tab4"):
-        run_nmds_computation()
+    col_btn1, col_btn2 = st.columns([1, 3])
+    with col_btn1:
+        if st.button("🔄 Re-run NMDS", key="run_nmds_tab4"):
+            run_nmds_computation()
+    with col_btn2:
+        if "nmds_excel" in st.session_state:
+            st.download_button(
+                label="⬇️ Download NMDS Results (.xlsx)",
+                data=st.session_state["nmds_excel"],
+                file_name="nmds_results.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="download_nmds_tab4"
+            )
 
     if "nmds_result" in st.session_state:
         ord_data = st.session_state["nmds_result"]
@@ -299,8 +322,19 @@ with tab4:
 with tab5:
     st.subheader("NMDS Ordination – Card Inclusion (Bray-Curtis)")
 
-    if st.button("▶ Run NMDS", type="primary", key="run_nmds_tab5"):
-        run_nmds_computation()
+    col_btn1, col_btn2 = st.columns([1, 3])
+    with col_btn1:
+        if st.button("🔄 Re-run NMDS", key="run_nmds_tab5"):
+            run_nmds_computation()
+    with col_btn2:
+        if "nmds_excel" in st.session_state:
+            st.download_button(
+                label="⬇️ Download NMDS Results (.xlsx)",
+                data=st.session_state["nmds_excel"],
+                file_name="nmds_results.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="download_nmds_tab5"
+            )
 
     if "nmds_result" in st.session_state:
         ord_data = st.session_state["nmds_result"]

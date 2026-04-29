@@ -196,17 +196,17 @@ with tab3:
 
  amulet_comb["next_ban"] = pd.to_datetime(amulet_comb["next_ban"])
 
-mean_deck = (
-    amulet_comb.groupby("next_ban")[num_cols]
-    .mean()
-    .reset_index()
-    .sort_values("next_ban")
-)
-
-heat_data = mean_deck.set_index("next_ban")[num_cols]
-    fig_heat.update_layout(height=750)
-
-    st.plotly_chart(fig_heat, use_container_width=True)
+    mean_deck = (
+        amulet_comb.groupby("next_ban")[num_cols]
+        .mean()
+        .reset_index()
+        .sort_values("next_ban")
+    )
+    
+    heat_data = mean_deck.set_index("next_ban")[num_cols]
+        fig_heat.update_layout(height=750)
+    
+        st.plotly_chart(fig_heat, use_container_width=True)
 
 # ── Shared NMDS compute helper ────────────
 def run_nmds_computation():

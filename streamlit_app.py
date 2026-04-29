@@ -203,7 +203,7 @@ with tab3:
     fig_heat = px.imshow(
         heat_data,
         aspect="auto",
-        color_continuous_scale="Viridis",
+        color_continuous_scale="PiYG",
         labels={
             "x": "Card",
             "y": "Era",

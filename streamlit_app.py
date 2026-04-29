@@ -1,4 +1,4 @@
-import streamlit as st
+file_path import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -118,7 +118,11 @@ df = pd.read_excel(file_path, sheet_name="Sheet1")
 st.title("Sheet1 Data")
 st.dataframe(df, use_container_width=True)
 
+output = BytesIO()
+with pd.ExcelWriter(output, engine="openpyxl") as writer:
+    df.to_excel(writer, index=False, sheet_name="Sheet1")
 
+file_bytes = output.getvalue()
 # ─────────────────────────────────────────
 # LOAD MAIN SHEET (sheet 1 = index 0)
 # ─────────────────────────────────────────

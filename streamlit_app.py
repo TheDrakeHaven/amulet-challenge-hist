@@ -267,7 +267,7 @@ with tab4:
             template="plotly_white"
         )
         fig.update_traces(marker=dict(size=8))
-        fig.update_layout(height=600)
+        fig.update_layout(height=800)
         st.plotly_chart(fig, use_container_width=True)
 
         st.markdown("**NMDS Scores (sorted by NMDS1)**")
@@ -307,7 +307,7 @@ with tab5:
             template="plotly_white"
         )
         fig2.update_traces(marker=dict(size=8))
-        fig2.update_layout(height=600)
+        fig2.update_layout(height=800)
         st.plotly_chart(fig2, use_container_width=True)
 
 # ── Tab 6: NMDS – Card Inclusion ──────────

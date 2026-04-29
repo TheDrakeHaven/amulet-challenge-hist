@@ -120,18 +120,11 @@ if uploaded_file is None:
 file_bytes = io.BytesIO(uploaded_file.read())
 
 # ─────────────────────────────────────────
-# LOAD & COMBINE SHEETS (sheets 3-42 → index 2-41)
-# ─────────────────────────────────────────
-
-with st.spinner("Loading sheets…"):
-    xl = pd.ExcelFile(file_bytes)
-    total_sheets = len(xl.sheet_names)
-
-# ─────────────────────────────────────────
 # LOAD MAIN SHEET (sheet 1 = index 0)
 # ─────────────────────────────────────────
 
 with st.spinner("Processing main deck sheet…"):
+    xl = pd.ExcelFile(file_bytes)
     amulet_df = xl.parse(0)
 
     # Convert card columns to int, Place to int
@@ -175,19 +168,12 @@ with st.spinner("Processing main deck sheet…"):
 # TABS
 # ─────────────────────────────────────────
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📊 Combined Data",
+tab2, tab3, tab4, tab5 = st.tabs([
     "🃏 Deck Data",
     "📈 Median by Era",
     "🗺️ NMDS Ordination",
     "⬇️ Downloads"
 ])
-
-# ── Tab 1: Combined Data ─────────────────
-with tab1:
-    st.subheader("Combined Challenge Data")
-    st.dataframe(combined_data, use_container_width=True)
-    st.caption(f"{len(combined_data):,} rows across {len(frames)} sheets")
 
 # ── Tab 2: Deck Data ─────────────────────
 with tab2:
@@ -319,10 +305,6 @@ with tab4:
 # ── Tab 5: Downloads ─────────────────────
 with tab5:
     st.subheader("Download Results")
-
-    # Combined data CSV
-    csv1 = combined_data.to_csv(index=False).encode()
-    st.download_button("⬇️ combined_data.csv", csv1, "combined_data.csv", "text/csv")
 
     # Median deck CSV
     csv2 = median_deck.to_csv(index=False).encode()

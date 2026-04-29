@@ -283,30 +283,30 @@ if "cca_result" not in st.session_state:
 # ── Tab 4: CCA – Era & Set ────────────────
 with tab4:
     st.subheader("CCA Ordination – Era & Set")
-
+ 
     if "cca_result" in st.session_state:
         ord_data       = st.session_state["cca_result"]
         species_scores = st.session_state["cca_species"]
         env_centroids  = st.session_state["cca_env_centroids"]
         eigenvalues    = st.session_state.get("cca_eigenvalues")
         total_inertia  = st.session_state.get("cca_total_inertia")
-
+ 
         # Inertia metrics
         if eigenvalues is not None and total_inertia:
             col_m1, col_m2, col_m3 = st.columns(3)
             col_m1.metric("CA1 Inertia", f"{eigenvalues[0]:.4f}")
             col_m2.metric("CA2 Inertia", f"{eigenvalues[1]:.4f}")
             col_m3.metric("Total Inertia", f"{total_inertia:.4f}")
-
+ 
         color_by = st.selectbox(
             "Color sites by:",
             ["next_ban", "current_set", "Place"],
             key="cca_color_tab4"
         )
-
+ 
         show_centroids = st.checkbox("Show environmental centroids", value=True, key="show_centroids_tab4")
         show_species   = st.checkbox("Show top card vectors", value=False, key="show_species_tab4")
-
+ 
         # ── Site scatter ──────────────────────────────────────────────────
         hover_cols = [c for c in ["Name", "Date", "next_ban", "current_set"] if c in ord_data.columns]
         fig = px.scatter(
@@ -318,7 +318,7 @@ with tab4:
             opacity=0.75
         )
         fig.update_traces(marker=dict(size=8))
-
+ 
         # ── Environmental centroid overlay ────────────────────────────────
         if show_centroids and color_by in env_centroids:
             cents = env_centroids[color_by]
@@ -331,7 +331,7 @@ with tab4:
                 name=f"{color_by} centroids",
                 showlegend=True
             ))
-
+ 
         # ── Top card species scores overlay ───────────────────────────────
         if show_species:
             top_n = st.slider("Number of top cards to display", 5, 30, 10, key="cca_top_n")
@@ -347,15 +347,15 @@ with tab4:
                 name="Card scores",
                 showlegend=True
             ))
-
+ 
         # ── Axis labels with % inertia if available ───────────────────────
         if eigenvalues is not None and total_inertia:
             fig.update_xaxes(title_text=f"CA1 ({eigenvalues[0]/total_inertia*100:.1f}% inertia)")
             fig.update_yaxes(title_text=f"CA2 ({eigenvalues[1]/total_inertia*100:.1f}% inertia)")
-
+ 
         fig.update_layout(height=800)
         st.plotly_chart(fig, use_container_width=True)
-
+ 
         # ── Download CCA results ──────────────────────────────────────────
         if "cca_excel" in st.session_state:
             st.download_button(
@@ -364,11 +364,68 @@ with tab4:
                 file_name="cca_scores.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-
+ 
         st.markdown("**CCA Site Scores (sorted by CA1)**")
         display_cols = [c for c in ["Name", "Date", "next_ban", "current_set", "CA1", "CA2"] if c in ord_data.columns]
         st.dataframe(ord_data[display_cols].sort_values("CA1"), use_container_width=True)
-
+ 
+        # ── 10 Most Dissimilar Sites ──────────────────────────────────────
+        st.markdown("---")
+        st.markdown("### 🔀 10 Most Dissimilar Sites")
+        st.caption(
+            "Pairs ranked by Euclidean distance in CA space. "
+            "Large distances indicate decks with very different card compositions."
+        )
+ 
+        coords = ord_data[["CA1", "CA2"]].values
+        n = len(coords)
+ 
+        # Compute all pairwise Euclidean distances in CA space
+        pairs = []
+        for i in range(n):
+            for j in range(i + 1, n):
+                dist = np.sqrt((coords[i, 0] - coords[j, 0])**2 + (coords[i, 1] - coords[j, 1])**2)
+                pairs.append((i, j, dist))
+ 
+        pairs_df = pd.DataFrame(pairs, columns=["idx_a", "idx_b", "ca_distance"])
+        top10 = pairs_df.nlargest(10, "ca_distance").reset_index(drop=True)
+ 
+        # Build a readable display table
+        name_col    = "Name"    if "Name"    in ord_data.columns else None
+        date_col    = "Date"    if "Date"    in ord_data.columns else None
+        era_col     = "next_ban"     if "next_ban"     in ord_data.columns else None
+        place_col   = "Place"   if "Place"   in ord_data.columns else None
+ 
+        rows = []
+        for rank, row in enumerate(top10.itertuples(), 1):
+            a, b = int(row.idx_a), int(row.idx_b)
+ 
+            def site_label(idx):
+                parts = []
+                if name_col:  parts.append(ord_data.iloc[idx][name_col])
+                if date_col:  parts.append(f"({ord_data.iloc[idx][date_col]})")
+                return " ".join(str(p) for p in parts) if parts else f"Site {idx}"
+ 
+            def site_era(idx):
+                return ord_data.iloc[idx][era_col] if era_col else "—"
+ 
+            def site_place(idx):
+                return ord_data.iloc[idx][place_col] if place_col else "—"
+ 
+            rows.append({
+                "Rank":        rank,
+                "Site A":      site_label(a),
+                "Era A":       site_era(a),
+                "Place A":     site_place(a),
+                "Site B":      site_label(b),
+                "Era B":       site_era(b),
+                "Place B":     site_place(b),
+                "CA Distance": f"{row.ca_distance:.4f}",
+            })
+ 
+        dissim_df = pd.DataFrame(rows)
+        st.dataframe(dissim_df, use_container_width=True, hide_index=True)
+ 
     else:
         st.info("CCA computation failed. Check your data.")
 

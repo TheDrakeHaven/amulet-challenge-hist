@@ -189,13 +189,13 @@ with tab2:
         st.dataframe(means.rename("Mean").reset_index().rename(columns={"index": "Card"}),
                      use_container_width=True)
     with col2:
-    st.markdown("**Name counts**")
+        st.markdown("**Name counts**")
 
-    name_counts = (
-        amulet_df["name"]
-        .value_counts(dropna=False)
-        .sort_values(ascending=False)
-    )
+        name_counts = (
+            amulet_df["name"]
+            .value_counts(dropna=False)
+            .sort_values(ascending=False)
+        )
 
     st.dataframe(name_counts, use_container_width=True)
 

@@ -118,6 +118,8 @@ with st.spinner("Processing main deck sheet…"):
         amulet_df[col] = pd.to_numeric(amulet_df[col], errors="coerce").fillna(0).astype(int)
     if "Place" in amulet_df.columns:
         amulet_df["Place"] = pd.to_numeric(amulet_df["Place"], errors="coerce").fillna(0).astype(int)
+    if "Date" in amulet_df.columns:    
+        amulet_df["Date"] = pd.to_datetime(amulet_df["Date"]).dt.strftime("%m-%d-%Y")
 
     # Split into env and int
     env_cols = ["row_number", "Name", "Place", "Date"]

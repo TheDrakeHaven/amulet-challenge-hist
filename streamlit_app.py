@@ -339,7 +339,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
-st.title("Canonical Correspondence / Correspondence Analysis")
+st.title("Maindeck Correspondence Analysis")
 
 # --------------------------------------------------
 # EXPECTED INPUT

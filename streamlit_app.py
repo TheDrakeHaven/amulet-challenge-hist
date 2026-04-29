@@ -111,7 +111,7 @@ def bray_curtis_distance(X):
 
 import requests
 
-url = https://github.com/TheDrakeHaven/amulet-challenge-hist/blob/ebe9fea19c0896dfaa075d3827d85936a03d0bf1/amulet_chal.xlsx"
+url = "https://github.com/TheDrakeHaven/amulet-challenge-hist/blob/ebe9fea19c0896dfaa075d3827d85936a03d0bf1/amulet_chal.xlsx"
 output_file = "amulet_chal.xlsx"
 
 response = requests.get(url)

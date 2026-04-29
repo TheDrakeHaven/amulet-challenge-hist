@@ -180,11 +180,11 @@ with tab2:
 # ── Tab 3: Median by Era ─────────────────
 with tab3:
     st.subheader("Mean Card Counts by Ban Era")
-    num_cols = amulet_comb.select_dtypes(include="number").columns.tolist()
+    num_cols = amulet_filtered.select_dtypes(include="number").columns.tolist()
     if "Place" in num_cols:
         num_cols.remove("Place")
     mean_deck = (
-        amulet_comb.groupby("next_ban")[num_cols]
+        amulet_filtered.groupby("next_ban")[num_cols]
         .mean()
         .reset_index()
     )

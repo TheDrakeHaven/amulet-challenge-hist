@@ -184,19 +184,17 @@ with tab2:
 
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("**Column Means (card counts)**")
+        st.markdown("**Average Card Frequency**")
         means = amulet_int.mean(numeric_only=True).sort_values(ascending=False)
         st.dataframe(means.rename("Mean").reset_index().rename(columns={"index": "Card"}),
                      use_container_width=True)
     with col2:
-        st.markdown("**Name counts**")
-
+        st.markdown("**Top 8 Count**")
         name_counts = (
             amulet_df["Name"]
             .value_counts(dropna=False)
             .sort_values(ascending=False)
         )
-
     st.dataframe(name_counts, use_container_width=True)
 
 # ── Tab 3: Median by Era ─────────────────

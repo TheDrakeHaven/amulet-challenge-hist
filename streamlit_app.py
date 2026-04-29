@@ -194,7 +194,7 @@ with tab3:
     # Heatmap only
     st.markdown("**Heatmap of Mean Counts**")
 
- amulet_comb["next_ban"] = pd.to_datetime(amulet_comb["next_ban"])
+    amulet_comb["next_ban"] = pd.to_datetime(amulet_comb["next_ban"])
 
     mean_deck = (
         amulet_comb.groupby("next_ban")[num_cols]

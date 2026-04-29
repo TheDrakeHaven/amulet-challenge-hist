@@ -109,19 +109,14 @@ def bray_curtis_distance(X):
 # FILE UPLOAD
 # ─────────────────────────────────────────
 
-import requests
+# Load Sheet1 from the uploaded Excel file
+file_path = "amulet_chal.xlsx"   # make sure this file is in your Streamlit app folder
 
-url = "https://github.com/TheDrakeHaven/amulet-challenge-hist/blob/ebe9fea19c0896dfaa075d3827d85936a03d0bf1/amulet_chal.xlsx"
-output_file = "amulet_chal.xlsx"
+df = pd.read_excel(file_path, sheet_name="Sheet1")
 
-response = requests.get(url)
-
-if response.status_code == 200:
-    with open(output_file, "wb") as f:
-        f.write(response.content)
-    print("File downloaded successfully!")
-else:
-    print(f"Failed to download file. Status code: {response.status_code}")
+# Display as dataframe in Streamlit
+st.title("Sheet1 Data")
+st.dataframe(df, use_container_width=True)
 
 # Read into bytes so the buffer can be reused across multiple pd.ExcelFile calls
 file_bytes = io.BytesIO(uploaded_file.read())

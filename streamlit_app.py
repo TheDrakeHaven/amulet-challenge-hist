@@ -390,7 +390,7 @@ ax.spines["top"].set_visible(False)
 ax.spines["right"].set_visible(False)
 
 # optional y-limit like your R code
-ax.set_ylim(-1, 1.5)
+ax.set_ylim(-1, 1.6)
 
 ax.set_xlabel("Dim 1")
 ax.set_ylabel("Dim 2")

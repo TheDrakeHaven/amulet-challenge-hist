@@ -110,6 +110,8 @@ with st.spinner("Processing main deck sheet…"):
     xl = pd.ExcelFile(BytesIO(file_bytes))
     amulet_df = xl.parse(0)
 
+    amulet_df = amulet_df.drop_duplicates(keep="first")
+
 
     meta_cols = [c for c in ["Name", "Place", "Date"] if c in amulet_df.columns]
     card_cols = [c for c in amulet_df.columns if c not in meta_cols]

@@ -195,30 +195,6 @@ with tab2:
 
 # ── Tab 3: Median by Era ─────────────────
 with tab3:
-    st.subheader("Median Card Counts by Ban Era")
-    num_cols = amulet_comb.select_dtypes(include="number").columns.tolist()
-    if "Place" in num_cols:
-        num_cols.remove("Place")
-    median_deck = (
-        amulet_comb.groupby("next_ban")[num_cols]
-        .median()
-        .reset_index()
-    )
-    st.dataframe(median_deck, use_container_width=True)
-
-    # Heatmap
-    st.markdown("**Heatmap of Median Counts**")
-    heat_data = median_deck.set_index("next_ban")[num_cols]
-    fig_heat = px.imshow(
-        heat_data,
-        aspect="auto",
-        color_continuous_scale="Viridis",
-        labels={"x": "Card", "y": "Era", "color": "Median"},
-        title="Median Card Counts by Ban Era"
-    )
-    fig_heat.update_layout(height=400)
-    st.plotly_chart(fig_heat, use_container_width=True)
-
     st.subheader("Mean Card Counts by Ban Era")
 
     num_cols = amulet_comb.select_dtypes(include="number").columns.tolist()

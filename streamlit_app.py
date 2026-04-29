@@ -109,12 +109,19 @@ def bray_curtis_distance(X):
 # FILE UPLOAD
 # ─────────────────────────────────────────
 
-st.sidebar.header("📁 Data")
-uploaded_file = st.sidebar.file_uploader("Upload amulet_chal.xlsx", type=["xlsx"])
+import requests
 
-if uploaded_file is None:
-    st.info("👈 Please upload **amulet_chal.xlsx** in the sidebar to begin.")
-    st.stop()
+url = https://github.com/TheDrakeHaven/amulet-challenge-hist/blob/ebe9fea19c0896dfaa075d3827d85936a03d0bf1/amulet_chal.xlsx"
+output_file = "amulet_chal.xlsx"
+
+response = requests.get(url)
+
+if response.status_code == 200:
+    with open(output_file, "wb") as f:
+        f.write(response.content)
+    print("File downloaded successfully!")
+else:
+    print(f"Failed to download file. Status code: {response.status_code}")
 
 # Read into bytes so the buffer can be reused across multiple pd.ExcelFile calls
 file_bytes = io.BytesIO(uploaded_file.read())

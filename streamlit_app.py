@@ -380,4 +380,4 @@ st.dataframe(summary[[selected_card, "NMDS1 mean", "NMDS2 mean", "NMDS1 n"]]
              .rename(columns={"NMDS1 n": "n"}),
              use_container_width=True)
 else:
-    st.info("Click **Run NMDS** to compute the ordination.")
+st.info("Click **Run NMDS** to compute the ordination.")

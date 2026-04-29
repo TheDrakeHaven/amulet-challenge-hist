@@ -190,7 +190,16 @@ with tab3:
     # Heatmap only
     st.markdown("**Heatmap of Mean Counts**")
     heat_data = mean_deck.set_index("next_ban")[num_cols]
-    heat_data = heat_data.sort_index()
+    era_order = [
+        "Pre-Preordain Unban",
+        "Pre-Fury/Bean Ban",
+        "Pre-Outburst Ban",
+        "Pre-Nadu/Grief Ban",
+        "Pre-GSZ Unban/Ring Ban",
+        "Pre-Breach Ban",
+        "Current",
+    ]
+    heat_data = heat_data.reindex([e for e in era_order if e in heat_data.index])
     fig_heat = px.imshow(
         heat_data,
         aspect="auto",

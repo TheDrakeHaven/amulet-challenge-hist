@@ -134,6 +134,11 @@ with st.spinner("Processing main deck sheet…"):
         axis=1
     )
 
+numeric = amulet_int.select_dtypes(include="number")
+col_sums = numeric.sum()
+keep_cols = col_sums[col_sums > 12].index
+
+amulet_filtered = amulet_int[keep_cols]
 # ─────────────────────────────────────────
 # TABS
 # ─────────────────────────────────────────
@@ -343,7 +348,7 @@ st.title("Canonical Correspondence / Correspondence Analysis")
 # --------------------------------------------------
 
 st.subheader("Input Data")
-st.dataframe(amulet_int)
+st.dataframe(amulet_filtered)
 
 # --------------------------------------------------
 # RUN ANALYSIS (R vegan-style CA approximation)
@@ -355,13 +360,13 @@ ca1 = prince.CA(
     random_state=42
 )
 
-ca1 = ca1.fit(amulet_int)
+ca1 = ca1.fit(amulet_filtered)
 
 # --------------------------------------------------
 # EXTRACT SCORES (THIS REPLACES ca1$species in R)
 # --------------------------------------------------
-species_scores = ca1.column_coordinates(amulet_int)
-site_scores = ca1.row_coordinates(amulet_int)
+species_scores = ca1.column_coordinates(amulet_filtered)
+site_scores = ca1.row_coordinates(amulet_filtered)
 
 st.write("Species Scores")
 st.dataframe(species_scores)

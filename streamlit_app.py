@@ -338,12 +338,12 @@ st.title("Canonical Correspondence / Correspondence Analysis")
 
 # --------------------------------------------------
 # EXPECTED INPUT
-# amulet_int_filtered should be a pandas DataFrame
+# amulet_int should be a pandas DataFrame
 # rows = samples, columns = species/features
 # --------------------------------------------------
 
 st.subheader("Input Data")
-st.dataframe(amulet_int_filtered)
+st.dataframe(amulet_int)
 
 # --------------------------------------------------
 # RUN ANALYSIS (R vegan-style CA approximation)
@@ -355,13 +355,13 @@ ca1 = prince.CA(
     random_state=42
 )
 
-ca1 = ca1.fit(amulet_int_filtered)
+ca1 = ca1.fit(amulet_int)
 
 # --------------------------------------------------
 # EXTRACT SCORES (THIS REPLACES ca1$species in R)
 # --------------------------------------------------
-species_scores = ca1.column_coordinates(amulet_int_filtered)
-site_scores = ca1.row_coordinates(amulet_int_filtered)
+species_scores = ca1.column_coordinates(amulet_int)
+site_scores = ca1.row_coordinates(amulet_int)
 
 st.write("Species Scores")
 st.dataframe(species_scores)

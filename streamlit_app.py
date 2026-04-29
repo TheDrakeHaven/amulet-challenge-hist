@@ -369,26 +369,32 @@ site_scores = ca1.row_coordinates(amulet_filtered)
 # PLOT (similar to autoplot(..., layers="species"))
 # --------------------------------------------------
 st.subheader("Card Ordination Plot")
-
 fig, ax = plt.subplots(figsize=(10, 10))
+
+# set plot limits FIRST (defines your "original plot size")
+ax.set_xlim(species_scores[0].min(), species_scores[0].max())
+ax.set_ylim(species_scores[1].min(), species_scores[1].max())
 
 for label, x, y in zip(
     species_scores.index,
     species_scores[0],
     species_scores[1]
 ):
-    ax.text(x, y, label, fontsize=8)
+    ax.text(
+        x,
+        y,
+        label,
+        fontsize=8,
+        clip_on=True   # <-- prevents drawing outside axes
+    )
 
 # styling similar to theme_classic()
 ax.spines["top"].set_visible(False)
 ax.spines["right"].set_visible(False)
 
-ax.set_ylim(-0.8, 1.2)
-
 ax.set_xlabel("Dim 1")
 ax.set_ylabel("Dim 2")
-ax.set_title("Species Ordination (Labels Only)")
+ax.set_title("Species Ordination (Clipped Labels)")
 
 st.pyplot(fig)
-
 

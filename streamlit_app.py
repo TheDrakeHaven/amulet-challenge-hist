@@ -329,52 +329,76 @@ with tab5:
 with tab6:
     st.subheader("Card Similarity")
 
-st.title("CCA Analysis")
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+import prince
 
-# ---- Run CCA ----
-st.subheader("Running CCA")
+st.title("Canonical Correspondence / Correspondence Analysis")
 
-ca1 = CCA(amulet_int)
-st.write(ca1)
+# --------------------------------------------------
+# EXPECTED INPUT
+# amulet_int_filtered should be a pandas DataFrame
+# rows = samples, columns = species/features
+# --------------------------------------------------
 
-# ---- Extract species scores ----
-species_scores = ca1.features
+st.subheader("Input Data")
+st.dataframe(amulet_int_filtered)
 
-st.subheader("Species Scores")
+# --------------------------------------------------
+# RUN ANALYSIS (R vegan-style CA approximation)
+# --------------------------------------------------
+st.subheader("Running Ordination (prince CA)")
+
+ca1 = prince.CA(
+    n_components=2,
+    random_state=42
+)
+
+ca1 = ca1.fit(amulet_int_filtered)
+
+# --------------------------------------------------
+# EXTRACT SCORES (THIS REPLACES ca1$species in R)
+# --------------------------------------------------
+species_scores = ca1.column_coordinates(amulet_int_filtered)
+site_scores = ca1.row_coordinates(amulet_int_filtered)
+
+st.write("Species Scores")
 st.dataframe(species_scores)
 
-# ---- Plot ----
-st.subheader("CCA Species Plot")
+st.write("Site Scores")
+st.dataframe(site_scores)
+
+# --------------------------------------------------
+# PLOT (similar to autoplot(..., layers="species"))
+# --------------------------------------------------
+st.subheader("Species Ordination Plot")
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
 ax.scatter(
-    species_scores["CCA1"],
-    species_scores["CCA2"]
+    species_scores[0],
+    species_scores[1]
 )
 
-# Label points
+# label points (like autoplot species layer)
 for label, x, y in zip(
-        species_scores.index,
-        species_scores["CCA1"],
-        species_scores["CCA2"]
-    ):
-        ax.text(x, y, label, fontsize=8)
+    species_scores.index,
+    species_scores[0],
+    species_scores[1]
+):
+    ax.text(x, y, label, fontsize=8)
 
-# Styling similar to theme_classic()
+# styling similar to theme_classic()
 ax.spines["top"].set_visible(False)
 ax.spines["right"].set_visible(False)
-    
-# Match R ylim
+
+# optional y-limit like your R code
 ax.set_ylim(-0.8, 1.2)
 
-ax.set_xlabel("CCA1")
-ax.set_ylabel("CCA2")
-ax.set_title("CCA Species Plot")
+ax.set_xlabel("Dim 1")
+ax.set_ylabel("Dim 2")
+ax.set_title("Species Ordination (CA)")
 
 st.pyplot(fig)
-summary.columns = [selected_card, "NMDS1 mean", "NMDS1 n", "NMDS2 mean", "NMDS2 n"]
-st.dataframe(summary[[selected_card, "NMDS1 mean", "NMDS2 mean", "NMDS1 n"]]
-             .rename(columns={"NMDS1 n": "n"}),
-             use_container_width=True)
 

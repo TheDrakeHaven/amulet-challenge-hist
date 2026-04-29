@@ -195,6 +195,7 @@ with tab3:
         "Pre-Preordain Unban",
         "Pre-Fury/Bean Ban",
         "Pre-Outburst Ban",
+        "Pre-MH3",
         "Pre-Nadu/Grief Ban",
         "Pre-GSZ Unban/Ring Ban",
         "Pre-Breach Ban",

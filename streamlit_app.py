@@ -8,6 +8,7 @@ from sklearn.preprocessing import StandardScaler
 import io
 from datetime import date, datetime
 import re
+from io import BytesIO
 
 st.set_page_config(page_title="Amulet Challenge Analysis", layout="wide")
 st.title("🪬 Amulet Challenge Analysis")
@@ -123,6 +124,7 @@ with pd.ExcelWriter(output, engine="openpyxl") as writer:
     df.to_excel(writer, index=False, sheet_name="Sheet1")
 
 file_bytes = output.getvalue()
+
 # ─────────────────────────────────────────
 # LOAD MAIN SHEET (sheet 1 = index 0)
 # ─────────────────────────────────────────

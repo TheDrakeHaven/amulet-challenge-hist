@@ -326,7 +326,7 @@ with tab5:
         fig2 = px.scatter(
             ord_data, x="NMDS1", y="NMDS2",
             color=selected_card,
-            color_continuous_scale="Inferno",
+            color_continuous_scale="thermal",
             hover_data=["Name", "Date", "next_ban","current_set"] if "Name" in ord_data.columns else None,
             title=f"NMDS – colored by copies of {selected_card}",
             template="plotly_white"

@@ -204,9 +204,10 @@ with tab3:
     )
     
     heat_data = mean_deck.set_index("next_ban")[num_cols]
-        fig_heat.update_layout(height=750)
     
-        st.plotly_chart(fig_heat, use_container_width=True)
+    fig_heat.update_layout(height=750)
+    
+    st.plotly_chart(fig_heat, use_container_width=True)
 
 # ── Shared NMDS compute helper ────────────
 def run_nmds_computation():

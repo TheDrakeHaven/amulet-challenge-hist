@@ -190,6 +190,7 @@ with tab3:
     # Heatmap only
     st.markdown("**Heatmap of Mean Counts**")
     heat_data = mean_deck.set_index("next_ban")[num_cols]
+    heat_data = heat_data.sort_index()
     fig_heat = px.imshow(
         heat_data,
         aspect="auto",

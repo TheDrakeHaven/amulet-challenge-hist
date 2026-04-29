@@ -372,11 +372,6 @@ st.subheader("Card Ordination Plot")
 
 fig, ax = plt.subplots(figsize=(12, 12))
 
-ax.scatter(
-    species_scores[0],
-    species_scores[1]
-)
-
 np.random.seed(42)  # makes jitter reproducible
 
 jitter_strength = 0.02  # adjust if labels still overlap

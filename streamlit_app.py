@@ -258,8 +258,6 @@ with tab4:
             ["next_ban", "current_set", "Place"],
             key="nmds_color_tab4"
         )
-        show_ellipse = st.checkbox("Show group ellipses", value=True, key="ellipse_tab4")
-        show_labels  = st.checkbox("Show group centroid labels", value=True, key="labels_tab4")
 
         fig = px.scatter(
             ord_data, x="NMDS1", y="NMDS2",

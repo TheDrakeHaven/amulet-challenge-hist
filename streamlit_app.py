@@ -324,42 +324,42 @@ if "cca_result" not in st.session_state:
 # ── Tab 4: CCA – Era & Set ────────────────
 with tab4:
     st.subheader("CCA Ordination – Era & Set")
-
+ 
     if "cca_result" in st.session_state:
         ord_data       = st.session_state["cca_result"]
         species_scores = st.session_state["cca_species"]
         env_centroids  = st.session_state["cca_env_centroids"]
         eigenvalues    = st.session_state.get("cca_eigenvalues")
         total_inertia  = st.session_state.get("cca_total_inertia")
-
+ 
         # Inertia metrics
         if eigenvalues is not None and total_inertia:
             col_m1, col_m2, col_m3 = st.columns(3)
             col_m1.metric("CA1 Inertia", f"{eigenvalues[0]:.4f}")
             col_m2.metric("CA2 Inertia", f"{eigenvalues[1]:.4f}")
             col_m3.metric("Total Inertia", f"{total_inertia:.4f}")
-
+ 
         color_by = st.selectbox(
-            "Color lists by:",
+            "Color sites by:",
             ["next_ban", "current_set"],
             key="cca_color_tab4"
         )
-
+ 
         show_centroids = st.checkbox("Show environmental centroids", value=True, key="show_centroids_tab4")
         show_species   = st.checkbox("Show top card vectors", value=False, key="show_species_tab4")
-
+ 
         # ── Site scatter ──────────────────────────────────────────────────
         hover_cols = [c for c in ["Name", "Date", "next_ban", "current_set"] if c in ord_data.columns]
         fig = px.scatter(
             ord_data, x="CA1", y="CA2",
             color=color_by,
             hover_data=hover_cols,
-            title=f"CCA – lists colored by {color_by}",
+            title=f"CCA – sites colored by {color_by}",
             template="plotly_white",
             opacity=0.75
         )
         fig.update_traces(marker=dict(size=8))
-
+ 
         # ── Environmental centroid overlay ────────────────────────────────
         if show_centroids and color_by in env_centroids:
             cents = env_centroids[color_by]
@@ -372,7 +372,7 @@ with tab4:
                 name=f"{color_by} centroids",
                 showlegend=True
             ))
-
+ 
         # ── Top card species scores overlay ───────────────────────────────
         if show_species:
             top_n = st.slider("Number of top cards to display", 5, 30, 10, key="cca_top_n")
@@ -388,15 +388,15 @@ with tab4:
                 name="Card scores",
                 showlegend=True
             ))
-
+ 
         # ── Axis labels with % inertia if available ───────────────────────
         if eigenvalues is not None and total_inertia:
             fig.update_xaxes(title_text=f"CA1 ({eigenvalues[0]/total_inertia*100:.1f}% inertia)")
             fig.update_yaxes(title_text=f"CA2 ({eigenvalues[1]/total_inertia*100:.1f}% inertia)")
-
+ 
         fig.update_layout(height=800)
         st.plotly_chart(fig, use_container_width=True)
-
+ 
         # ── Most Dissimilar Site per Ban Era ─────────────────────────────
         st.markdown("---")
         st.markdown("### 🔀 Most Dissimilar Deck per Ban Era")
@@ -404,25 +404,25 @@ with tab4:
             "Within each ban era, the deck with the highest mean CA distance "
             "to all other decks in that era — i.e. the biggest outlier. "
         )
-
+ 
         name_col  = "Name"  if "Name"  in ord_data.columns else None
         date_col  = "Date"  if "Date"  in ord_data.columns else None
-
+ 
         def site_label(idx):
             parts = []
             if name_col: parts.append(str(ord_data.loc[idx, name_col]))
             if date_col: parts.append(f"({ord_data.loc[idx, date_col]})")
             return " ".join(parts) if parts else f"Site {idx}"
-
-
+ 
+ 
         rows = []
         for era in ERA_ORDER:
             era_idx = ord_data.index[ord_data["next_ban"] == era].tolist()
             if len(era_idx) < 2:
                 continue
-
+ 
             era_coords = ord_data.loc[era_idx, ["CA1", "CA2"]].values
-
+ 
             # For each site, compute mean distance to all others in the era
             best_mean_dist, best_idx = -1, None
             for ii, idx in enumerate(era_idx):
@@ -434,17 +434,83 @@ with tab4:
                 mean_dist = dists.mean()
                 if mean_dist > best_mean_dist:
                     best_mean_dist, best_idx = mean_dist, idx
-
+ 
             rows.append({
                 "Era":              era,
                 "Outlier Deck":     site_label(best_idx),
                 "Mean CA Distance": f"{best_mean_dist:.4f}",
                 "Era N":            len(era_idx),
             })
-
+ 
         dissim_df = pd.DataFrame(rows)
+ 
+        # Store best_idx per era for expander lookup
+        era_best_idx = {}
+        for era in ERA_ORDER:
+            era_idx = ord_data.index[ord_data["next_ban"] == era].tolist()
+            if len(era_idx) < 2:
+                continue
+            era_coords = ord_data.loc[era_idx, ["CA1", "CA2"]].values
+            best_mean_dist, best_idx = -1, None
+            for ii, idx in enumerate(era_idx):
+                others = np.delete(era_coords, ii, axis=0)
+                dists = np.sqrt(
+                    (era_coords[ii, 0] - others[:, 0])**2 +
+                    (era_coords[ii, 1] - others[:, 1])**2
+                )
+                mean_dist = dists.mean()
+                if mean_dist > best_mean_dist:
+                    best_mean_dist, best_idx = mean_dist, idx
+            era_best_idx[era] = best_idx
+ 
+        # ── Summary table ─────────────────────────────────────────────────
         st.dataframe(dissim_df, use_container_width=True, hide_index=True)
-
+ 
+        # ── Click-to-expand decklist per era ──────────────────────────────
+        st.markdown("#### 🃏 Outlier Decklists")
+        for row in dissim_df.itertuples():
+            era  = row.Era
+            best_idx = era_best_idx.get(era)
+            if best_idx is None:
+                continue
+ 
+            label = f"{row._2}  —  {era}"  # Outlier Deck column
+            with st.expander(label):
+                # Pull the full card row from amulet_comb matched by Name+Date
+                outlier_name = ord_data.loc[best_idx, "Name"] if "Name" in ord_data.columns else None
+                outlier_date = ord_data.loc[best_idx, "Date"] if "Date" in ord_data.columns else None
+ 
+                if outlier_name and outlier_date:
+                    match = amulet_comb[
+                        (amulet_comb["Name"] == outlier_name) &
+                        (amulet_comb["Date"].astype(str).str.contains(outlier_date[:7], na=False))
+                    ]
+                else:
+                    match = pd.DataFrame()
+ 
+                if match.empty:
+                    st.info("Decklist not found in source data.")
+                else:
+                    deck_row = match.iloc[0]
+                    card_cols_deck = [c for c in amulet_int.columns if c in deck_row.index]
+                    decklist = (
+                        pd.Series({c: deck_row[c] for c in card_cols_deck})
+                        .astype(int)
+                    )
+                    decklist = decklist[decklist > 0].sort_values(ascending=False)
+ 
+                    col_l, col_r = st.columns(2)
+                    with col_l:
+                        st.markdown(f"**{outlier_name}** — {outlier_date}")
+                        if "Place" in ord_data.columns:
+                            st.markdown(f"Place: **{ord_data.loc[best_idx, 'Place']}**")
+                        st.markdown(f"Mean CA Distance: **{row._3}**")
+                    with col_r:
+                        st.markdown("**Decklist:**")
+                        deck_df = decklist.reset_index()
+                        deck_df.columns = ["Card", "Copies"]
+                        st.dataframe(deck_df, use_container_width=True, hide_index=True, height=300)
+ 
     else:
         st.info("CCA computation failed. Check your data.")
 

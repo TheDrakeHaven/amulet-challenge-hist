@@ -303,7 +303,7 @@ with tab4:
  
         color_by = st.selectbox(
             "Color sites by:",
-            ["next_ban", "current_set", "Place"],
+            ["next_ban", "current_set"],
             key="cca_color_tab4"
         )
  
@@ -370,7 +370,6 @@ with tab4:
  
         name_col  = "Name"  if "Name"  in ord_data.columns else None
         date_col  = "Date"  if "Date"  in ord_data.columns else None
-        place_col = "Place" if "Place" in ord_data.columns else None
  
         def site_label(idx):
             parts = []

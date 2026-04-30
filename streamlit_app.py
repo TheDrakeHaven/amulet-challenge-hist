@@ -78,7 +78,7 @@ def assign_ban_era(d, events_df):
 # ─────────────────────────────────────────
 # CARD TYPE REFERENCE LISTS
 # ─────────────────────────────────────────
- 
+
 lands = [
     "Academy Ruins","Bojuka Bog","Boros Garrison","Boseiju, Who Endures","Breeding Pool",
     "Castle Garenbrig","Cavern of Souls","Cephalid Coliseum","Commercial District",
@@ -93,7 +93,7 @@ lands = [
     "Waterlogged Grove","Hall of Storm Giants","Kabira Crossroads","Ketria Triome",
     "Kher Keep","Misty Rainforest","Plains","Port of Karfell","Skyline Cascade"
 ]
- 
+
 creatures = [
     "Aftermath Analyst","Arboreal Grazer","Azusa, Lost but Seeking","Badgermole Cub",
     "Bonny Pall, Clearcutter","Cultivator Colossus","Dryad of the Ilysian Grove",
@@ -117,7 +117,7 @@ creatures = [
     "Volatile Stormdrake","Walking Ballista","Wurmcoil Engine",
     "Yasharn, Implacable Earth"
 ]
- 
+
 spells = [
     "Amulet of Vigor","Ancient Stirrings","Bridgeworks Battle","Dismember","Expedition Map",
     "Explore","Fetchland","Green Suns Twilight","Green Suns Zenith","Insidious Fungus",
@@ -145,7 +145,7 @@ spells = [
 _lands_lower    = {c.lower() for c in lands}
 _creatures_lower = {c.lower() for c in creatures}
 _spells_lower   = {c.lower() for c in spells}
- 
+
 def get_card_type(name):
     """Return card type category, accounting for (SB) suffix."""
     base = str(name).replace(" (SB)", "").replace("(SB)", "").strip().lower()
@@ -358,30 +358,30 @@ if "cca_result" not in st.session_state:
 # ── Tab 4: CCA – Era & Set ────────────────
 with tab4:
     st.subheader("CCA Ordination – Era & Set")
- 
+
     if "cca_result" in st.session_state:
         ord_data       = st.session_state["cca_result"]
         species_scores = st.session_state["cca_species"]
         env_centroids  = st.session_state["cca_env_centroids"]
         eigenvalues    = st.session_state.get("cca_eigenvalues")
         total_inertia  = st.session_state.get("cca_total_inertia")
- 
+
         # Inertia metrics
         if eigenvalues is not None and total_inertia:
             col_m1, col_m2, col_m3 = st.columns(3)
             col_m1.metric("CA1 Inertia", f"{eigenvalues[0]:.4f}")
             col_m2.metric("CA2 Inertia", f"{eigenvalues[1]:.4f}")
             col_m3.metric("Total Inertia", f"{total_inertia:.4f}")
- 
+
         color_by = st.selectbox(
             "Color sites by:",
             ["next_ban", "current_set"],
             key="cca_color_tab4"
         )
- 
+
         show_centroids = st.checkbox("Show environmental centroids", value=True, key="show_centroids_tab4")
         show_species   = st.checkbox("Show top card vectors", value=False, key="show_species_tab4")
- 
+
         # ── Site scatter ──────────────────────────────────────────────────
         hover_cols = [c for c in ["Name", "Date", "next_ban", "current_set"] if c in ord_data.columns]
         fig = px.scatter(
@@ -393,7 +393,7 @@ with tab4:
             opacity=0.75
         )
         fig.update_traces(marker=dict(size=8))
- 
+
         # ── Environmental centroid overlay ────────────────────────────────
         if show_centroids and color_by in env_centroids:
             cents = env_centroids[color_by]
@@ -406,7 +406,7 @@ with tab4:
                 name=f"{color_by} centroids",
                 showlegend=True
             ))
- 
+
         # ── Top card species scores overlay ───────────────────────────────
         if show_species:
             top_n = st.slider("Number of top cards to display", 5, 30, 10, key="cca_top_n")
@@ -422,34 +422,34 @@ with tab4:
                 name="Card scores",
                 showlegend=True
             ))
- 
+
         # ── Axis labels with % inertia if available ───────────────────────
         if eigenvalues is not None and total_inertia:
             fig.update_xaxes(title_text=f"CA1 ({eigenvalues[0]/total_inertia*100:.1f}% inertia)")
             fig.update_yaxes(title_text=f"CA2 ({eigenvalues[1]/total_inertia*100:.1f}% inertia)")
- 
+
         fig.update_layout(height=800)
         st.plotly_chart(fig, use_container_width=True)
- 
-        # ── Most Dissimilar Site per Ban Era ──────────────────────────── 
+
+        # ── Most Dissimilar Site per Ban Era ────────────────────────────
         name_col  = "Name"  if "Name"  in ord_data.columns else None
         date_col  = "Date"  if "Date"  in ord_data.columns else None
- 
+
         def site_label(idx):
             parts = []
             if name_col: parts.append(str(ord_data.loc[idx, name_col]))
             if date_col: parts.append(f"({ord_data.loc[idx, date_col]})")
             return " ".join(parts) if parts else f"Site {idx}"
- 
- 
+
+
         rows = []
         for era in ERA_ORDER:
             era_idx = ord_data.index[ord_data["next_ban"] == era].tolist()
             if len(era_idx) < 2:
                 continue
- 
+
             era_coords = ord_data.loc[era_idx, ["CA1", "CA2"]].values
- 
+
             # For each site, compute mean distance to all others in the era
             best_mean_dist, best_idx = -1, None
             for ii, idx in enumerate(era_idx):
@@ -461,16 +461,16 @@ with tab4:
                 mean_dist = dists.mean()
                 if mean_dist > best_mean_dist:
                     best_mean_dist, best_idx = mean_dist, idx
- 
+
             rows.append({
                 "Era":              era,
                 "Outlier Deck":     site_label(best_idx),
                 "Mean CA Distance": f"{best_mean_dist:.4f}",
                 "Era N":            len(era_idx),
             })
- 
+
         dissim_df = pd.DataFrame(rows)
- 
+
         # Store best_idx per era for expander lookup
         era_best_idx = {}
         for era in ERA_ORDER:
@@ -489,7 +489,7 @@ with tab4:
                 if mean_dist > best_mean_dist:
                     best_mean_dist, best_idx = mean_dist, idx
             era_best_idx[era] = best_idx
- 
+
         # ── Click-to-expand decklist per era ──────────────────────────────
         st.markdown("#### 🃏 Outlier Decklists By Era")
         for row in dissim_df.itertuples():
@@ -497,13 +497,13 @@ with tab4:
             best_idx = era_best_idx.get(era)
             if best_idx is None:
                 continue
- 
+
             label = f"{row._2}  —  {era}"  # Outlier Deck column
             with st.expander(label):
                 # Pull the full card row from amulet_comb matched by Name+Date
                 outlier_name = ord_data.loc[best_idx, "Name"] if "Name" in ord_data.columns else None
                 outlier_date = ord_data.loc[best_idx, "Date"] if "Date" in ord_data.columns else None
- 
+
                 if outlier_name and outlier_date:
                     match = amulet_comb[
                         (amulet_comb["Name"] == outlier_name) &
@@ -511,7 +511,7 @@ with tab4:
                     ]
                 else:
                     match = pd.DataFrame()
- 
+
                 if match.empty:
                     st.info("Decklist not found in source data.")
                 else:
@@ -522,46 +522,46 @@ with tab4:
                         .astype(int)
                     )
                     decklist = decklist[decklist > 0].sort_values(ascending=False)
- 
+
                     # ── Median decklist for this era ──────────────────────
                     era_rows = amulet_comb[amulet_comb["next_ban"] == era]
                     era_cards = era_rows[[c for c in amulet_int.columns if c in era_rows.columns]]
                     median_deck = era_cards.median().round(2)
                     median_deck = median_deck[median_deck > 0].sort_values(ascending=False)
- 
+
                     # ── Layout: meta | outlier decklist | median decklist ──
                     col_meta, col_outlier, col_median = st.columns([1, 1.5, 1.5])
- 
+
                     with col_meta:
                         st.markdown(f"**{outlier_name}** — {outlier_date}")
                         if "Place" in ord_data.columns:
                             st.markdown(f"Place: **{ord_data.loc[best_idx, 'Place']}**")
                         st.markdown(f"Mean CA Distance: **{row._3}**")
                         st.markdown(f"Era N: **{row._4}**")
- 
+
                     # Cards in outlier not present in median (median == 0)
                     median_cards = set(median_deck[median_deck > 0].index)
- 
+
                     with col_outlier:
                         st.markdown("**Outlier Decklist** *(green = not in era median)*")
                         deck_df = decklist.reset_index()
                         deck_df.columns = ["Card", "Copies"]
                         deck_df = sort_by_type(deck_df, "Card")
- 
+
                         def highlight_unique(row):
                             color = "background-color: #00BA34" if row["Card"] not in median_cards else ""
                             return [color, color]
- 
+
                         styled = deck_df.style.apply(highlight_unique, axis=1)
                         st.dataframe(styled, use_container_width=True, hide_index=True, height=350)
- 
+
                     with col_median:
                         st.markdown(f"**Median Decklist ({era})**")
                         median_df = median_deck.reset_index()
                         median_df.columns = ["Card", "Median Copies"]
                         median_df = sort_by_type(median_df, "Card")
                         st.dataframe(median_df, use_container_width=True, hide_index=True, height=350)
- 
+
     else:
         st.info("CCA computation failed. Check your data.")
 
@@ -581,10 +581,37 @@ with tab5:
             key="cca_card_select"
         )
 
-        hover_cols = [c for c in ["Name", "Date", "next_ban", "current_set"] if c in ord_data.columns]
+        # ── Merge the selected card's copies into ord_data ────────────────
+        # The CCA scores file doesn't carry per-card columns, so we pull the
+        # selected card's count out of amulet_comb and join it onto the site
+        # scores by (Name, Date) before plotting.
+        plot_data = ord_data.copy()
+        if selected_card in amulet_comb.columns:
+            merge_keys = [k for k in ["Name", "Date"]
+                          if k in plot_data.columns and k in amulet_comb.columns]
+            if merge_keys:
+                card_lookup = (
+                    amulet_comb[merge_keys + [selected_card]]
+                    .drop_duplicates(subset=merge_keys)
+                )
+                # Drop any pre-existing column with the same name to avoid
+                # _x / _y suffix collisions on merge.
+                plot_data = plot_data.drop(columns=[selected_card], errors="ignore")
+                plot_data = plot_data.merge(card_lookup, on=merge_keys, how="left")
+                plot_data[selected_card] = (
+                    pd.to_numeric(plot_data[selected_card], errors="coerce")
+                      .fillna(0)
+                      .astype(int)
+                )
+
+        hover_cols = [c for c in ["Name", "Date", "next_ban", "current_set"]
+                      if c in plot_data.columns]
+        if selected_card in plot_data.columns and selected_card not in hover_cols:
+            hover_cols.append(selected_card)
+
         fig2 = px.scatter(
-            ord_data, x="CA1", y="CA2",
-            color=selected_card if selected_card in ord_data.columns else None,
+            plot_data, x="CA1", y="CA2",
+            color=selected_card if selected_card in plot_data.columns else None,
             color_continuous_scale="thermal",
             hover_data=hover_cols,
             title=f"CCA – sites colored by copies of {selected_card}",
@@ -608,20 +635,20 @@ with tab5:
 with tab6:
     st.subheader("Card Similarity")
     st.title("Maindeck Correspondence Analysis")
- 
+
     ca1 = prince.CA(n_components=2, random_state=42)
     ca1 = ca1.fit(amulet_filtered)
- 
+
     species_scores = ca1.column_coordinates(amulet_filtered)
     site_scores    = ca1.row_coordinates(amulet_filtered)
- 
+
     st.subheader("Card Ordination Plot")
- 
+
     # ── Filters ──────────────────────────────────────────────────────────
     all_species = species_scores.index.tolist()
     sb_species  = [s for s in all_species if "(SB)" in str(s)]
     mb_species  = [s for s in all_species if "(SB)" not in str(s)]
- 
+
     filter_col1, filter_col2 = st.columns(2)
     with filter_col1:
         sb_filter = st.radio(
@@ -637,21 +664,21 @@ with tab6:
             horizontal=True,
             key="color_mode"
         )
- 
+
     if sb_filter == "Maindeck only":
         filtered_species = mb_species
     elif sb_filter == "Sideboard (SB) only":
         filtered_species = sb_species
     else:
         filtered_species = all_species
- 
+
     plot_df = species_scores.loc[filtered_species].copy().reset_index()
     plot_df.columns = ["species", "Dim1", "Dim2"]
     plot_df["card_type"] = plot_df["species"].apply(get_card_type)
     plot_df["deck_slot"] = plot_df["species"].apply(
         lambda s: "Sideboard" if "(SB)" in str(s) else "Maindeck"
     )
- 
+
     if color_mode == "Card type":
         color_col = "card_type"
         color_map = {
@@ -663,7 +690,7 @@ with tab6:
     else:
         color_col = "deck_slot"
         color_map = {"Maindeck": "#1f77b4", "Sideboard": "#d62728"}
- 
+
     fig = px.scatter(
         plot_df,
         x="Dim1",
@@ -683,4 +710,3 @@ with tab6:
         height=1000
     )
     st.plotly_chart(fig, use_container_width=True)
-

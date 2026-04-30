@@ -499,20 +499,37 @@ with tab4:
                     )
                     decklist = decklist[decklist > 0].sort_values(ascending=False)
  
-                    col_l, col_r = st.columns(2)
-                    with col_l:
+                    # ── Median decklist for this era ──────────────────────
+                    era_rows = amulet_comb[amulet_comb["next_ban"] == era]
+                    era_cards = era_rows[[c for c in amulet_int.columns if c in era_rows.columns]]
+                    median_deck = era_cards.median().round(2)
+                    median_deck = median_deck[median_deck > 0].sort_values(ascending=False)
+ 
+                    # ── Layout: meta | outlier decklist | median decklist ──
+                    col_meta, col_outlier, col_median = st.columns([1, 1.5, 1.5])
+ 
+                    with col_meta:
                         st.markdown(f"**{outlier_name}** — {outlier_date}")
                         if "Place" in ord_data.columns:
                             st.markdown(f"Place: **{ord_data.loc[best_idx, 'Place']}**")
                         st.markdown(f"Mean CA Distance: **{row._3}**")
-                    with col_r:
-                        st.markdown("**Decklist:**")
+                        st.markdown(f"Era N: **{row._4}**")
+ 
+                    with col_outlier:
+                        st.markdown("**Outlier Decklist**")
                         deck_df = decklist.reset_index()
                         deck_df.columns = ["Card", "Copies"]
-                        st.dataframe(deck_df, use_container_width=True, hide_index=True, height=300)
+                        st.dataframe(deck_df, use_container_width=True, hide_index=True, height=350)
+ 
+                    with col_median:
+                        st.markdown(f"**Median Decklist ({era})**")
+                        median_df = median_deck.reset_index()
+                        median_df.columns = ["Card", "Median Copies"]
+                        st.dataframe(median_df, use_container_width=True, hide_index=True, height=350)
  
     else:
         st.info("CCA computation failed. Check your data.")
+
 
 # ── Tab 5: CCA – Card Inclusion ───────────
 with tab5:

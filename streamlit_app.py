@@ -170,6 +170,106 @@ def sort_by_type(df, card_col):
     return df
 
 
+def _scryfall_image_url(card_name):
+    """Build a Scryfall fuzzy-name image URL, stripping the (SB) suffix."""
+    from urllib.parse import quote
+    clean = str(card_name).replace(" (SB)", "").replace("(SB)", "").strip()
+    return f"https://api.scryfall.com/cards/named?fuzzy={quote(clean)}&format=image&version=normal"
+
+
+def render_decklist_html(
+    deck_df,
+    card_col,
+    copies_col,
+    highlight_set=None,
+    table_id="deck",
+    max_height=350,
+):
+    """Render a decklist as an HTML table whose rows show the card image on hover.
+
+    Hovering a row pops up the Scryfall card image, fixed-positioned in the top-right
+    of the viewport so it isn't clipped by Streamlit's column containers.
+
+    Parameters
+    ----------
+    highlight_set : set or None
+        Cards in this set are NOT highlighted. Cards NOT in this set get the green
+        "unique to outlier" background (matches the previous st.dataframe styling).
+    table_id : str
+        Unique id used to scope CSS so multiple tables on the same page don't collide.
+    """
+    rows_html = []
+    for _, r in deck_df.iterrows():
+        card   = str(r[card_col])
+        copies = r[copies_col]
+        img_url = _scryfall_image_url(card)
+        is_unique = highlight_set is not None and card not in highlight_set
+        row_class = "deck-row deck-row-unique" if is_unique else "deck-row"
+        rows_html.append(
+            f'<tr class="{row_class}">'
+            f'<td class="deck-card-cell">{card}'
+            f'<img class="deck-card-preview" src="{img_url}" loading="lazy" alt="" />'
+            f'</td>'
+            f'<td class="deck-copies-cell">{copies}</td>'
+            f'</tr>'
+        )
+
+    html = f"""
+    <style>
+        #{table_id}-wrap .deck-table {{
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 14px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }}
+        #{table_id}-wrap .deck-table th,
+        #{table_id}-wrap .deck-table td {{
+            padding: 4px 8px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }}
+        #{table_id}-wrap .deck-table th {{
+            background: #f5f5f5;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }}
+        #{table_id}-wrap .deck-row-unique td {{ background-color: #00BA34; color: #fff; }}
+        #{table_id}-wrap .deck-card-cell {{ position: relative; cursor: pointer; }}
+        #{table_id}-wrap .deck-card-preview {{
+            display: none;
+            position: fixed;
+            top: 90px;
+            right: 30px;
+            width: 260px;
+            border-radius: 12px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+            z-index: 99999;
+            pointer-events: none;
+            background: #111;
+        }}
+        #{table_id}-wrap .deck-row:hover .deck-card-preview {{ display: block; }}
+        #{table_id}-wrap .deck-scroll {{
+            max-height: {max_height}px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }}
+    </style>
+    <div id="{table_id}-wrap">
+        <div class="deck-scroll">
+            <table class="deck-table">
+                <thead>
+                    <tr><th>{card_col}</th><th>{copies_col}</th></tr>
+                </thead>
+                <tbody>{''.join(rows_html)}</tbody>
+            </table>
+        </div>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
+
+
 # ─────────────────────────────────────────
 # FILE UPLOAD
 # ─────────────────────────────────────────
@@ -542,25 +642,36 @@ with tab4:
                     # Cards in outlier not present in median (median == 0)
                     median_cards = set(median_deck[median_deck > 0].index)
 
+                    # Sanitise era string for use in CSS ids
+                    era_id = re.sub(r"[^a-zA-Z0-9]+", "-", era).strip("-").lower() or "era"
+
                     with col_outlier:
-                        st.markdown("**Outlier Decklist** *(green = not in era median)*")
+                        st.markdown("**Outlier Decklist** *(hover a row to see the card · green = not in era median)*")
                         deck_df = decklist.reset_index()
                         deck_df.columns = ["Card", "Copies"]
                         deck_df = sort_by_type(deck_df, "Card")
-
-                        def highlight_unique(row):
-                            color = "background-color: #00BA34" if row["Card"] not in median_cards else ""
-                            return [color, color]
-
-                        styled = deck_df.style.apply(highlight_unique, axis=1)
-                        st.dataframe(styled, use_container_width=True, hide_index=True, height=350)
+                        render_decklist_html(
+                            deck_df,
+                            card_col="Card",
+                            copies_col="Copies",
+                            highlight_set=median_cards,
+                            table_id=f"outlier-{era_id}",
+                            max_height=350,
+                        )
 
                     with col_median:
-                        st.markdown(f"**Median Decklist ({era})**")
+                        st.markdown(f"**Median Decklist ({era})** *(hover a row to see the card)*")
                         median_df = median_deck.reset_index()
                         median_df.columns = ["Card", "Median Copies"]
                         median_df = sort_by_type(median_df, "Card")
-                        st.dataframe(median_df, use_container_width=True, hide_index=True, height=350)
+                        render_decklist_html(
+                            median_df,
+                            card_col="Card",
+                            copies_col="Median Copies",
+                            highlight_set=None,
+                            table_id=f"median-{era_id}",
+                            max_height=350,
+                        )
 
     else:
         st.info("CCA computation failed. Check your data.")

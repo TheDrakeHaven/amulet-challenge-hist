@@ -480,8 +480,8 @@ with tab6:
         title="Interactive Species Ordination",
         xaxis_title="Dim 1",
         yaxis_title="Dim 2",
-        template="simple_white,
-        height=800"
+        template="simple_white",
+        height=800
     )
     st.plotly_chart(fig, use_container_width=True)
   

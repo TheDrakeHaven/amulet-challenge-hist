@@ -615,13 +615,13 @@ with tab4:
                     median_cards = set(median_deck[median_deck > 0].index)
  
                     with col_outlier:
-                        st.markdown("**Outlier Decklist** *(yellow = not in era median)*")
+                        st.markdown("**Outlier Decklist** *(green = not in era median)*")
                         deck_df = decklist.reset_index()
                         deck_df.columns = ["Card", "Copies"]
                         deck_df = sort_by_type(deck_df, "Card")
  
                         def highlight_unique(row):
-                            color = "background-color: #fff176" if row["Card"] not in median_cards else ""
+                            color = "background-color: #00BA34" if row["Card"] not in median_cards else ""
                             return [color, color]
  
                         styled = deck_df.style.apply(highlight_unique, axis=1)

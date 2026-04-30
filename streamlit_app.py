@@ -20,14 +20,14 @@ st.title("🪬 Amulet Challenge Analysis")
 
 modern_sets = pd.DataFrame({
     "set": [
-        "DMU", "BRO", "ONE",
+        "SNC","DMU", "BRO", "ONE",
         "MOM", "WOE", "LCI", "LTR",
         "MKM", "OTJ", "MH3", "BLB", "DSK",
         "DFT", "TDM", "FIN", "EOE", "SPM", "TLA",
         "ECL", "TMT", "SOS"
     ],
     "release_date": pd.to_datetime([
-        "2022-09-09", "2022-11-18", "2023-02-10",
+        "2022-04-29", "2022-09-09", "2022-11-18", "2023-02-10",
         "2023-04-21", "2023-09-08", "2023-11-17", "2023-06-23",
         "2024-02-09", "2024-04-19", "2024-06-14", "2024-08-02", "2024-09-27",
         "2025-02-14", "2025-04-11", "2025-06-13", "2025-08-01", "2025-09-26", "2025-11-21",
@@ -37,6 +37,7 @@ modern_sets = pd.DataFrame({
 
 ban_events = pd.DataFrame({
     "event": [
+        "Pre-Yorion Ban",
         "Pre-Preordain Unban",
         "Pre-Fury/Bean Ban",
         "Pre-Outburst Ban",
@@ -47,7 +48,7 @@ ban_events = pd.DataFrame({
         "Current"
     ],
     "date": pd.to_datetime([
-        "2023-08-07", "2023-12-04", "2024-03-11", "2024-06-14",
+        "2022-10-11", "2023-08-07", "2023-12-04", "2024-03-11", "2024-06-14",
         "2024-08-26", "2024-12-16", "2025-03-31", "2026-04-30"
     ])
 })
@@ -163,7 +164,7 @@ with tab3:
     num_cols = amulet_comb.select_dtypes(include="number").columns.tolist()
     if "Place" in num_cols:
         num_cols.remove("Place")
-    num_cols = [c for c in num_cols if amulet_comb[c].sum() > 12]
+    num_cols = [c for c in num_cols if amulet_comb[c].sum() > 25]
     num_cols = [c for c in num_cols if amulet_comb[c].sum() < 1800]
     mean_deck = (
         amulet_comb.groupby("next_ban")[num_cols]
@@ -173,6 +174,7 @@ with tab3:
     st.markdown("**Heatmap of Mean Counts**")
     heat_data = mean_deck.set_index("next_ban")[num_cols]
     era_order = [
+        "Pre-Yorion Ban",
         "Pre-Preordain Unban",
         "Pre-Fury/Bean Ban",
         "Pre-Outburst Ban",
@@ -198,6 +200,7 @@ with tab3:
 # ─────────────────────────────────────────
 
 ERA_ORDER = [
+    "Pre-Yorion Ban",
     "Pre-Preordain Unban",
     "Pre-Fury/Bean Ban",
     "Pre-Outburst Ban",
@@ -356,7 +359,6 @@ with tab4:
 
         name_col  = "Name"  if "Name"  in ord_data.columns else None
         date_col  = "Date"  if "Date"  in ord_data.columns else None
-        place_col = "Place" if "Place" in ord_data.columns else None
 
         def site_label(idx):
             parts = []

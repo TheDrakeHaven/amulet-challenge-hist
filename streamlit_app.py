@@ -335,26 +335,12 @@ with tab4:
         fig.update_layout(height=800)
         st.plotly_chart(fig, use_container_width=True)
 
-        # ── Download CCA results ──────────────────────────────────────────
-        if "cca_excel" in st.session_state:
-            st.download_button(
-                label="⬇️ Download CCA Scores (.xlsx)",
-                data=st.session_state["cca_excel"],
-                file_name="cca_scores.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-
-        st.markdown("**CCA Site Scores (sorted by CA1)**")
-        display_cols = [c for c in ["Name", "Date", "next_ban", "current_set", "CA1", "CA2"] if c in ord_data.columns]
-        st.dataframe(ord_data[display_cols].sort_values("CA1"), use_container_width=True)
-
         # ── Most Dissimilar Site per Ban Era ─────────────────────────────
         st.markdown("---")
         st.markdown("### 🔀 Most Dissimilar Deck per Ban Era")
         st.caption(
             "Within each ban era, the deck with the highest mean CA distance "
             "to all other decks in that era — i.e. the biggest outlier. "
-            "Eras with only one deck are excluded."
         )
 
         name_col  = "Name"  if "Name"  in ord_data.columns else None

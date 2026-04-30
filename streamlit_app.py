@@ -638,7 +638,7 @@ with tab6:
         color=color_col,
         color_discrete_map=color_map,
     )
-    fig.update_traces(mode="text", textposition="top center")
+    fig.update_traces(mode="markers+text", textposition="top center")
     fig.update_layout(
         title="Interactive Species Ordination",
         xaxis_title="Dim 1",

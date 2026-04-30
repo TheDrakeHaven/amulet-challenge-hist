@@ -483,3 +483,4 @@ with tab6:
         template="simple_white"
     )
     st.plotly_chart(fig, use_container_width=True)
+    fig.update_layout(height=800)

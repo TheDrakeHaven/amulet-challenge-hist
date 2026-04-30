@@ -366,8 +366,6 @@ with tab4:
             if date_col: parts.append(f"({ord_data.loc[idx, date_col]})")
             return " ".join(parts) if parts else f"Site {idx}"
 
-        def site_place(idx):
-            return ord_data.loc[idx, place_col] if place_col else "—"
 
         rows = []
         for era in ERA_ORDER:
@@ -392,7 +390,6 @@ with tab4:
             rows.append({
                 "Era":              era,
                 "Outlier Deck":     site_label(best_idx),
-                "Place":            site_place(best_idx),
                 "Mean CA Distance": f"{best_mean_dist:.4f}",
                 "Era N":            len(era_idx),
             })

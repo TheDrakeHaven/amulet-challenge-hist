@@ -486,6 +486,71 @@ with tab5:
 
     else:
         st.info("CCA computation failed. Check your data.")
+# ─────────────────────────────────────────
+# CARD TYPE REFERENCE LISTS
+# ─────────────────────────────────────────
+ 
+lands = [
+    "Academy Ruins","Bojuka Bog","Boros Garrison","Boseiju, Who Endures","Breeding Pool",
+    "Castle Garenbrig","Cavern of Souls","Cephalid Coliseum","Commercial District",
+    "Crumbling Vestige","Dryad Arbor","Echoing Deeps","Forest","Gemstone Caverns",
+    "Ghost Quarter","Golgari Rot Farm","Gruul Turf","Halimar Depths","Hanweir Battlements",
+    "Hedge Maze","Island","Kessig Wolf Run","Khalni Garden","Littjara Mirrorlake",
+    "Lotus Field","Lush Portico","Mirrorpool","Oran-Rief, the Vastwood","Otawara, Soaring City",
+    "Radiant Fountain","Selesnya Sanctuary","Shifting Woodland","Simic Growth Chamber",
+    "Slayers Stronghold","Snow-Covered Forest","Stomping Ground","Sunhome, Fortress of the Legion",
+    "Sunken Citadel","Takenuma, Abandoned Mire","Temple Garden","The Mycosynth Gardens",
+    "Tolaria West","Urzas Cave","Urzas Saga","Valakut, the Molten Pinnacle","Vesuva",
+    "Waterlogged Grove","Hall of Storm Giants","Kabira Crossroads","Ketria Triome",
+    "Kher Keep","Misty Rainforest","Plains","Port of Karfell","Skyline Cascade"
+]
+ 
+creatures = [
+    "Aftermath Analyst","Arboreal Grazer","Azusa, Lost but Seeking","Badgermole Cub",
+    "Bonny Pall, Clearcutter","Cultivator Colossus","Dryad of the Ilysian Grove",
+    "Elesh Norn, Mother of Machines","Famished Worldsire","Fecund Greenshell",
+    "Formidable Speaker","Generous Ent","Gretchen Titchwillow","Hydroid Krasis",
+    "Icetill Explorer","Insidious Fungus","Lumra, Bellow of the Woods",
+    "Phyrexian Metamorph","Primeval Titan","Sakura-Tribe Elder",
+    "Sakura-Tribe Scout","Six","Springheart Nantuko","Street Wraith","The Wandering Minstrel",
+    "Thragtusk","Altered Ego","Avabruck Caretaker","Blossoming Tortoise","Bonecrusher Giant",
+    "Cityscape Leveler","Collector Ouphe","Colossal Skyturtle","Dosan the Falling Leaf",
+    "Dragonlord Dromoka","Elder Gargaroth","Elvish Reclaimer","Emrakul, the Aeons Torn",
+    "Emrakul, the Promised End","Endurance","Eumidian Terrabotanist","Foundation Breaker",
+    "Gaddock Teeg","Hanweir Garrison","Haywire Mite",
+    "Hexdrinker","Inferno Titan","Itzquinth, Firstborn of Gishath","Kogla and Yidaro",
+    "Kozilek, Butcher of Truth","Kura, the Boundless Sky","Kutzil, Malamet Exemplar",
+    "Magus of the Moon","Outland Liberator","Questing Beast","Reclamation Sage",
+    "Roxanne, Starfall Savant","Skylasher",
+    "Soulless Jailer","Sylvan Safekeeper","Terastodon","The Tarrasque",
+    "Thief of Existence","Thornscape Battlemage","Tireless Tracker",
+    "Trumpeting Carnosaur",
+    "Volatile Stormdrake","Walking Ballista","Wurmcoil Engine",
+    "Yasharn, Implacable Earth"
+]
+ 
+spells = [
+    "Amulet of Vigor","Ancient Stirrings","Bridgeworks Battle","Dismember","Expedition Map",
+    "Explore","Fetchland","Green Suns Twilight","Green Suns Zenith","Insidious Fungus",
+    "Pact of Negation","Preordain","Relic of Progenitus","Scapeshift","Shadowspear",
+    "Smugglers Surprise","Spelunking","Stock Up","Summoners Pact","The One Ring",
+    "Turntimber Symbiosis","Vexing Bauble","Aether Spellbomb","Ashiok, Dream Render",
+    "Back to Nature","Beast Within","Blast Zone","Boil","Chalice of the Void","Choke",
+    "Consign to Memory","Creeping Corrosion","Crush the Weak","Culling Ritual",
+    "Cursed Totem","Damping Sphere","Deafening Silence","Defense Grid","Disruptor Flute",
+    "Earthquake","Echoing Truth","Engineered Explosives","Ensnaring Bridge","Explore",
+    "Fire Magic","Firespout","Force of Vigor","Gaeas Blessing","Ghost Vacuum",
+    "Grafdiggers Cage","Hurkyls Recall","Into the Flood Maw","Liquimetal Coating",
+    "Lithomantic Barrage","Mana Leak","Mystical Dispute","Null Elemental Blast",
+    "Oblivion Stone","Orims Chant","Pick Your Poison","Pithing Needle","Pongify",
+    "Propaganda","Pyroclasm","Seal of Primordium","Seal of Removal","Silence",
+    "Soul-Guide Lantern","Spell Pierce","Stone of Erech","Storms Wrath","Strix Serenade",
+    "Surgical Extraction","Swan Song","Tear Asunder","Test of Talents","The Stone Brain",
+    "Tormods Crypt","Trinisphere","Turn the Earth","Unlicensed Hearse","Vampires Vengeance",
+    "Veil of Summer","Void Mirror","Worldsouls Rage","Karn, the Great Creator","Malevolent Rumble",
+    "Grist, the Hunger Tide","Skysovereign, Consul Flagship","Ugin, the Spirit Dragon",
+    "Unidentified Hovership","Wrenn and Six","Yggdrasil, Rebirth Engine"
+]
 
 # Normalise to lowercase for matching (strip SB suffix before lookup)
 _lands_lower    = {c.lower() for c in lands}

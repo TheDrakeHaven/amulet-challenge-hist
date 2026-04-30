@@ -208,12 +208,12 @@ with tab2:
 
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("**Average Card Frequency**")
+        st.markdown("**Maindeck Frequency**")
         means = amulet_int.mean(numeric_only=True).sort_values(ascending=False)
         st.dataframe(means.rename("Mean").reset_index().rename(columns={"index": "Card"}),
                      use_container_width=True)
     with col2:
-        st.markdown("**Top 8 Count**")
+        st.markdown("**Player Contribution**")
         name_counts = (
             amulet_df["Name"]
             .value_counts(dropna=False)
@@ -223,7 +223,7 @@ with tab2:
 
 # ── Tab 3: Median by Era ─────────────────
 with tab3:
-    st.subheader("Mean Card Counts by Ban Era")
+    st.subheader("Heatmap of Mean Counts by Ban Era")
     num_cols = amulet_comb.select_dtypes(include="number").columns.tolist()
     if "Place" in num_cols:
         num_cols.remove("Place")
@@ -234,7 +234,6 @@ with tab3:
         .mean()
         .reset_index()
     )
-    st.markdown("**Heatmap of Mean Counts**")
     heat_data = mean_deck.set_index("next_ban")[num_cols]
     era_order = [
         "Pre-Yorion Ban",
@@ -341,7 +340,7 @@ with tab4:
             col_m3.metric("Total Inertia", f"{total_inertia:.4f}")
 
         color_by = st.selectbox(
-            "Color sites by:",
+            "Color lists by:",
             ["next_ban", "current_set"],
             key="cca_color_tab4"
         )
@@ -355,7 +354,7 @@ with tab4:
             ord_data, x="CA1", y="CA2",
             color=color_by,
             hover_data=hover_cols,
-            title=f"CCA – sites colored by {color_by}",
+            title=f"CCA – lists colored by {color_by}",
             template="plotly_white",
             opacity=0.75
         )
@@ -460,7 +459,7 @@ with tab5:
 
         card_options = amulet_int.sum().sort_values(ascending=False).index.tolist()
         selected_card = st.selectbox(
-            "Color sites by card count:",
+            "Color lists by card count:",
             card_options,
             key="cca_card_select"
         )
@@ -471,7 +470,7 @@ with tab5:
             color=selected_card if selected_card in ord_data.columns else None,
             color_continuous_scale="thermal",
             hover_data=hover_cols,
-            title=f"CCA – sites colored by copies of {selected_card}",
+            title=f"CCA – lists colored by copies of {selected_card}",
             template="plotly_white",
             opacity=0.8
         )

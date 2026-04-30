@@ -53,6 +53,69 @@ ban_events = pd.DataFrame({
     ])
 })
 
+lands = [
+    "Academy Ruins","Bojuka Bog","Boros Garrison","Boseiju, Who Endures","Breeding Pool",
+    "Castle Garenbrig","Cavern of Souls","Cephalid Coliseum","Commercial District",
+    "Crumbling Vestige","Dryad Arbor","Echoing Deeps","Forest","Gemstone Caverns",
+    "Ghost Quarter","Golgari Rot Farm","Gruul Turf","Halimar Depths","Hanweir Battlements",
+    "Hedge Maze","Island","Kessig Wolf Run","Khalni Garden","Littjara Mirrorlake",
+    "Lotus Field","Lush Portico","Mirrorpool","Oran-Rief, the Vastwood","Otawara, Soaring City",
+    "Radiant Fountain","Selesnya Sanctuary","Shifting Woodland","Simic Growth Chamber",
+    "Slayers Stronghold","Snow-Covered Forest","Stomping Ground","Sunhome, Fortress of the Legion",
+    "Sunken Citadel","Takenuma, Abandoned Mire","Temple Garden","The Mycosynth Gardens",
+    "Tolaria West","Urzas Cave","Urzas Saga","Valakut, the Molten Pinnacle","Vesuva",
+    "Waterlogged Grove","Hall of Storm Giants","Kabira Crossroads","Ketria Triome",
+    "Kher Keep","Misty Rainforest","Plains","Port of Karfell","Skyline Cascade"
+]
+
+creatures = [
+    "Aftermath Analyst","Arboreal Grazer","Azusa, Lost but Seeking","Badgermole Cub",
+    "Bonny Pall, Clearcutter","Cultivator Colossus","Dryad of the Ilysian Grove",
+    "Elesh Norn, Mother of Machines","Famished Worldsire","Fecund Greenshell",
+    "Formidable Speaker","Generous Ent","Gretchen Titchwillow","Hydroid Krasis",
+    "Icetill Explorer","Insidious Fungus","Lumra, Bellow of the Woods",
+    "Phyrexian Metamorph","Primeval Titan","Sakura-Tribe Elder",
+    "Sakura-Tribe Scout","Six","Springheart Nantuko","Street Wraith","The Wandering Minstrel",
+    "Thragtusk","Altered Ego","Avabruck Caretaker","Blossoming Tortoise","Bonecrusher Giant",
+    "Cityscape Leveler","Collector Ouphe","Colossal Skyturtle","Dosan the Falling Leaf",
+    "Dragonlord Dromoka","Elder Gargaroth","Elvish Reclaimer","Emrakul, the Aeons Torn",
+    "Emrakul, the Promised End","Endurance","Eumidian Terrabotanist","Foundation Breaker",
+    "Gaddock Teeg","Hanweir Garrison","Haywire Mite",
+    "Hexdrinker","Inferno Titan","Itzquinth, Firstborn of Gishath","Kogla and Yidaro",
+    "Kozilek, Butcher of Truth","Kura, the Boundless Sky","Kutzil, Malamet Exemplar",
+    "Magus of the Moon","Outland Liberator","Questing Beast","Reclamation Sage",
+    "Roxanne, Starfall Savant","Skylasher",
+    "Soulless Jailer","Sylvan Safekeeper","Terastodon","The Tarrasque",
+    "Thief of Existence","Thornscape Battlemage","Tireless Tracker",
+    "Trumpeting Carnosaur",
+    "Volatile Stormdrake","Walking Ballista","Wurmcoil Engine",
+    "Yasharn, Implacable Earth"
+]
+
+spells = [
+    "Amulet of Vigor","Ancient Stirrings","Bridgeworks Battle","Dismember","Expedition Map",
+    "Explore","Fetchland","Green Suns Twilight","Green Suns Zenith","Insidious Fungus",
+    "Pact of Negation","Preordain","Relic of Progenitus","Scapeshift","Shadowspear",
+    "Smugglers Surprise","Spelunking","Stock Up","Summoners Pact","The One Ring",
+    "Turntimber Symbiosis","Vexing Bauble","Aether Spellbomb","Ashiok, Dream Render",
+    "Back to Nature","Beast Within","Blast Zone","Boil","Chalice of the Void","Choke",
+    "Consign to Memory","Creeping Corrosion","Crush the Weak","Culling Ritual",
+    "Cursed Totem","Damping Sphere","Deafening Silence","Defense Grid","Disruptor Flute",
+    "Earthquake","Echoing Truth","Engineered Explosives","Ensnaring Bridge","Explore",
+    "Fire Magic","Firespout","Force of Vigor","Gaeas Blessing","Ghost Vacuum",
+    "Grafdiggers Cage","Hurkyls Recall","Into the Flood Maw","Liquimetal Coating",
+    "Lithomantic Barrage","Mana Leak","Mystical Dispute","Null Elemental Blast",
+    "Oblivion Stone","Orims Chant","Pick Your Poison","Pithing Needle","Pongify",
+    "Propaganda","Pyroclasm","Seal of Primordium","Seal of Removal","Silence",
+    "Soul-Guide Lantern","Spell Pierce","Stone of Erech","Storms Wrath","Strix Serenade",
+    "Surgical Extraction","Swan Song","Tear Asunder","Test of Talents","The Stone Brain",
+    "Tormods Crypt","Trinisphere","Turn the Earth","Unlicensed Hearse","Vampires Vengeance",
+    "Veil of Summer","Void Mirror","Worldsouls Rage","Karn, the Great Creator","Malevolent Rumble",
+    "Grist, the Hunger Tide", "Skysovereign, Consul Flagship", "Ugin, the Spirit Dragon",
+    "Unidentified Hovership","Wrenn and Six","Yggdrasil, Rebirth Engine"
+]
+
+
 # ─────────────────────────────────────────
 # HELPER FUNCTIONS
 # ─────────────────────────────────────────
@@ -424,50 +487,91 @@ with tab5:
     else:
         st.info("CCA computation failed. Check your data.")
 
+# Normalise to lowercase for matching (strip SB suffix before lookup)
+_lands_lower    = {c.lower() for c in lands}
+_creatures_lower = {c.lower() for c in creatures}
+_spells_lower   = {c.lower() for c in spells}
+ 
+def get_card_type(name):
+    """Return card type category, accounting for (SB) suffix."""
+    base = str(name).replace(" (SB)", "").replace("(SB)", "").strip().lower()
+    if base in _lands_lower:
+        return "Land"
+    if base in _creatures_lower:
+        return "Creature"
+    if base in _spells_lower:
+        return "Spell"
+    return "Unknown"
+ 
 # ── Tab 6: Card Similarity ────────────────
 with tab6:
     st.subheader("Card Similarity")
     st.title("Maindeck Correspondence Analysis")
-
+ 
     ca1 = prince.CA(n_components=2, random_state=42)
     ca1 = ca1.fit(amulet_filtered)
-
+ 
     species_scores = ca1.column_coordinates(amulet_filtered)
     site_scores    = ca1.row_coordinates(amulet_filtered)
-
+ 
     st.subheader("Card Ordination Plot")
-
-    # ── SB filter buttons ────────────────────────────────────────────────
+ 
+    # ── Filters ──────────────────────────────────────────────────────────
     all_species = species_scores.index.tolist()
     sb_species  = [s for s in all_species if "(SB)" in str(s)]
     mb_species  = [s for s in all_species if "(SB)" not in str(s)]
-
-    sb_filter = st.radio(
-        "Show cards:",
-        options=["All", "Maindeck only", "Sideboard (SB) only"],
-        horizontal=True,
-        key="sb_filter"
-    )
-
+ 
+    filter_col1, filter_col2 = st.columns(2)
+    with filter_col1:
+        sb_filter = st.radio(
+            "Show cards:",
+            options=["All", "Maindeck only", "Sideboard (SB) only"],
+            horizontal=True,
+            key="sb_filter"
+        )
+    with filter_col2:
+        color_mode = st.radio(
+            "Color by:",
+            options=["Card type", "Maindeck / Sideboard"],
+            horizontal=True,
+            key="color_mode"
+        )
+ 
     if sb_filter == "Maindeck only":
         filtered_species = mb_species
     elif sb_filter == "Sideboard (SB) only":
         filtered_species = sb_species
     else:
         filtered_species = all_species
-
+ 
     plot_df = species_scores.loc[filtered_species].copy().reset_index()
     plot_df.columns = ["species", "Dim1", "Dim2"]
-    plot_df["type"] = plot_df["species"].apply(lambda s: "Sideboard" if "(SB)" in str(s) else "Maindeck")
-
+    plot_df["card_type"] = plot_df["species"].apply(get_card_type)
+    plot_df["deck_slot"] = plot_df["species"].apply(
+        lambda s: "Sideboard" if "(SB)" in str(s) else "Maindeck"
+    )
+ 
+    if color_mode == "Card type":
+        color_col = "card_type"
+        color_map = {
+            "Land":     "#2ca02c",
+            "Creature": "#1f77b4",
+            "Spell":    "#ff7f0e",
+            "Unknown":  "#7f7f7f",
+        }
+    else:
+        color_col = "deck_slot"
+        color_map = {"Maindeck": "#1f77b4", "Sideboard": "#d62728"}
+ 
     fig = px.scatter(
         plot_df,
         x="Dim1",
         y="Dim2",
         text="species",
         hover_name="species",
-        color="type",
-        color_discrete_map={"Maindeck": "#1f77b4", "Sideboard": "#d62728"}
+        hover_data={"card_type": True, "deck_slot": True, "Dim1": False, "Dim2": False},
+        color=color_col,
+        color_discrete_map=color_map,
     )
     fig.update_traces(mode="text", textposition="top center")
     fig.update_layout(
@@ -479,4 +583,3 @@ with tab6:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-  

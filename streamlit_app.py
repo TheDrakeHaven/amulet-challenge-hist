@@ -20,14 +20,14 @@ st.title("🪬 Amulet Challenge Analysis")
 
 modern_sets = pd.DataFrame({
     "set": [
-        "SNC","DMU", "BRO", "ONE",
+        "DMU", "BRO", "ONE",
         "MOM", "WOE", "LCI", "LTR",
         "MKM", "OTJ", "MH3", "BLB", "DSK",
         "DFT", "TDM", "FIN", "EOE", "SPM", "TLA",
         "ECL", "TMT", "SOS"
     ],
     "release_date": pd.to_datetime([
-        "2022-04-29","2022-09-09", "2022-11-18", "2023-02-10",
+        "2022-09-09", "2022-11-18", "2023-02-10",
         "2023-04-21", "2023-09-08", "2023-11-17", "2023-06-23",
         "2024-02-09", "2024-04-19", "2024-06-14", "2024-08-02", "2024-09-27",
         "2025-02-14", "2025-04-11", "2025-06-13", "2025-08-01", "2025-09-26", "2025-11-21",
@@ -37,7 +37,6 @@ modern_sets = pd.DataFrame({
 
 ban_events = pd.DataFrame({
     "event": [
-        "Pre-Yorion Ban",
         "Pre-Preordain Unban",
         "Pre-Fury/Bean Ban",
         "Pre-Outburst Ban",
@@ -48,7 +47,7 @@ ban_events = pd.DataFrame({
         "Current"
     ],
     "date": pd.to_datetime([
-        "2022-10-10","2023-08-07", "2023-12-04", "2024-03-11", "2024-06-14",
+        "2023-08-07", "2023-12-04", "2024-03-11", "2024-06-14",
         "2024-08-26", "2024-12-16", "2025-03-31", "2026-04-30"
     ])
 })
@@ -164,7 +163,7 @@ with tab3:
     num_cols = amulet_comb.select_dtypes(include="number").columns.tolist()
     if "Place" in num_cols:
         num_cols.remove("Place")
-    num_cols = [c for c in num_cols if amulet_comb[c].sum() > 25]
+    num_cols = [c for c in num_cols if amulet_comb[c].sum() > 12]
     num_cols = [c for c in num_cols if amulet_comb[c].sum() < 1800]
     mean_deck = (
         amulet_comb.groupby("next_ban")[num_cols]
@@ -174,7 +173,6 @@ with tab3:
     st.markdown("**Heatmap of Mean Counts**")
     heat_data = mean_deck.set_index("next_ban")[num_cols]
     era_order = [
-        "Pre-Yorion Ban",
         "Pre-Preordain Unban",
         "Pre-Fury/Bean Ban",
         "Pre-Outburst Ban",
@@ -196,11 +194,10 @@ with tab3:
     st.plotly_chart(fig_heat, use_container_width=True)
 
 # ─────────────────────────────────────────
-# CCA COMPUTATION HELPER
+# CCA SCORES — loaded from repository file
 # ─────────────────────────────────────────
 
 ERA_ORDER = [
-    "Pre-Yorion Ban",
     "Pre-Preordain Unban",
     "Pre-Fury/Bean Ban",
     "Pre-Outburst Ban",
@@ -212,104 +209,80 @@ ERA_ORDER = [
 ]
 
 
-def run_cca_computation():
-    """
-    Canonical Correspondence Analysis using prince.CA on the species matrix,
-    with environmental variables (ban era, set, place) used to build
-    centroid overlays via weighted averaging — mirroring vegan::cca() in R.
-    """
-    with st.spinner("Running Correspondence Analysis (CCA)…"):
-        # ── 1. Filter to rows with at least one card ──────────────────────
-        X = amulet_int.values.astype(float)
-        row_sums = X.sum(axis=1)
-        valid_mask = row_sums > 0
-        card_df = amulet_int[valid_mask].reset_index(drop=True)
-        env_df  = amulet_comb[valid_mask].reset_index(drop=True)
+def load_cca_scores():
+    """Load pre-computed CCA scores from cca_scores.xlsx in the repository."""
+    with st.spinner("Loading CCA scores…"):
+        cca_file = "cca_scores.xlsx"
+        xl = pd.ExcelFile(cca_file)
 
-        # ── 2. Keep only cards with > 12 total occurrences ────────────────
-        keep = card_df.sum() > 12
-        card_df = card_df.loc[:, keep]
+        # ── Site scores ───────────────────────────────────────────────────
+        ord_data = xl.parse("CCA_Site_Scores")
+        if "Date" in ord_data.columns:
+            ord_data["Date"] = pd.to_datetime(ord_data["Date"], errors="coerce").dt.strftime("%m-%d-%Y")
 
-        # ── 3. Fit CA (correspondence analysis) ───────────────────────────
-        ca = prince.CA(n_components=2, random_state=42)
-        ca.fit(card_df)
+        # Merge Place from amulet_comb if not present in file
+        if "Place" not in ord_data.columns and "Place" in amulet_comb.columns:
+            place_lookup = amulet_comb[["Name", "Date", "Place"]].drop_duplicates()
+            ord_data = ord_data.merge(place_lookup, on=["Name", "Date"], how="left")
 
-        site_scores    = ca.row_coordinates(card_df)     # samples
-        species_scores = ca.column_coordinates(card_df)  # cards
+        # ── Species scores ────────────────────────────────────────────────
+        species_scores = xl.parse("CCA_Species_Scores")
+        if "card" not in species_scores.columns:
+            species_scores = species_scores.rename(columns={species_scores.columns[0]: "card"})
 
-        site_scores.columns    = ["CA1", "CA2"]
-        species_scores.columns = ["CA1", "CA2"]
-
-        # Attach env metadata to site scores
-        ord_data = env_df.copy()
-        ord_data["CA1"] = site_scores["CA1"].values
-        ord_data["CA2"] = site_scores["CA2"].values
-
-        # ── 4. Compute environmental centroids (weighted averages) ────────
+        # ── Environmental centroids (weighted averages of site scores) ────
         env_centroids = {}
         for env_var in ["next_ban", "current_set"]:
-            centroids = (
-                ord_data.groupby(env_var)[["CA1", "CA2"]]
-                .mean()
-                .reset_index()
-                .rename(columns={env_var: "label"})
-            )
-            centroids["env_var"] = env_var
-            env_centroids[env_var] = centroids
+            if env_var in ord_data.columns:
+                centroids = (
+                    ord_data.groupby(env_var)[["CA1", "CA2"]]
+                    .mean()
+                    .reset_index()
+                    .rename(columns={env_var: "label"})
+                )
+                env_centroids[env_var] = centroids
 
-        # ── 5. Eigenvalue-based inertia explained ─────────────────────────
-        eigenvalues = ca.eigenvalues_
-        total_inertia = sum(eigenvalues) if eigenvalues is not None else None
+        st.session_state["cca_result"]        = ord_data
+        st.session_state["cca_species"]       = species_scores
+        st.session_state["cca_env_centroids"] = env_centroids
+        st.session_state["cca_eigenvalues"]   = None  # not stored in file
+        st.session_state["cca_total_inertia"] = None
 
-        st.session_state["cca_result"]         = ord_data
-        st.session_state["cca_species"]        = species_scores.reset_index().rename(columns={"index": "card"})
-        st.session_state["cca_env_centroids"]  = env_centroids
-        st.session_state["cca_eigenvalues"]    = eigenvalues
-        st.session_state["cca_total_inertia"]  = total_inertia
-
-        # ── 6. Excel export ───────────────────────────────────────────────
-        cca_output = BytesIO()
-        with pd.ExcelWriter(cca_output, engine="openpyxl") as writer:
-            export_cols = [c for c in ["Name", "Date", "next_ban", "current_set", "CA1", "CA2"]
-                           if c in ord_data.columns]
-            ord_data[export_cols].to_excel(writer, index=False, sheet_name="CCA_Site_Scores")
-            species_scores.reset_index().rename(columns={"index": "card"}).to_excel(
-                writer, index=False, sheet_name="CCA_Species_Scores"
-            )
-        st.session_state["cca_excel"] = cca_output.getvalue()
+        # ── Provide the file itself as the download ───────────────────────
+        with open(cca_file, "rb") as f:
+            st.session_state["cca_excel"] = f.read()
 
 
-# ── Auto-run CCA on load ──────────────────
+# ── Load CCA scores on app start ──────────
 if "cca_result" not in st.session_state:
-    run_cca_computation()
-
+    load_cca_scores()
 # ── Tab 4: CCA – Era & Set ────────────────
 with tab4:
     st.subheader("CCA Ordination – Era & Set")
- 
+
     if "cca_result" in st.session_state:
         ord_data       = st.session_state["cca_result"]
         species_scores = st.session_state["cca_species"]
         env_centroids  = st.session_state["cca_env_centroids"]
         eigenvalues    = st.session_state.get("cca_eigenvalues")
         total_inertia  = st.session_state.get("cca_total_inertia")
- 
+
         # Inertia metrics
         if eigenvalues is not None and total_inertia:
             col_m1, col_m2, col_m3 = st.columns(3)
             col_m1.metric("CA1 Inertia", f"{eigenvalues[0]:.4f}")
             col_m2.metric("CA2 Inertia", f"{eigenvalues[1]:.4f}")
             col_m3.metric("Total Inertia", f"{total_inertia:.4f}")
- 
+
         color_by = st.selectbox(
             "Color sites by:",
-            ["next_ban", "current_set"],
+            ["next_ban", "current_set", "Place"],
             key="cca_color_tab4"
         )
- 
+
         show_centroids = st.checkbox("Show environmental centroids", value=True, key="show_centroids_tab4")
         show_species   = st.checkbox("Show top card vectors", value=False, key="show_species_tab4")
- 
+
         # ── Site scatter ──────────────────────────────────────────────────
         hover_cols = [c for c in ["Name", "Date", "next_ban", "current_set"] if c in ord_data.columns]
         fig = px.scatter(
@@ -321,7 +294,7 @@ with tab4:
             opacity=0.75
         )
         fig.update_traces(marker=dict(size=8))
- 
+
         # ── Environmental centroid overlay ────────────────────────────────
         if show_centroids and color_by in env_centroids:
             cents = env_centroids[color_by]
@@ -334,7 +307,7 @@ with tab4:
                 name=f"{color_by} centroids",
                 showlegend=True
             ))
- 
+
         # ── Top card species scores overlay ───────────────────────────────
         if show_species:
             top_n = st.slider("Number of top cards to display", 5, 30, 10, key="cca_top_n")
@@ -350,12 +323,12 @@ with tab4:
                 name="Card scores",
                 showlegend=True
             ))
- 
+
         # ── Axis labels with % inertia if available ───────────────────────
         if eigenvalues is not None and total_inertia:
             fig.update_xaxes(title_text=f"CA1 ({eigenvalues[0]/total_inertia*100:.1f}% inertia)")
             fig.update_yaxes(title_text=f"CA2 ({eigenvalues[1]/total_inertia*100:.1f}% inertia)")
- 
+
         fig.update_layout(height=800)
         st.plotly_chart(fig, use_container_width=True)
 
@@ -367,41 +340,41 @@ with tab4:
                 file_name="cca_scores.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
- 
+
         st.markdown("**CCA Site Scores (sorted by CA1)**")
         display_cols = [c for c in ["Name", "Date", "next_ban", "current_set", "CA1", "CA2"] if c in ord_data.columns]
         st.dataframe(ord_data[display_cols].sort_values("CA1"), use_container_width=True)
 
- 
- 
         # ── Most Dissimilar Site per Ban Era ─────────────────────────────
         st.markdown("---")
         st.markdown("### 🔀 Most Dissimilar Deck per Ban Era")
         st.caption(
             "Within each ban era, the deck with the highest mean CA distance "
             "to all other decks in that era — i.e. the biggest outlier. "
+            "Eras with only one deck are excluded."
         )
- 
+
         name_col  = "Name"  if "Name"  in ord_data.columns else None
         date_col  = "Date"  if "Date"  in ord_data.columns else None
- 
+        place_col = "Place" if "Place" in ord_data.columns else None
+
         def site_label(idx):
             parts = []
             if name_col: parts.append(str(ord_data.loc[idx, name_col]))
             if date_col: parts.append(f"({ord_data.loc[idx, date_col]})")
             return " ".join(parts) if parts else f"Site {idx}"
- 
+
         def site_place(idx):
             return ord_data.loc[idx, place_col] if place_col else "—"
- 
+
         rows = []
         for era in ERA_ORDER:
             era_idx = ord_data.index[ord_data["next_ban"] == era].tolist()
             if len(era_idx) < 2:
                 continue
- 
+
             era_coords = ord_data.loc[era_idx, ["CA1", "CA2"]].values
- 
+
             # For each site, compute mean distance to all others in the era
             best_mean_dist, best_idx = -1, None
             for ii, idx in enumerate(era_idx):
@@ -413,36 +386,37 @@ with tab4:
                 mean_dist = dists.mean()
                 if mean_dist > best_mean_dist:
                     best_mean_dist, best_idx = mean_dist, idx
- 
+
             rows.append({
                 "Era":              era,
                 "Outlier Deck":     site_label(best_idx),
+                "Place":            site_place(best_idx),
                 "Mean CA Distance": f"{best_mean_dist:.4f}",
-                "Decks in Era":            len(era_idx),
+                "Era N":            len(era_idx),
             })
- 
+
         dissim_df = pd.DataFrame(rows)
         st.dataframe(dissim_df, use_container_width=True, hide_index=True)
- 
+
     else:
         st.info("CCA computation failed. Check your data.")
 
 # ── Tab 5: CCA – Card Inclusion ───────────
 with tab5:
     st.subheader("CCA Ordination – Card Inclusion")
- 
+
     if "cca_result" in st.session_state:
         ord_data       = st.session_state["cca_result"]
         eigenvalues    = st.session_state.get("cca_eigenvalues")
         total_inertia  = st.session_state.get("cca_total_inertia")
- 
+
         card_options = amulet_int.sum().sort_values(ascending=False).index.tolist()
         selected_card = st.selectbox(
             "Color sites by card count:",
             card_options,
             key="cca_card_select"
         )
- 
+
         hover_cols = [c for c in ["Name", "Date", "next_ban", "current_set"] if c in ord_data.columns]
         fig2 = px.scatter(
             ord_data, x="CA1", y="CA2",
@@ -454,54 +428,53 @@ with tab5:
             opacity=0.8
         )
         fig2.update_traces(marker=dict(size=8))
- 
+
         if eigenvalues is not None and total_inertia:
             fig2.update_xaxes(title_text=f"CA1 ({eigenvalues[0]/total_inertia*100:.1f}% inertia)")
             fig2.update_yaxes(title_text=f"CA2 ({eigenvalues[1]/total_inertia*100:.1f}% inertia)")
- 
+
         fig2.update_layout(height=800)
         st.plotly_chart(fig2, use_container_width=True)
- 
+
     else:
         st.info("CCA computation failed. Check your data.")
-
 
 # ── Tab 6: Card Similarity ────────────────
 with tab6:
     st.subheader("Card Similarity")
     st.title("Maindeck Correspondence Analysis")
- 
+
     ca1 = prince.CA(n_components=2, random_state=42)
     ca1 = ca1.fit(amulet_filtered)
- 
+
     species_scores = ca1.column_coordinates(amulet_filtered)
     site_scores    = ca1.row_coordinates(amulet_filtered)
- 
+
     st.subheader("Card Ordination Plot")
- 
+
     # ── SB filter buttons ────────────────────────────────────────────────
     all_species = species_scores.index.tolist()
     sb_species  = [s for s in all_species if "(SB)" in str(s)]
     mb_species  = [s for s in all_species if "(SB)" not in str(s)]
- 
+
     sb_filter = st.radio(
         "Show cards:",
-        options=["All", "Maindeck only", "Sideboard only"],
+        options=["All", "Maindeck only", "Sideboard (SB) only"],
         horizontal=True,
         key="sb_filter"
     )
- 
+
     if sb_filter == "Maindeck only":
         filtered_species = mb_species
     elif sb_filter == "Sideboard (SB) only":
         filtered_species = sb_species
     else:
         filtered_species = all_species
- 
+
     plot_df = species_scores.loc[filtered_species].copy().reset_index()
     plot_df.columns = ["species", "Dim1", "Dim2"]
     plot_df["type"] = plot_df["species"].apply(lambda s: "Sideboard" if "(SB)" in str(s) else "Maindeck")
- 
+
     fig = px.scatter(
         plot_df,
         x="Dim1",
@@ -520,6 +493,5 @@ with tab6:
         height=1000
     )
     st.plotly_chart(fig, use_container_width=True)
- 
 
   

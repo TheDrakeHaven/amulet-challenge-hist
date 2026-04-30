@@ -515,22 +515,34 @@ with tab4:
                         st.markdown(f"Mean CA Distance: **{row._3}**")
                         st.markdown(f"Era N: **{row._4}**")
  
+                    def sort_by_type(df, card_col):
+                        """Sort a card dataframe: Creatures → Spells → Lands → Sideboard."""
+                        type_order = {"Creature": 0, "Spell": 1, "Land": 2, "Sideboard": 3, "Unknown": 4}
+                        df = df.copy()
+                        df["_type"] = df[card_col].apply(
+                            lambda s: "Sideboard" if "(SB)" in str(s) else get_card_type(s)
+                        )
+                        df["_type_order"] = df["_type"].map(type_order).fillna(4)
+                        df = df.sort_values(["_type_order", card_col]).drop(columns=["_type", "_type_order"])
+                        return df
+ 
                     with col_outlier:
                         st.markdown("**Outlier Decklist**")
                         deck_df = decklist.reset_index()
                         deck_df.columns = ["Card", "Copies"]
+                        deck_df = sort_by_type(deck_df, "Card")
                         st.dataframe(deck_df, use_container_width=True, hide_index=True, height=350)
  
                     with col_median:
                         st.markdown(f"**Median Decklist ({era})**")
                         median_df = median_deck.reset_index()
                         median_df.columns = ["Card", "Median Copies"]
+                        median_df = sort_by_type(median_df, "Card")
                         st.dataframe(median_df, use_container_width=True, hide_index=True, height=350)
  
     else:
         st.info("CCA computation failed. Check your data.")
-
-
+ 
 # ── Tab 5: CCA – Card Inclusion ───────────
 with tab5:
     st.subheader("CCA Ordination – Card Inclusion")

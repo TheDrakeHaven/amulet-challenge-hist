@@ -491,7 +491,7 @@ with tab4:
             era_best_idx[era] = best_idx
  
         # ── Click-to-expand decklist per era ──────────────────────────────
-        st.markdown("#### 🃏 Outlier Decklists")
+        st.markdown("#### 🃏 Outlier Decklists By Era")
         for row in dissim_df.itertuples():
             era  = row.Era
             best_idx = era_best_idx.get(era)

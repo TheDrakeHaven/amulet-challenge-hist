@@ -138,6 +138,101 @@ def assign_ban_era(d, events_df):
 
 
 # ─────────────────────────────────────────
+# CARD TYPE REFERENCE LISTS
+# ─────────────────────────────────────────
+ 
+lands = [
+    "Academy Ruins","Bojuka Bog","Boros Garrison","Boseiju, Who Endures","Breeding Pool",
+    "Castle Garenbrig","Cavern of Souls","Cephalid Coliseum","Commercial District",
+    "Crumbling Vestige","Dryad Arbor","Echoing Deeps","Forest","Gemstone Caverns",
+    "Ghost Quarter","Golgari Rot Farm","Gruul Turf","Halimar Depths","Hanweir Battlements",
+    "Hedge Maze","Island","Kessig Wolf Run","Khalni Garden","Littjara Mirrorlake",
+    "Lotus Field","Lush Portico","Mirrorpool","Oran-Rief, the Vastwood","Otawara, Soaring City",
+    "Radiant Fountain","Selesnya Sanctuary","Shifting Woodland","Simic Growth Chamber",
+    "Slayers Stronghold","Snow-Covered Forest","Stomping Ground","Sunhome, Fortress of the Legion",
+    "Sunken Citadel","Takenuma, Abandoned Mire","Temple Garden","The Mycosynth Gardens",
+    "Tolaria West","Urzas Cave","Urzas Saga","Valakut, the Molten Pinnacle","Vesuva",
+    "Waterlogged Grove","Hall of Storm Giants","Kabira Crossroads","Ketria Triome",
+    "Kher Keep","Misty Rainforest","Plains","Port of Karfell","Skyline Cascade"
+]
+ 
+creatures = [
+    "Aftermath Analyst","Arboreal Grazer","Azusa, Lost but Seeking","Badgermole Cub",
+    "Bonny Pall, Clearcutter","Cultivator Colossus","Dryad of the Ilysian Grove",
+    "Elesh Norn, Mother of Machines","Famished Worldsire","Fecund Greenshell",
+    "Formidable Speaker","Generous Ent","Gretchen Titchwillow","Hydroid Krasis",
+    "Icetill Explorer","Insidious Fungus","Lumra, Bellow of the Woods",
+    "Phyrexian Metamorph","Primeval Titan","Sakura-Tribe Elder",
+    "Sakura-Tribe Scout","Six","Springheart Nantuko","Street Wraith","The Wandering Minstrel",
+    "Thragtusk","Altered Ego","Avabruck Caretaker","Blossoming Tortoise","Bonecrusher Giant",
+    "Cityscape Leveler","Collector Ouphe","Colossal Skyturtle","Dosan the Falling Leaf",
+    "Dragonlord Dromoka","Elder Gargaroth","Elvish Reclaimer","Emrakul, the Aeons Torn",
+    "Emrakul, the Promised End","Endurance","Eumidian Terrabotanist","Foundation Breaker",
+    "Gaddock Teeg","Hanweir Garrison","Haywire Mite",
+    "Hexdrinker","Inferno Titan","Itzquinth, Firstborn of Gishath","Kogla and Yidaro",
+    "Kozilek, Butcher of Truth","Kura, the Boundless Sky","Kutzil, Malamet Exemplar",
+    "Magus of the Moon","Outland Liberator","Questing Beast","Reclamation Sage",
+    "Roxanne, Starfall Savant","Skylasher",
+    "Soulless Jailer","Sylvan Safekeeper","Terastodon","The Tarrasque",
+    "Thief of Existence","Thornscape Battlemage","Tireless Tracker",
+    "Trumpeting Carnosaur",
+    "Volatile Stormdrake","Walking Ballista","Wurmcoil Engine",
+    "Yasharn, Implacable Earth"
+]
+ 
+spells = [
+    "Amulet of Vigor","Ancient Stirrings","Bridgeworks Battle","Dismember","Expedition Map",
+    "Explore","Fetchland","Green Suns Twilight","Green Suns Zenith","Insidious Fungus",
+    "Pact of Negation","Preordain","Relic of Progenitus","Scapeshift","Shadowspear",
+    "Smugglers Surprise","Spelunking","Stock Up","Summoners Pact","The One Ring",
+    "Turntimber Symbiosis","Vexing Bauble","Aether Spellbomb","Ashiok, Dream Render",
+    "Back to Nature","Beast Within","Blast Zone","Boil","Chalice of the Void","Choke",
+    "Consign to Memory","Creeping Corrosion","Crush the Weak","Culling Ritual",
+    "Cursed Totem","Damping Sphere","Deafening Silence","Defense Grid","Disruptor Flute",
+    "Earthquake","Echoing Truth","Engineered Explosives","Ensnaring Bridge","Explore",
+    "Fire Magic","Firespout","Force of Vigor","Gaeas Blessing","Ghost Vacuum",
+    "Grafdiggers Cage","Hurkyls Recall","Into the Flood Maw","Liquimetal Coating",
+    "Lithomantic Barrage","Mana Leak","Mystical Dispute","Null Elemental Blast",
+    "Oblivion Stone","Orims Chant","Pick Your Poison","Pithing Needle","Pongify",
+    "Propaganda","Pyroclasm","Seal of Primordium","Seal of Removal","Silence",
+    "Soul-Guide Lantern","Spell Pierce","Stone of Erech","Storms Wrath","Strix Serenade",
+    "Surgical Extraction","Swan Song","Tear Asunder","Test of Talents","The Stone Brain",
+    "Tormods Crypt","Trinisphere","Turn the Earth","Unlicensed Hearse","Vampires Vengeance",
+    "Veil of Summer","Void Mirror","Worldsouls Rage","Karn, the Great Creator","Malevolent Rumble",
+    "Grist, the Hunger Tide","Skysovereign, Consul Flagship","Ugin, the Spirit Dragon",
+    "Unidentified Hovership","Wrenn and Six","Yggdrasil, Rebirth Engine"
+]
+
+# Normalise to lowercase for matching (strip SB suffix before lookup)
+_lands_lower    = {c.lower() for c in lands}
+_creatures_lower = {c.lower() for c in creatures}
+_spells_lower   = {c.lower() for c in spells}
+ 
+def get_card_type(name):
+    """Return card type category, accounting for (SB) suffix."""
+    base = str(name).replace(" (SB)", "").replace("(SB)", "").strip().lower()
+    if base in _lands_lower:
+        return "Land"
+    if base in _creatures_lower:
+        return "Creature"
+    if base in _spells_lower:
+        return "Spell"
+    return "Unknown"
+
+
+def sort_by_type(df, card_col):
+    """Sort a card dataframe: Creatures → Spells → Lands → Sideboard → Unknown."""
+    type_order = {"Creature": 0, "Spell": 1, "Land": 2, "Sideboard": 3, "Unknown": 4}
+    df = df.copy()
+    df["_type"] = df[card_col].apply(
+        lambda s: "Sideboard" if "(SB)" in str(s) else get_card_type(s)
+    )
+    df["_type_order"] = df["_type"].map(type_order).fillna(4)
+    df = df.sort_values(["_type_order", card_col]).drop(columns=["_type", "_type_order"])
+    return df
+
+
+# ─────────────────────────────────────────
 # FILE UPLOAD
 # ─────────────────────────────────────────
 
@@ -208,12 +303,12 @@ with tab2:
 
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("**Maindeck Frequency**")
+        st.markdown("**Average Card Frequency**")
         means = amulet_int.mean(numeric_only=True).sort_values(ascending=False)
         st.dataframe(means.rename("Mean").reset_index().rename(columns={"index": "Card"}),
                      use_container_width=True)
     with col2:
-        st.markdown("**Player Contribution**")
+        st.markdown("**Top 8 Count**")
         name_counts = (
             amulet_df["Name"]
             .value_counts(dropna=False)
@@ -223,7 +318,7 @@ with tab2:
 
 # ── Tab 3: Median by Era ─────────────────
 with tab3:
-    st.subheader("Heatmap of Mean Counts by Ban Era")
+    st.subheader("Mean Card Counts by Ban Era")
     num_cols = amulet_comb.select_dtypes(include="number").columns.tolist()
     if "Place" in num_cols:
         num_cols.remove("Place")
@@ -234,6 +329,7 @@ with tab3:
         .mean()
         .reset_index()
     )
+    st.markdown("**Heatmap of Mean Counts**")
     heat_data = mean_deck.set_index("next_ban")[num_cols]
     era_order = [
         "Pre-Yorion Ban",
@@ -324,30 +420,30 @@ if "cca_result" not in st.session_state:
 # ── Tab 4: CCA – Era & Set ────────────────
 with tab4:
     st.subheader("CCA Ordination – Era & Set")
- 
+
     if "cca_result" in st.session_state:
         ord_data       = st.session_state["cca_result"]
         species_scores = st.session_state["cca_species"]
         env_centroids  = st.session_state["cca_env_centroids"]
         eigenvalues    = st.session_state.get("cca_eigenvalues")
         total_inertia  = st.session_state.get("cca_total_inertia")
- 
+
         # Inertia metrics
         if eigenvalues is not None and total_inertia:
             col_m1, col_m2, col_m3 = st.columns(3)
             col_m1.metric("CA1 Inertia", f"{eigenvalues[0]:.4f}")
             col_m2.metric("CA2 Inertia", f"{eigenvalues[1]:.4f}")
             col_m3.metric("Total Inertia", f"{total_inertia:.4f}")
- 
+
         color_by = st.selectbox(
             "Color sites by:",
             ["next_ban", "current_set"],
             key="cca_color_tab4"
         )
- 
+
         show_centroids = st.checkbox("Show environmental centroids", value=True, key="show_centroids_tab4")
         show_species   = st.checkbox("Show top card vectors", value=False, key="show_species_tab4")
- 
+
         # ── Site scatter ──────────────────────────────────────────────────
         hover_cols = [c for c in ["Name", "Date", "next_ban", "current_set"] if c in ord_data.columns]
         fig = px.scatter(
@@ -359,7 +455,7 @@ with tab4:
             opacity=0.75
         )
         fig.update_traces(marker=dict(size=8))
- 
+
         # ── Environmental centroid overlay ────────────────────────────────
         if show_centroids and color_by in env_centroids:
             cents = env_centroids[color_by]
@@ -372,7 +468,7 @@ with tab4:
                 name=f"{color_by} centroids",
                 showlegend=True
             ))
- 
+
         # ── Top card species scores overlay ───────────────────────────────
         if show_species:
             top_n = st.slider("Number of top cards to display", 5, 30, 10, key="cca_top_n")
@@ -388,15 +484,15 @@ with tab4:
                 name="Card scores",
                 showlegend=True
             ))
- 
+
         # ── Axis labels with % inertia if available ───────────────────────
         if eigenvalues is not None and total_inertia:
             fig.update_xaxes(title_text=f"CA1 ({eigenvalues[0]/total_inertia*100:.1f}% inertia)")
             fig.update_yaxes(title_text=f"CA2 ({eigenvalues[1]/total_inertia*100:.1f}% inertia)")
- 
+
         fig.update_layout(height=800)
         st.plotly_chart(fig, use_container_width=True)
- 
+
         # ── Most Dissimilar Site per Ban Era ─────────────────────────────
         st.markdown("---")
         st.markdown("### 🔀 Most Dissimilar Deck per Ban Era")
@@ -404,25 +500,25 @@ with tab4:
             "Within each ban era, the deck with the highest mean CA distance "
             "to all other decks in that era — i.e. the biggest outlier. "
         )
- 
+
         name_col  = "Name"  if "Name"  in ord_data.columns else None
         date_col  = "Date"  if "Date"  in ord_data.columns else None
- 
+
         def site_label(idx):
             parts = []
             if name_col: parts.append(str(ord_data.loc[idx, name_col]))
             if date_col: parts.append(f"({ord_data.loc[idx, date_col]})")
             return " ".join(parts) if parts else f"Site {idx}"
- 
- 
+
+
         rows = []
         for era in ERA_ORDER:
             era_idx = ord_data.index[ord_data["next_ban"] == era].tolist()
             if len(era_idx) < 2:
                 continue
- 
+
             era_coords = ord_data.loc[era_idx, ["CA1", "CA2"]].values
- 
+
             # For each site, compute mean distance to all others in the era
             best_mean_dist, best_idx = -1, None
             for ii, idx in enumerate(era_idx):
@@ -434,16 +530,16 @@ with tab4:
                 mean_dist = dists.mean()
                 if mean_dist > best_mean_dist:
                     best_mean_dist, best_idx = mean_dist, idx
- 
+
             rows.append({
                 "Era":              era,
                 "Outlier Deck":     site_label(best_idx),
                 "Mean CA Distance": f"{best_mean_dist:.4f}",
                 "Era N":            len(era_idx),
             })
- 
+
         dissim_df = pd.DataFrame(rows)
- 
+
         # Store best_idx per era for expander lookup
         era_best_idx = {}
         for era in ERA_ORDER:
@@ -462,10 +558,10 @@ with tab4:
                 if mean_dist > best_mean_dist:
                     best_mean_dist, best_idx = mean_dist, idx
             era_best_idx[era] = best_idx
- 
+
         # ── Summary table ─────────────────────────────────────────────────
         st.dataframe(dissim_df, use_container_width=True, hide_index=True)
- 
+
         # ── Click-to-expand decklist per era ──────────────────────────────
         st.markdown("#### 🃏 Outlier Decklists")
         for row in dissim_df.itertuples():
@@ -473,13 +569,13 @@ with tab4:
             best_idx = era_best_idx.get(era)
             if best_idx is None:
                 continue
- 
+
             label = f"{row._2}  —  {era}"  # Outlier Deck column
             with st.expander(label):
                 # Pull the full card row from amulet_comb matched by Name+Date
                 outlier_name = ord_data.loc[best_idx, "Name"] if "Name" in ord_data.columns else None
                 outlier_date = ord_data.loc[best_idx, "Date"] if "Date" in ord_data.columns else None
- 
+
                 if outlier_name and outlier_date:
                     match = amulet_comb[
                         (amulet_comb["Name"] == outlier_name) &
@@ -487,7 +583,7 @@ with tab4:
                     ]
                 else:
                     match = pd.DataFrame()
- 
+
                 if match.empty:
                     st.info("Decklist not found in source data.")
                 else:
@@ -498,41 +594,40 @@ with tab4:
                         .astype(int)
                     )
                     decklist = decklist[decklist > 0].sort_values(ascending=False)
- 
+
                     # ── Median decklist for this era ──────────────────────
                     era_rows = amulet_comb[amulet_comb["next_ban"] == era]
                     era_cards = era_rows[[c for c in amulet_int.columns if c in era_rows.columns]]
                     median_deck = era_cards.median().round(2)
                     median_deck = median_deck[median_deck > 0].sort_values(ascending=False)
- 
+
                     # ── Layout: meta | outlier decklist | median decklist ──
                     col_meta, col_outlier, col_median = st.columns([1, 1.5, 1.5])
- 
+
                     with col_meta:
                         st.markdown(f"**{outlier_name}** — {outlier_date}")
                         if "Place" in ord_data.columns:
                             st.markdown(f"Place: **{ord_data.loc[best_idx, 'Place']}**")
                         st.markdown(f"Mean CA Distance: **{row._3}**")
                         st.markdown(f"Era N: **{row._4}**")
- 
+
                     with col_outlier:
                         st.markdown("**Outlier Decklist**")
                         deck_df = decklist.reset_index()
                         deck_df.columns = ["Card", "Copies"]
                         deck_df = sort_by_type(deck_df, "Card")
                         st.dataframe(deck_df, use_container_width=True, hide_index=True, height=350)
- 
+
                     with col_median:
                         st.markdown(f"**Median Decklist ({era})**")
                         median_df = median_deck.reset_index()
                         median_df.columns = ["Card", "Median Copies"]
                         median_df = sort_by_type(median_df, "Card")
                         st.dataframe(median_df, use_container_width=True, hide_index=True, height=350)
- 
+
     else:
         st.info("CCA computation failed. Check your data.")
 
- 
 # ── Tab 5: CCA – Card Inclusion ───────────
 with tab5:
     st.subheader("CCA Ordination – Card Inclusion")
@@ -544,7 +639,7 @@ with tab5:
 
         card_options = amulet_int.sum().sort_values(ascending=False).index.tolist()
         selected_card = st.selectbox(
-            "Color lists by card count:",
+            "Color sites by card count:",
             card_options,
             key="cca_card_select"
         )
@@ -555,7 +650,7 @@ with tab5:
             color=selected_card if selected_card in ord_data.columns else None,
             color_continuous_scale="thermal",
             hover_data=hover_cols,
-            title=f"CCA – lists colored by copies of {selected_card}",
+            title=f"CCA – sites colored by copies of {selected_card}",
             template="plotly_white",
             opacity=0.8
         )
@@ -571,22 +666,7 @@ with tab5:
     else:
         st.info("CCA computation failed. Check your data.")
 
-# Normalise to lowercase for matching (strip SB suffix before lookup)
-_lands_lower    = {c.lower() for c in lands}
-_creatures_lower = {c.lower() for c in creatures}
-_spells_lower   = {c.lower() for c in spells}
- 
-def get_card_type(name):
-    """Return card type category, accounting for (SB) suffix."""
-    base = str(name).replace(" (SB)", "").replace("(SB)", "").strip().lower()
-    if base in _lands_lower:
-        return "Land"
-    if base in _creatures_lower:
-        return "Creature"
-    if base in _spells_lower:
-        return "Spell"
-    return "Unknown"
- 
+
 # ── Tab 6: Card Similarity ────────────────
 with tab6:
     st.subheader("Card Similarity")
@@ -657,7 +737,7 @@ with tab6:
         color=color_col,
         color_discrete_map=color_map,
     )
-    fig.update_traces(mode="markers+text", textposition="top center")
+    fig.update_traces(mode="markers+text", textposition="top center", marker=dict(size=8))
     fig.update_layout(
         title="Interactive Species Ordination",
         xaxis_title="Dim 1",

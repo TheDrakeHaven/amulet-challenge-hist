@@ -5,6 +5,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.preprocessing import StandardScaler
 import io
+import time
+import requests
 from datetime import date, datetime
 import re
 from io import BytesIO
@@ -159,7 +161,7 @@ def get_card_type(name):
 
 
 def sort_by_type(df, card_col):
-    """Sort a card dataframe: Creatures → Spells → Lands → Sideboard → Unknown."""
+    """Sort a card dataframe: Creatures -> Spells -> Lands -> Sideboard -> Unknown."""
     type_order = {"Creature": 0, "Spell": 1, "Land": 2, "Sideboard": 3, "Unknown": 4}
     df = df.copy()
     df["_type"] = df[card_col].apply(
@@ -171,10 +173,66 @@ def sort_by_type(df, card_col):
 
 
 def _scryfall_image_url(card_name):
-    """Build a Scryfall fuzzy-name image URL, stripping the (SB) suffix."""
+    """Build a Scryfall fuzzy-name image URL, stripping the (SB) suffix.
+
+    Direct image endpoint - returns whichever printing Scryfall treats as the
+    default (usually the most recent reprint). Used as a fast fallback when the
+    original-printing lookup fails.
+    """
     from urllib.parse import quote
     clean = str(card_name).replace(" (SB)", "").replace("(SB)", "").strip()
     return f"https://api.scryfall.com/cards/named?fuzzy={quote(clean)}&format=image&version=normal"
+
+
+_SCRYFALL_HEADERS = {
+    "User-Agent": "AmuletChallengeAnalysis/1.0",
+    "Accept": "application/json",
+}
+
+
+@st.cache_data(show_spinner=False, ttl=60 * 60 * 24 * 7)
+def scryfall_original_image(card_name: str) -> str:
+    """Return the URL of the *original* (earliest-released) printing's image.
+
+    Uses /cards/search with `unique=prints&order=released&dir=asc` so the first
+    result is the oldest printing of the named card. Cached for a week so each
+    distinct card name only hits Scryfall once. Falls back to the direct
+    fuzzy-name image endpoint on any failure.
+    """
+    fallback = _scryfall_image_url(card_name)
+    clean = str(card_name).replace(" (SB)", "").replace("(SB)", "").strip()
+    if not clean:
+        return fallback
+    try:
+        # Scryfall asks for ~50-100 ms between requests; cache means this only
+        # fires on the first lookup of each card name.
+        time.sleep(0.05)
+        r = requests.get(
+            "https://api.scryfall.com/cards/search",
+            params={
+                "q": f'!"{clean}"',
+                "unique": "prints",
+                "order": "released",
+                "dir": "asc",
+            },
+            headers=_SCRYFALL_HEADERS,
+            timeout=5,
+        )
+        if r.status_code != 200:
+            return fallback
+        data = r.json().get("data", [])
+        if not data:
+            return fallback
+        card = data[0]
+        if "image_uris" in card and card["image_uris"]:
+            return card["image_uris"].get("normal") or fallback
+        # Double-faced / split / transform cards keep image_uris on each face
+        faces = card.get("card_faces") or []
+        if faces and faces[0].get("image_uris"):
+            return faces[0]["image_uris"].get("normal") or fallback
+        return fallback
+    except Exception:
+        return fallback
 
 
 def render_decklist_html(
@@ -187,22 +245,25 @@ def render_decklist_html(
 ):
     """Render a decklist as an HTML table whose rows show the card image on hover.
 
-    Hovering a row pops up the Scryfall card image, fixed-positioned in the top-right
-    of the viewport so it isn't clipped by Streamlit's column containers.
+    Hovering a row pops up the Scryfall card image, fixed-positioned in the
+    top-right of the viewport so it isn't clipped by Streamlit's column
+    containers.
 
     Parameters
     ----------
     highlight_set : set or None
-        Cards in this set are NOT highlighted. Cards NOT in this set get the green
-        "unique to outlier" background (matches the previous st.dataframe styling).
+        Cards in this set are NOT highlighted. Cards NOT in this set get the
+        green "unique to outlier" background (matches the previous st.dataframe
+        styling).
     table_id : str
-        Unique id used to scope CSS so multiple tables on the same page don't collide.
+        Unique id used to scope CSS so multiple tables on the same page don't
+        collide.
     """
     rows_html = []
     for _, r in deck_df.iterrows():
         card   = str(r[card_col])
         copies = r[copies_col]
-        img_url = _scryfall_image_url(card)
+        img_url = scryfall_original_image(card)
         is_unique = highlight_set is not None and card not in highlight_set
         row_class = "deck-row deck-row-unique" if is_unique else "deck-row"
         rows_html.append(
@@ -455,6 +516,7 @@ def load_cca_scores():
 # ── Load CCA scores on app start ──────────
 if "cca_result" not in st.session_state:
     load_cca_scores()
+
 # ── Tab 4: CCA – Era & Set ────────────────
 with tab4:
     st.subheader("CCA Ordination – Era & Set")

@@ -270,7 +270,7 @@ def run_cca_computation():
         # ── 6. Excel export ───────────────────────────────────────────────
         cca_output = BytesIO()
         with pd.ExcelWriter(cca_output, engine="openpyxl") as writer:
-            export_cols = [c for c in ["Name", "Date", "next_ban", "current_set", "Place", "CA1", "CA2"]
+            export_cols = [c for c in ["Name", "Date", "next_ban", "current_set", "CA1", "CA2"]
                            if c in ord_data.columns]
             ord_data[export_cols].to_excel(writer, index=False, sheet_name="CCA_Site_Scores")
             species_scores.reset_index().rename(columns={"index": "card"}).to_excel(

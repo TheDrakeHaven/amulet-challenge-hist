@@ -472,7 +472,7 @@ with tab6:
  
     sb_filter = st.radio(
         "Show cards:",
-        options=["All", "Maindeck only", "Sideboard (SB) only"],
+        options=["All", "Maindeck only", "Sideboard only"],
         horizontal=True,
         key="sb_filter"
     )

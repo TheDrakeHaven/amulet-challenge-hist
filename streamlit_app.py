@@ -515,17 +515,6 @@ with tab4:
                         st.markdown(f"Mean CA Distance: **{row._3}**")
                         st.markdown(f"Era N: **{row._4}**")
  
-                    def sort_by_type(df, card_col):
-                        """Sort a card dataframe: Creatures → Spells → Lands → Sideboard."""
-                        type_order = {"Creature": 0, "Spell": 1, "Land": 2, "Sideboard": 3, "Unknown": 4}
-                        df = df.copy()
-                        df["_type"] = df[card_col].apply(
-                            lambda s: "Sideboard" if "(SB)" in str(s) else get_card_type(s)
-                        )
-                        df["_type_order"] = df["_type"].map(type_order).fillna(4)
-                        df = df.sort_values(["_type_order", card_col]).drop(columns=["_type", "_type_order"])
-                        return df
- 
                     with col_outlier:
                         st.markdown("**Outlier Decklist**")
                         deck_df = decklist.reset_index()
@@ -542,6 +531,7 @@ with tab4:
  
     else:
         st.info("CCA computation failed. Check your data.")
+
  
 # ── Tab 5: CCA – Card Inclusion ───────────
 with tab5:

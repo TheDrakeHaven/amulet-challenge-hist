@@ -417,19 +417,19 @@ with tab4:
 # ── Tab 5: CCA – Card Inclusion ───────────
 with tab5:
     st.subheader("CCA Ordination – Card Inclusion")
-
+ 
     if "cca_result" in st.session_state:
         ord_data       = st.session_state["cca_result"]
         eigenvalues    = st.session_state.get("cca_eigenvalues")
         total_inertia  = st.session_state.get("cca_total_inertia")
-
-        card_options = sorted(amulet_int.columns.tolist())
+ 
+        card_options = amulet_int.sum().sort_values(ascending=False).index.tolist()
         selected_card = st.selectbox(
             "Color sites by card count:",
             card_options,
             key="cca_card_select"
         )
-
+ 
         hover_cols = [c for c in ["Name", "Date", "next_ban", "current_set"] if c in ord_data.columns]
         fig2 = px.scatter(
             ord_data, x="CA1", y="CA2",
@@ -441,16 +441,17 @@ with tab5:
             opacity=0.8
         )
         fig2.update_traces(marker=dict(size=8))
-
+ 
         if eigenvalues is not None and total_inertia:
             fig2.update_xaxes(title_text=f"CA1 ({eigenvalues[0]/total_inertia*100:.1f}% inertia)")
             fig2.update_yaxes(title_text=f"CA2 ({eigenvalues[1]/total_inertia*100:.1f}% inertia)")
-
+ 
         fig2.update_layout(height=800)
         st.plotly_chart(fig2, use_container_width=True)
-
+ 
     else:
         st.info("CCA computation failed. Check your data.")
+
 
 # ── Tab 6: Card Similarity ────────────────
 with tab6:

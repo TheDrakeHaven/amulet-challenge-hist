@@ -481,7 +481,7 @@ with tab6:
         xaxis_title="Dim 1",
         yaxis_title="Dim 2",
         template="simple_white",
-        height=800
+        height=1000
     )
     st.plotly_chart(fig, use_container_width=True)
   

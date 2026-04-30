@@ -456,24 +456,46 @@ with tab5:
 with tab6:
     st.subheader("Card Similarity")
     st.title("Maindeck Correspondence Analysis")
-
+ 
     ca1 = prince.CA(n_components=2, random_state=42)
     ca1 = ca1.fit(amulet_filtered)
-
+ 
     species_scores = ca1.column_coordinates(amulet_filtered)
     site_scores    = ca1.row_coordinates(amulet_filtered)
-
+ 
     st.subheader("Card Ordination Plot")
-
-    plot_df = species_scores.copy().reset_index()
+ 
+    # ── SB filter buttons ────────────────────────────────────────────────
+    all_species = species_scores.index.tolist()
+    sb_species  = [s for s in all_species if "(SB)" in str(s)]
+    mb_species  = [s for s in all_species if "(SB)" not in str(s)]
+ 
+    sb_filter = st.radio(
+        "Show cards:",
+        options=["All", "Maindeck only", "Sideboard (SB) only"],
+        horizontal=True,
+        key="sb_filter"
+    )
+ 
+    if sb_filter == "Maindeck only":
+        filtered_species = mb_species
+    elif sb_filter == "Sideboard (SB) only":
+        filtered_species = sb_species
+    else:
+        filtered_species = all_species
+ 
+    plot_df = species_scores.loc[filtered_species].copy().reset_index()
     plot_df.columns = ["species", "Dim1", "Dim2"]
-
+    plot_df["type"] = plot_df["species"].apply(lambda s: "Sideboard" if "(SB)" in str(s) else "Maindeck")
+ 
     fig = px.scatter(
         plot_df,
         x="Dim1",
         y="Dim2",
         text="species",
-        hover_name="species"
+        hover_name="species",
+        color="type",
+        color_discrete_map={"Maindeck": "#1f77b4", "Sideboard": "#d62728"}
     )
     fig.update_traces(mode="text", textposition="top center")
     fig.update_layout(
@@ -484,4 +506,6 @@ with tab6:
         height=1000
     )
     st.plotly_chart(fig, use_container_width=True)
+ 
+
   

@@ -279,7 +279,7 @@ with tab4:
 
         color_by = st.selectbox(
             "Color sites by:",
-            ["next_ban", "current_set", "Place"],
+            ["next_ban", "current_set"],
             key="cca_color_tab4"
         )
 

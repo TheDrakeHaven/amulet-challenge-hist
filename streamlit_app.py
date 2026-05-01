@@ -600,19 +600,23 @@ with tab3:
 # ─────────────────────────────────────────
 
 ERA_ORDER = [
-    "Pre-Astrolabe Ban",
-    "Pre-Field/Uro Ban",
-    "Pre-MH2 Release",
-    "Pre-Lurrus Ban",
-    "Pre-Yorion Ban",
-    "Pre-Preordain Unban",
-    "Pre-Fury/Bean Ban",
-    "Pre-Outburst Ban",
-    "Pre-MH3",
-    "Pre-Nadu/Grief Ban",
-    "Pre-GSZ Unban/Ring Ban",
-    "Pre-Breach Ban",
-    "Current",
+        "Pre-Gitaxian Probe/GGT Ban",
+        "Pre-Bridge from Below Ban",
+        "Pre-Hogaak Ban",
+        "Pre-Opal/Oko Ban",
+        "Pre-Astrolabe Ban",
+        "Pre-Field/Uro Ban",
+        "Pre-MH2 Release",
+        "Pre-Lurrus Ban",
+        "Pre-Yorion Ban",
+        "Pre-Preordain Unban",
+        "Pre-Fury/Bean Ban",
+        "Pre-Outburst Ban",
+        "Pre-MH3",
+        "Pre-Nadu/Grief Ban",
+        "Pre-GSZ Unban/Ring Ban",
+        "Pre-Breach Ban",
+        "Current"
 ]
 
 

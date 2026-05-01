@@ -326,12 +326,13 @@ amulet_filtered = amulet_int[keep_cols]
 # TABS
 # ─────────────────────────────────────────
 
-tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🃏 Deck Data",
     "📈 Median by Era",
     "🗺️ CCA – Era & Set",
     "🎴 CCA – Card Inclusion",
-    "Card Similarity"
+    "Card Similarity",
+    "🔍 Era-Specific Cards"
 ])
 
 # ── Tab 2: Deck Data ─────────────────────
@@ -821,3 +822,120 @@ with tab6:
         height=1000
     )
     st.plotly_chart(fig, use_container_width=True)
+
+# ── Tab 7: Era-Specific Cards ─────────────
+with tab7:
+    st.subheader("Era-Specific Cards")
+    st.markdown(
+        "Cards that appear predominantly in one ban era. "
+        "Concentration score = share of a card's total appearances that fall within a single era. "
+        "Use the slider to control the minimum number of appearances required."
+    )
+
+    era_order_display = [e for e in ERA_ORDER if e in amulet_comb["next_ban"].values]
+    card_cols_era = [c for c in amulet_int.columns]
+
+    # Build era × card count matrix
+    era_card = (
+        amulet_comb.groupby("next_ban")[card_cols_era]
+        .sum()
+        .reindex(era_order_display)
+        .fillna(0)
+    )
+
+    col_s1, col_s2 = st.columns(2)
+    with col_s1:
+        min_appearances = st.slider(
+            "Minimum total appearances across all eras",
+            min_value=1, max_value=50, value=5, step=1,
+            key="era_specific_min"
+        )
+    with col_s2:
+        min_concentration = st.slider(
+            "Minimum concentration score (0–1)",
+            min_value=0.50, max_value=1.0, value=0.75, step=0.05,
+            key="era_specific_conc"
+        )
+
+    card_totals = era_card.sum(axis=0)
+    eligible_cards = card_totals[card_totals >= min_appearances].index.tolist()
+
+    rows = []
+    for card in eligible_cards:
+        col_data = era_card[card]
+        total = col_data.sum()
+        if total == 0:
+            continue
+        dominant_era = col_data.idxmax()
+        dominant_count = col_data.max()
+        concentration = dominant_count / total
+        if concentration >= min_concentration:
+            rows.append({
+                "Card":               card,
+                "Card Type":          get_card_type(card),
+                "Dominant Era":       dominant_era,
+                "Era Appearances":    int(dominant_count),
+                "Total Appearances":  int(total),
+                "Concentration":      round(concentration, 3),
+            })
+
+    if not rows:
+        st.info("No cards meet the current filters. Try lowering the thresholds.")
+    else:
+        result_df = (
+            pd.DataFrame(rows)
+            .sort_values(["Dominant Era", "Concentration"], ascending=[True, False])
+            .reset_index(drop=True)
+        )
+
+        # ── Summary chart ─────────────────────────────────────────────────
+        era_counts = result_df["Dominant Era"].value_counts().reindex(era_order_display).dropna()
+        fig_bar = px.bar(
+            era_counts.reset_index(),
+            x="Dominant Era",
+            y="count",
+            title="Number of Era-Specific Cards per Era",
+            labels={"count": "# Cards", "Dominant Era": "Era"},
+            color="Dominant Era",
+            template="plotly_white",
+        )
+        fig_bar.update_layout(showlegend=False, height=350)
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+        # ── Filter by era ──────────────────────────────────────────────────
+        era_filter = st.multiselect(
+            "Filter by era (leave blank for all):",
+            options=era_order_display,
+            default=[],
+            key="era_specific_filter"
+        )
+        if era_filter:
+            result_df = result_df[result_df["Dominant Era"].isin(era_filter)]
+
+        # ── Type filter ───────────────────────────────────────────────────
+        type_filter = st.multiselect(
+            "Filter by card type:",
+            options=["Creature", "Spell", "Land", "Unknown"],
+            default=[],
+            key="era_specific_type"
+        )
+        if type_filter:
+            result_df = result_df[result_df["Card Type"].isin(type_filter)]
+
+        st.dataframe(result_df, use_container_width=True, hide_index=True)
+
+        # ── Heatmap of era-specific cards ─────────────────────────────────
+        st.markdown("**Heatmap of Era-Specific Cards**")
+        heat_cards = result_df["Card"].tolist()
+        if heat_cards:
+            heat = era_card[heat_cards].T
+            heat.index.name = "Card"
+            fig_heat = px.imshow(
+                heat,
+                aspect="auto",
+                color_continuous_scale="Greens",
+                labels={"x": "Era", "y": "Card", "color": "Count"},
+                title="Era-Specific Card Appearances by Era",
+            )
+            fig_heat.update_layout(height=max(400, len(heat_cards) * 18))
+            st.plotly_chart(fig_heat, use_container_width=True)

@@ -9,7 +9,7 @@ from datetime import date, datetime
 import re
 from io import BytesIO
 import matplotlib.pyplot as plt
-import prince
+from sklearn.decomposition import PCA
 
 st.set_page_config(page_title="Amulet Challenge Analysis", layout="wide")
 st.title("🪬 Amulet Challenge Analysis")
@@ -406,9 +406,9 @@ amulet_filtered = amulet_int[keep_cols]
 tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🃏 Deck Data",
     "📈 Median by Era",
-    "🗺️ CCA – Era & Set",
-    "🎴 CCA – Card Inclusion",
-    "Card Similarity",
+    "🗺️ PCA – Era & Set",
+    "🎴 PCA – Card Inclusion",
+    "🃏 Card Similarity (PCA)",
     "🔍 Era-Specific Cards"
 ])
 
@@ -550,7 +550,7 @@ with tab3:
     st.plotly_chart(fig_heat, use_container_width=True)
 
 # ─────────────────────────────────────────
-# CCA COMPUTATION
+# PCA COMPUTATION
 # ─────────────────────────────────────────
 
 ERA_ORDER = [
@@ -570,20 +570,17 @@ ERA_ORDER = [
 ]
 
 
-def run_cca_computation():
-    """Run Correspondence Analysis via prince.CA and store results in session_state."""
-    with st.spinner("Running Correspondence Analysis…"):
+def run_pca_computation():
+    """Run PCA via sklearn and store results in session_state."""
+    with st.spinner("Running PCA…"):
         try:
-            # ── Fit CA on the filtered card matrix (cards appearing > 12 times) ──
-            ca = prince.CA(n_components=2, random_state=42)
-            ca = ca.fit(amulet_filtered)
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(amulet_filtered.values.astype(float))
 
-            # ── Site scores (one row per deck) ────────────────────────────
-            site_coords = ca.row_coordinates(amulet_filtered)
-            site_coords.columns = ["CA1", "CA2"]
-            site_coords = site_coords.reset_index(drop=True)
+            pca = PCA(n_components=2, random_state=42)
+            site_arr = pca.fit_transform(X_scaled)
 
-            # Attach metadata
+            site_coords = pd.DataFrame(site_arr, columns=["CA1", "CA2"])
             ord_data = pd.concat(
                 [amulet_env.drop(columns=["row_number"], errors="ignore").reset_index(drop=True),
                  site_coords],
@@ -594,13 +591,13 @@ def run_cca_computation():
                     ord_data["Date"], errors="coerce"
                 ).dt.strftime("%m-%d-%Y")
 
-            # ── Species scores (one row per card) ─────────────────────────
-            col_coords = ca.column_coordinates(amulet_filtered)
-            col_coords.columns = ["CA1", "CA2"]
-            col_coords = col_coords.reset_index()
-            col_coords.rename(columns={col_coords.columns[0]: "card"}, inplace=True)
+            loadings = pd.DataFrame(
+                pca.components_.T,
+                index=amulet_filtered.columns,
+                columns=["CA1", "CA2"]
+            ).reset_index()
+            loadings.rename(columns={"index": "card"}, inplace=True)
 
-            # ── Environmental centroids ───────────────────────────────────
             env_centroids = {}
             for env_var in ["next_ban", "current_set"]:
                 if env_var in ord_data.columns:
@@ -612,33 +609,29 @@ def run_cca_computation():
                     )
                     env_centroids[env_var] = centroids
 
-            # ── Eigenvalues / inertia ─────────────────────────────────────
-            eigenvalues   = ca.eigenvalues_
-            total_inertia = float(eigenvalues.sum()) if eigenvalues is not None else None
+            var_ratio     = pca.explained_variance_ratio_
+            total_inertia = float(var_ratio.sum())
 
             st.session_state["cca_result"]        = ord_data
-            st.session_state["cca_species"]       = col_coords
+            st.session_state["cca_species"]       = loadings
             st.session_state["cca_env_centroids"] = env_centroids
-            st.session_state["cca_eigenvalues"]   = eigenvalues
+            st.session_state["cca_eigenvalues"]   = var_ratio
             st.session_state["cca_total_inertia"] = total_inertia
 
-            # ── Export to Excel for download ──────────────────────────────
             excel_buf = BytesIO()
             with pd.ExcelWriter(excel_buf, engine="openpyxl") as writer:
-                ord_data.to_excel(writer, sheet_name="CCA_Site_Scores",    index=False)
-                col_coords.to_excel(writer, sheet_name="CCA_Species_Scores", index=False)
+                ord_data.to_excel(writer, sheet_name="PCA_Site_Scores",   index=False)
+                loadings.to_excel(writer, sheet_name="PCA_Card_Loadings", index=False)
             st.session_state["cca_excel"] = excel_buf.getvalue()
 
         except Exception as e:
-            st.error(f"CCA computation failed: {e}")
-
-
+            st.error(f"PCA computation failed: {e}")
 # ── Run CCA on app start ───────────────────
 if "cca_result" not in st.session_state:
-    run_cca_computation()
+    run_pca_computation()
 # ── Tab 4: CCA – Era & Set ────────────────
 with tab4:
-    st.subheader("CCA Ordination – Era & Set")
+    st.subheader("PCA Ordination – Era & Set")
 
     if "cca_result" in st.session_state:
         ord_data       = st.session_state["cca_result"]
@@ -650,9 +643,9 @@ with tab4:
         # Inertia metrics
         if eigenvalues is not None and total_inertia:
             col_m1, col_m2, col_m3 = st.columns(3)
-            col_m1.metric("CA1 Inertia", f"{eigenvalues[0]:.4f}")
-            col_m2.metric("CA2 Inertia", f"{eigenvalues[1]:.4f}")
-            col_m3.metric("Total Inertia", f"{total_inertia:.4f}")
+            col_m1.metric("PC1 Variance", f"{eigenvalues[0]:.4f}")
+            col_m2.metric("PC2 Variance", f"{eigenvalues[1]:.4f}")
+            col_m3.metric("Total Variance", f"{total_inertia:.4f}")
 
         color_by = st.selectbox(
             "Color sites by:",
@@ -669,7 +662,7 @@ with tab4:
             ord_data, x="CA1", y="CA2",
             color=color_by,
             hover_data=hover_cols,
-            title=f"CCA – sites colored by {color_by}",
+            title=f"PCA – sites colored by {color_by}",
             template="plotly_white",
             opacity=0.75
         )
@@ -706,8 +699,8 @@ with tab4:
 
         # ── Axis labels with % inertia if available ───────────────────────
         if eigenvalues is not None and total_inertia:
-            fig.update_xaxes(title_text=f"CA1 ({eigenvalues[0]/total_inertia*100:.1f}% inertia)")
-            fig.update_yaxes(title_text=f"CA2 ({eigenvalues[1]/total_inertia*100:.1f}% inertia)")
+            fig.update_xaxes(title_text=f"PC1 ({eigenvalues[0]*100:.1f}% variance)")
+            fig.update_yaxes(title_text=f"PC2 ({eigenvalues[1]*100:.1f}% variance)")
 
         fig.update_layout(height=800)
         st.plotly_chart(fig, use_container_width=True)
@@ -817,7 +810,7 @@ with tab4:
                         st.markdown(f"**{outlier_name}** — {outlier_date}")
                         if "Place" in ord_data.columns:
                             st.markdown(f"Place: **{ord_data.loc[best_idx, 'Place']}**")
-                        st.markdown(f"Mean CA Distance: **{row._3}**")
+                        st.markdown(f"Mean PC Distance: **{row._3}**")
                         st.markdown(f"Era N: **{row._4}**")
 
                     # Cards in outlier not present in median (median == 0)
@@ -855,11 +848,11 @@ with tab4:
                         )
 
     else:
-        st.info("CCA computation failed. Check your data.")
+        st.info("PCA computation failed. Check your data.")
 
 # ── Tab 5: CCA – Card Inclusion ───────────
 with tab5:
-    st.subheader("CCA Ordination – Card Inclusion")
+    st.subheader("PCA Ordination – Card Inclusion")
 
     if "cca_result" in st.session_state:
         ord_data       = st.session_state["cca_result"]
@@ -906,35 +899,41 @@ with tab5:
             color=selected_card if selected_card in plot_data.columns else None,
             color_continuous_scale="thermal",
             hover_data=hover_cols,
-            title=f"CCA – sites colored by copies of {selected_card}",
+            title=f"PCA – sites colored by copies of {selected_card}",
             template="plotly_white",
             opacity=0.8
         )
         fig2.update_traces(marker=dict(size=8))
 
         if eigenvalues is not None and total_inertia:
-            fig2.update_xaxes(title_text=f"CA1 ({eigenvalues[0]/total_inertia*100:.1f}% inertia)")
-            fig2.update_yaxes(title_text=f"CA2 ({eigenvalues[1]/total_inertia*100:.1f}% inertia)")
+            fig2.update_xaxes(title_text=f"PC1 ({eigenvalues[0]*100:.1f}% variance)")
+            fig2.update_yaxes(title_text=f"PC2 ({eigenvalues[1]*100:.1f}% variance)")
 
         fig2.update_layout(height=800)
         st.plotly_chart(fig2, use_container_width=True)
 
     else:
-        st.info("CCA computation failed. Check your data.")
+        st.info("PCA computation failed. Check your data.")
 
 
 # ── Tab 6: Card Similarity ────────────────
 with tab6:
     st.subheader("Card Similarity")
-    st.title("Maindeck Correspondence Analysis")
+    st.title("Maindeck PCA – Card Loadings")
 
-    ca1 = prince.CA(n_components=2, random_state=42)
-    ca1 = ca1.fit(amulet_filtered)
+    _scaler6 = StandardScaler()
+    _X6      = _scaler6.fit_transform(amulet_filtered.values.astype(float))
+    _pca6    = PCA(n_components=2, random_state=42)
+    _pca6.fit(_X6)
+    _var6    = _pca6.explained_variance_ratio_
 
-    species_scores = ca1.column_coordinates(amulet_filtered)
-    site_scores    = ca1.row_coordinates(amulet_filtered)
+    species_scores = pd.DataFrame(
+        _pca6.components_.T,
+        index=amulet_filtered.columns,
+        columns=["Dim1", "Dim2"]
+    )
 
-    st.subheader("Card Ordination Plot")
+    st.subheader("Card Loadings Plot")
 
     # ── Filters ──────────────────────────────────────────────────────────
     all_species = species_scores.index.tolist()
@@ -999,9 +998,9 @@ with tab6:
     )
     fig.update_traces(mode="markers+text", textposition="top center", marker=dict(size=8))
     fig.update_layout(
-        title="Interactive Species Ordination",
-        xaxis_title="Dim 1",
-        yaxis_title="Dim 2",
+        title="Card Loadings (PCA)",
+        xaxis_title=f"PC1 ({_var6[0]*100:.1f}% variance)",
+        yaxis_title=f"PC2 ({_var6[1]*100:.1f}% variance)",
         template="simple_white",
         height=1000,
         legend_title_text="Card Type" if color_mode == "Card type" else "Deck Slot",

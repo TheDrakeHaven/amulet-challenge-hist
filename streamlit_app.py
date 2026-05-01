@@ -246,9 +246,16 @@ def sort_by_type(df, card_col):
 
 
 def _scryfall_image_url(card_name):
-    """Build a Scryfall fuzzy-name image URL, stripping the (SB) suffix."""
+    """Build a Scryfall fuzzy-name image URL, stripping sb_ prefix and (SB) suffix."""
     from urllib.parse import quote
-    clean = str(card_name).replace(" (SB)", "").replace("(SB)", "").strip()
+    clean = str(card_name)
+    # Strip sideboard markers in both formats
+    if clean.startswith("sb_"):
+        clean = clean[3:]
+    clean = clean.replace(" (SB)", "").replace("(SB)", "").strip()
+    # For split cards like "Dead // Gone", use only the first half
+    if " // " in clean:
+        clean = clean.split(" // ")[0].strip()
     return f"https://api.scryfall.com/cards/named?fuzzy={quote(clean)}&format=image&version=normal"
 
 
@@ -277,12 +284,17 @@ def render_decklist_html(
     for _, r in deck_df.iterrows():
         card   = str(r[card_col])
         copies = r[copies_col]
+        # Pretty-print sideboard cards: "sb_Force of Vigor" -> "Force of Vigor (SB)"
+        if card.startswith("sb_"):
+            display_card = card[3:] + " (SB)"
+        else:
+            display_card = card
         img_url = _scryfall_image_url(card)
         is_unique = highlight_set is not None and card not in highlight_set
         row_class = "deck-row deck-row-unique" if is_unique else "deck-row"
         rows_html.append(
             f'<tr class="{row_class}">'
-            f'<td class="deck-card-cell">{card}'
+            f'<td class="deck-card-cell">{display_card}'
             f'<img class="deck-card-preview" src="{img_url}" loading="lazy" alt="" />'
             f'</td>'
             f'<td class="deck-copies-cell">{copies}</td>'
@@ -435,10 +447,6 @@ with tab3:
     st.markdown("**Heatmap of Mean Counts**")
     heat_data = mean_deck.set_index("next_ban")[num_cols]
     era_order = [
-        "Pre-Astrolabe Ban",
-        "Pre-Field/Uro Ban",
-        "Pre-MH2 Release",
-        "Pre-Lurrus Ban",
         "Pre-Yorion Ban",
         "Pre-Preordain Unban",
         "Pre-Fury/Bean Ban",
@@ -465,10 +473,6 @@ with tab3:
 # ─────────────────────────────────────────
 
 ERA_ORDER = [
-    "Pre-Astrolabe Ban",
-    "Pre-Field/Uro Ban",
-    "Pre-MH2 Release",
-    "Pre-Lurrus Ban",
     "Pre-Yorion Ban",
     "Pre-Preordain Unban",
     "Pre-Fury/Bean Ban",
@@ -894,33 +898,23 @@ with tab6:
         color_col = "deck_slot"
         color_map = {"Maindeck": "#1f77b4", "Sideboard": "#d62728"}
 
-    # Assign color values explicitly so the discrete map always matches
-    if color_mode == "Card type":
-        plot_df["_color"] = plot_df["card_type"]
-    else:
-        plot_df["_color"] = plot_df["deck_slot"]
-
     fig = px.scatter(
         plot_df,
         x="Dim1",
         y="Dim2",
         text="species",
         hover_name="species",
-        hover_data={"card_type": True, "deck_slot": True, "Dim1": False, "Dim2": False,
-                    "_color": False},
-        color="_color",
+        hover_data={"card_type": True, "deck_slot": True, "Dim1": False, "Dim2": False},
+        color=color_col,
         color_discrete_map=color_map,
-        category_orders={"_color": list(color_map.keys())},
     )
     fig.update_traces(mode="markers+text", textposition="top center", marker=dict(size=8))
-    # Rename legend title from "_color" to the actual label
     fig.update_layout(
         title="Interactive Species Ordination",
         xaxis_title="Dim 1",
         yaxis_title="Dim 2",
         template="simple_white",
-        height=1000,
-        legend_title_text="Card Type" if color_mode == "Card type" else "Deck Slot",
+        height=1000
     )
     st.plotly_chart(fig, use_container_width=True)
 

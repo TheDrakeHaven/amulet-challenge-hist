@@ -88,6 +88,7 @@ ban_events = pd.DataFrame({
     "event": [
         # 2017–2019 additions
         "Pre-Gitaxian Probe/GGT Ban",
+        "Pre-MH1 Release",
         "Pre-Hogaak Ban",
         "Pre-Opal/Oko Ban",
 
@@ -109,6 +110,7 @@ ban_events = pd.DataFrame({
     "date": pd.to_datetime([
         # 2017–2019
         "2017-04-24",  # Probe + GGT ban (Apr 2017 B&R)
+        "2017-06-14", 
         "2019-08-26",  # Hogaak ban
         "2020-01-13",  # Opal + Oko ban
 
@@ -892,6 +894,7 @@ with tab3:
     heat_data = mean_deck.set_index("next_ban")[num_cols]
     era_order = [
         "Pre-Gitaxian Probe/GGT Ban",
+        "Pre-MH1 Release",
         "Pre-Hogaak Ban",
         "Pre-Opal/Oko Ban",
         "Pre-Astrolabe Ban",
@@ -925,6 +928,7 @@ with tab3:
 
 ERA_ORDER = [
         "Pre-Gitaxian Probe/GGT Ban",
+        "Pre-MH1 Release",
         "Pre-Hogaak Ban",
         "Pre-Opal/Oko Ban",
         "Pre-Astrolabe Ban",

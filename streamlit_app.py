@@ -19,7 +19,16 @@ st.title("🪬 Amulet Challenge Analysis")
 # ─────────────────────────────────────────
 
 modern_sets = pd.DataFrame({
-    "set": [
+  "set": [
+        # 2017
+        "AKH","HOU","XLN","RIX",
+
+        # 2018
+        "DOM","M19","GRN","RNA",
+
+        # 2019
+        "WAR","MH1","M20","ELD",
+
         # 2020
         "THB","IKO","M21","ZNR",
 
@@ -42,6 +51,15 @@ modern_sets = pd.DataFrame({
         "ECL","TMT","SOS"
     ],
     "release_date": pd.to_datetime([
+        # 2017
+        "2017-04-28","2017-07-14","2017-09-29","2018-01-19",
+
+        # 2018
+        "2018-04-27","2018-07-13","2018-10-05","2019-01-25",
+
+        # 2019
+        "2019-05-03","2019-06-14","2019-07-12","2019-10-04",
+
         # 2020
         "2020-01-24","2020-05-15","2020-07-03","2020-09-25",
 
@@ -68,6 +86,13 @@ modern_sets = pd.DataFrame({
 
 ban_events = pd.DataFrame({
     "event": [
+        # 2017–2019 additions
+        "Pre-Gitaxian Probe/GGT Ban",
+        "Pre-Bridge from Below Ban",
+        "Pre-Hogaak Ban",
+        "Pre-Opal/Oko Ban",
+
+        # Your existing timeline
         "Pre-Astrolabe Ban",
         "Pre-Field/Uro Ban",
         "Pre-MH2 Release",
@@ -83,9 +108,26 @@ ban_events = pd.DataFrame({
         "Current"
     ],
     "date": pd.to_datetime([
-        "2020-07-13", "2021-02-15","2021-06-18",
-        "2022-03-07","2022-10-11", "2023-08-07", "2023-12-04", "2024-03-11", "2024-06-14",
-        "2024-08-26", "2024-12-16", "2025-03-31", "2026-04-30"
+        # 2017–2019
+        "2017-04-24",  # Probe + GGT ban (Apr 2017 B&R)
+        "2019-07-08",  # Bridge from Below ban
+        "2019-08-26",  # Hogaak ban
+        "2020-01-13",  # Opal + Oko ban
+
+        # Existing
+        "2020-07-13",
+        "2021-02-15",
+        "2021-06-18",
+        "2022-03-07",
+        "2022-10-11",
+        "2023-08-07",
+        "2023-12-04",
+        "2024-03-11",
+        "2024-06-14",
+        "2024-08-26",
+        "2024-12-16",
+        "2025-03-31",
+        "2026-04-30"
     ])
 })
 

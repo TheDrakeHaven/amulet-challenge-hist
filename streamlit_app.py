@@ -413,23 +413,99 @@ tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
 
 # ── Tab 2: Deck Data ─────────────────────
 with tab2:
-    st.subheader("Amulet Deck – Main Sheet")
-    st.dataframe(amulet_comb, use_container_width=True)
+    subtab_data, subtab_totals = st.tabs(["📋 All Decks", "🔢 Maindeck Card Totals"])
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("**Average Card Frequency**")
-        means = amulet_int.mean(numeric_only=True).sort_values(ascending=False)
-        st.dataframe(means.rename("Mean").reset_index().rename(columns={"index": "Card"}),
-                     use_container_width=True)
-    with col2:
-        st.markdown("**Top 8 Count**")
-        name_counts = (
-            amulet_df["Name"]
-            .value_counts(dropna=False)
-            .sort_values(ascending=False)
+    with subtab_data:
+        st.subheader("Amulet Deck – Main Sheet")
+        st.dataframe(amulet_comb, use_container_width=True)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("**Average Card Frequency**")
+            means = amulet_int.mean(numeric_only=True).sort_values(ascending=False)
+            st.dataframe(means.rename("Mean").reset_index().rename(columns={"index": "Card"}),
+                         use_container_width=True)
+        with col2:
+            st.markdown("**Top 8 Count**")
+            name_counts = (
+                amulet_df["Name"]
+                .value_counts(dropna=False)
+                .sort_values(ascending=False)
+            )
+            st.dataframe(name_counts, use_container_width=True)
+
+    with subtab_totals:
+        st.subheader("Total Maindeck Card Copies")
+        st.markdown(
+            "Total copies of each mainboard card across all decklists, "
+            "broken down by card type. Sideboard cards excluded."
         )
-        st.dataframe(name_counts, use_container_width=True)
+
+        # Mainboard columns only (no sb_ prefix)
+        mb_cols = [c for c in amulet_int.columns if not c.startswith("sb_")]
+        mb_totals = (
+            amulet_int[mb_cols]
+            .sum()
+            .astype(int)
+            .reset_index()
+            .rename(columns={"index": "Card", 0: "Total Copies"})
+        )
+        mb_totals["Card Type"] = mb_totals["Card"].apply(get_card_type)
+        mb_totals = mb_totals[mb_totals["Total Copies"] > 0].sort_values(
+            "Total Copies", ascending=False
+        ).reset_index(drop=True)
+
+        # ── Summary metrics ───────────────────────────────────────────────
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Unique Cards", len(mb_totals))
+        m2.metric("Total Copies", f"{mb_totals['Total Copies'].sum():,}")
+        m3.metric("Avg per Deck",
+                  f"{mb_totals['Total Copies'].sum() / max(len(amulet_df), 1):.1f}")
+        m4.metric("Decklists", len(amulet_df))
+
+        # ── Type filter ───────────────────────────────────────────────────
+        type_filter = st.multiselect(
+            "Filter by card type:",
+            options=["Creature", "Spell", "Land", "Unknown"],
+            default=[],
+            key="mb_totals_type_filter",
+        )
+        display_totals = (
+            mb_totals[mb_totals["Card Type"].isin(type_filter)]
+            if type_filter else mb_totals
+        )
+
+        # ── Bar chart ─────────────────────────────────────────────────────
+        top_n = st.slider("Show top N cards in chart", 10, 60, 30, key="mb_totals_n")
+        chart_data = display_totals.head(top_n)
+        type_colors = {
+            "Land":     "#2ca02c",
+            "Creature": "#1f77b4",
+            "Spell":    "#ff7f0e",
+            "Unknown":  "#7f7f7f",
+        }
+        fig_bar = px.bar(
+            chart_data,
+            x="Card",
+            y="Total Copies",
+            color="Card Type",
+            color_discrete_map=type_colors,
+            title=f"Top {top_n} Maindeck Cards by Total Copies",
+            template="plotly_white",
+        )
+        fig_bar.update_layout(
+            xaxis_tickangle=-45,
+            height=500,
+            legend_title_text="Card Type",
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+        # ── Full table ────────────────────────────────────────────────────
+        st.dataframe(
+            display_totals,
+            use_container_width=True,
+            hide_index=True,
+        )
 
 # ── Tab 3: Median by Era ─────────────────
 with tab3:

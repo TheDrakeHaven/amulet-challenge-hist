@@ -64,7 +64,7 @@ modern_sets = pd.DataFrame({
         "2026-01-23","2026-03-06","2026-04-24"
     ])
 })
-}).sort_values("release_date").reset_index(drop=True)
+).sort_values("release_date").reset_index(drop=True)
 
 ban_events = pd.DataFrame({
     "event": [

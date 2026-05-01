@@ -435,6 +435,10 @@ with tab3:
     st.markdown("**Heatmap of Mean Counts**")
     heat_data = mean_deck.set_index("next_ban")[num_cols]
     era_order = [
+        "Pre-Astrolabe Ban",
+        "Pre-Field/Uro Ban",
+        "Pre-MH2 Release",
+        "Pre-Lurrus Ban",
         "Pre-Yorion Ban",
         "Pre-Preordain Unban",
         "Pre-Fury/Bean Ban",
@@ -461,6 +465,10 @@ with tab3:
 # ─────────────────────────────────────────
 
 ERA_ORDER = [
+    "Pre-Astrolabe Ban",
+    "Pre-Field/Uro Ban",
+    "Pre-MH2 Release",
+    "Pre-Lurrus Ban",
     "Pre-Yorion Ban",
     "Pre-Preordain Unban",
     "Pre-Fury/Bean Ban",
@@ -886,23 +894,33 @@ with tab6:
         color_col = "deck_slot"
         color_map = {"Maindeck": "#1f77b4", "Sideboard": "#d62728"}
 
+    # Assign color values explicitly so the discrete map always matches
+    if color_mode == "Card type":
+        plot_df["_color"] = plot_df["card_type"]
+    else:
+        plot_df["_color"] = plot_df["deck_slot"]
+
     fig = px.scatter(
         plot_df,
         x="Dim1",
         y="Dim2",
         text="species",
         hover_name="species",
-        hover_data={"card_type": True, "deck_slot": True, "Dim1": False, "Dim2": False},
-        color=color_col,
+        hover_data={"card_type": True, "deck_slot": True, "Dim1": False, "Dim2": False,
+                    "_color": False},
+        color="_color",
         color_discrete_map=color_map,
+        category_orders={"_color": list(color_map.keys())},
     )
     fig.update_traces(mode="markers+text", textposition="top center", marker=dict(size=8))
+    # Rename legend title from "_color" to the actual label
     fig.update_layout(
         title="Interactive Species Ordination",
         xaxis_title="Dim 1",
         yaxis_title="Dim 2",
         template="simple_white",
-        height=1000
+        height=1000,
+        legend_title_text="Card Type" if color_mode == "Card type" else "Deck Slot",
     )
     st.plotly_chart(fig, use_container_width=True)
 

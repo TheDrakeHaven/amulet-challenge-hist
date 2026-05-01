@@ -370,7 +370,7 @@ with st.spinner("Processing main deck sheet…"):
 
     amulet_df = amulet_df.drop_duplicates(keep="first")
 
-    meta_cols = [c for c in ["Name", "Place", "Date"] if c in amulet_df.columns]
+    meta_cols = [c for c in ["Name", "Place", "Date","Maindeck_Total","Sideboard_Total"] if c in amulet_df.columns]
     card_cols = [c for c in amulet_df.columns if c not in meta_cols]
 
     for col in card_cols:

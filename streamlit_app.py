@@ -116,6 +116,7 @@ def assign_ban_era(d, events_df):
 # ─────────────────────────────────────────
 
 lands = [
+    # Original
     "Academy Ruins","Bojuka Bog","Boros Garrison","Boseiju, Who Endures","Breeding Pool",
     "Castle Garenbrig","Cavern of Souls","Cephalid Coliseum","Commercial District",
     "Crumbling Vestige","Dryad Arbor","Echoing Deeps","Forest","Gemstone Caverns",
@@ -127,10 +128,18 @@ lands = [
     "Sunken Citadel","Takenuma, Abandoned Mire","Temple Garden","The Mycosynth Gardens",
     "Tolaria West","Urzas Cave","Urzas Saga","Valakut, the Molten Pinnacle","Vesuva",
     "Waterlogged Grove","Hall of Storm Giants","Kabira Crossroads","Ketria Triome",
-    "Kher Keep","Misty Rainforest","Plains","Port of Karfell","Skyline Cascade"
+    "Kher Keep","Misty Rainforest","Plains","Port of Karfell","Skyline Cascade",
+    # New from merged_amulet
+    "Dimir Aqueduct","Field of the Dead","Flagstones of Trokair","Gemstone Mine",
+    "Grove of the Burnwillows","Hallowed Fountain","Lair of the Hydra","Mortuary Mire",
+    "Northampton Farm","Overgrown Arch","Pit of Offerings","Prismatic Vista",
+    "Sacred Foundry","Slayers' Stronghold","Snow-Covered Plains","Tectonic Edge",
+    "Treasure Vault","Urza's Cave","Urza's Saga","Verdant Catacombs",
+    "Windswept Heath","Wooded Foothills","Yavimaya, Cradle of Growth","Zagoth Triome",
 ]
-
+ 
 creatures = [
+    # Original
     "Aftermath Analyst","Arboreal Grazer","Azusa, Lost but Seeking","Badgermole Cub",
     "Bonny Pall, Clearcutter","Cultivator Colossus","Dryad of the Ilysian Grove",
     "Elesh Norn, Mother of Machines","Famished Worldsire","Fecund Greenshell",
@@ -151,10 +160,24 @@ creatures = [
     "Thief of Existence","Thornscape Battlemage","Tireless Tracker",
     "Trumpeting Carnosaur",
     "Volatile Stormdrake","Walking Ballista","Wurmcoil Engine",
-    "Yasharn, Implacable Earth"
+    "Yasharn, Implacable Earth",
+    # New from merged_amulet
+    "Anointed Peacekeeper","Arasta of the Endless Web","Aven Mindcensor",
+    "Beanstalk Giant","Brazen Borrower","Bristly Bill, Spine Sower",
+    "Chameleon Colossus","Courser of Kruphix","Dragonlord Atarka","Drannith Magistrate",
+    "Elvish Rejuvenator","Esika's Chariot","Fierce Empath","Golos, Tireless Pilgrim",
+    "Hornet Queen","Jace, the Mind Sculptor","Kazandu Mammoth","Keen-Eyed Curator",
+    "Klothys, God of Destiny","Linvala, Keeper of Silence","Lodestone Golem",
+    "Mindslaver","Nadu, Winged Wisdom","Nullhide Ferox","Obstinate Baloth",
+    "Oracle of Mul Daya","Oran-Rief Hydra","Orvar, the All-Form","Plague Engineer",
+    "Ramunap Excavator","Ruric Thar, the Unbowed","Simian Spirit Guide","Spellskite",
+    "Springbloom Druid","Sundering Titan","Surrak Dragonclaw","Tarmogoyf",
+    "Titan of Industry","Torpor Orb","Tyrranax Rex","Ulamog, the Infinite Gyre",
+    "Uro, Titan of Nature's Wrath","Woodland Bellower","World Breaker","Wrenn and Seven",
 ]
-
+ 
 spells = [
+    # Original
     "Amulet of Vigor","Ancient Stirrings","Bridgeworks Battle","Dismember","Expedition Map",
     "Explore","Fetchland","Green Suns Twilight","Green Suns Zenith","Insidious Fungus",
     "Pact of Negation","Preordain","Relic of Progenitus","Scapeshift","Shadowspear",
@@ -174,7 +197,23 @@ spells = [
     "Tormods Crypt","Trinisphere","Turn the Earth","Unlicensed Hearse","Vampires Vengeance",
     "Veil of Summer","Void Mirror","Worldsouls Rage","Karn, the Great Creator","Malevolent Rumble",
     "Grist, the Hunger Tide","Skysovereign, Consul Flagship","Ugin, the Spirit Dragon",
-    "Unidentified Hovership","Wrenn and Six","Yggdrasil, Rebirth Engine"
+    "Unidentified Hovership","Wrenn and Six","Yggdrasil, Rebirth Engine",
+    # New from merged_amulet
+    "Abrade","Abrupt Decay","Abundant Harvest","Adventurous Impulse","Aether Gust",
+    "Avoid Fate","Basic Conjuration","Batterskull","Broken Wings","Cartographer's Survey",
+    "Celestial Purge","Chromatic Sphere","Containment Breach","Crucible of Worlds",
+    "Damping Matrix","Dead // Gone","Deicide","Eladamri's Call","Elixir of Immortality",
+    "Environmental Sciences","Feldon's Cane","Field Trip","Finale of Devastation",
+    "Gaea's Blessing","Grafdigger's Cage","Green Sun's Twilight","Green Sun's Zenith",
+    "Gut Shot","Guttural Response","Hallowed Moonlight","Hibernation",
+    "Introduction to Annihilation","Journey of Discovery","Lightning Bolt",
+    "Mascot Exhibition","Mystic Reflection","Mystic Repeal","Nature's Claim","Negate",
+    "Path to Exile","Pest Summoning","Primal Command","Prismatic Ending",
+    "Rapid Hybridization","Rest in Peace","Run Afoul","Shuko","Storm's Wrath",
+    "Sudden Shock","Summoner's Pact","Summoning Trap","Sylvan Scrying",
+    "Tamiyo's Safekeeping","Thorn of Amethyst","Thoughtseize","Through the Breach",
+    "Timely Reinforcements","Tormod's Crypt","Unravel the Aether","Vampires' Vengeance",
+    "Warping Wail","Weather the Storm","Wilt","Worldsoul's Rage",
 ]
 
 # Normalise to lowercase for matching (strip SB suffix before lookup)

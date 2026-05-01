@@ -110,7 +110,7 @@ ban_events = pd.DataFrame({
     "date": pd.to_datetime([
         # 2017–2019
         "2017-04-24",  # Probe + GGT ban (Apr 2017 B&R)
-        "2017-06-14", 
+        "2019-06-14", 
         "2019-08-26",  # Hogaak ban
         "2020-01-13",  # Opal + Oko ban
 

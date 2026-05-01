@@ -178,6 +178,12 @@ lands = [
     "Sacred Foundry","Slayers' Stronghold","Snow-Covered Plains","Tectonic Edge",
     "Treasure Vault","Urza's Cave","Urza's Saga","Verdant Catacombs",
     "Windswept Heath","Wooded Foothills","Yavimaya, Cradle of Growth","Zagoth Triome",
+
+    # New from 2016-2020 era
+    "Aether Hub",
+    "Botanical Sanctum",
+    "Razorverge Thicket",
+    "Temple of Mystery",
 ]
  
 creatures = [
@@ -216,6 +222,19 @@ creatures = [
     "Springbloom Druid","Sundering Titan","Surrak Dragonclaw","Tarmogoyf",
     "Titan of Industry","Torpor Orb","Tyrranax Rex","Ulamog, the Infinite Gyre",
     "Uro, Titan of Nature's Wrath","Woodland Bellower","World Breaker",
+
+    # New from 2016-2020 era
+    "Hornet Nest",
+    "Manglehorn",
+    "Melira, Sylvok Outcast",
+    "Oko, Thief of Crowns",
+    "Sigarda, Heron's Grace",
+    "Sigarda, Host of Herons",
+    "Skyshroud Ranger",
+    "Trinket Mage",
+    "Wargate",
+    "Wayward Swordtooth",
+    "Zacama, Primal Calamity",
 ]
  
 spells = [
@@ -256,6 +275,24 @@ spells = [
     "Tamiyo's Safekeeping","Thorn of Amethyst","Thoughtseize","Through the Breach",
     "Timely Reinforcements","Tormod's Crypt","Unravel the Aether","Vampires' Vengeance",
     "Warping Wail","Weather the Storm","Wilt","Worldsoul's Rage",
+
+    # New from 2016-2020 era
+    "Ancient Grudge",
+    "Coalition Relic",
+    "Disdainful Stroke",
+    "Dissenter's Deliverance",
+    "Hive Mind",
+    "Hurkyl's Recall",
+    "Kozilek's Return",
+    "Leyline of Sanctity",
+    "Leyline of the Void",
+    "Lotus Bloom",
+    "Mycosynth Lattice",
+    "Once Upon a Time",
+    "Ravenous Trap",
+    "Serum Visions",
+    "Slaughter Pact",
+    "Stony Silence",
 ]
 
 # Normalise to lowercase for matching (strip SB suffix before lookup)

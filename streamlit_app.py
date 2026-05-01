@@ -173,7 +173,7 @@ creatures = [
     "Ramunap Excavator","Ruric Thar, the Unbowed","Simian Spirit Guide","Spellskite",
     "Springbloom Druid","Sundering Titan","Surrak Dragonclaw","Tarmogoyf",
     "Titan of Industry","Torpor Orb","Tyrranax Rex","Ulamog, the Infinite Gyre",
-    "Uro, Titan of Nature's Wrath","Woodland Bellower","World Breaker","Wrenn and Seven",
+    "Uro, Titan of Nature's Wrath","Woodland Bellower","World Breaker",
 ]
  
 spells = [
@@ -197,7 +197,7 @@ spells = [
     "Tormods Crypt","Trinisphere","Turn the Earth","Unlicensed Hearse","Vampires Vengeance",
     "Veil of Summer","Void Mirror","Worldsouls Rage","Karn, the Great Creator","Malevolent Rumble",
     "Grist, the Hunger Tide","Skysovereign, Consul Flagship","Ugin, the Spirit Dragon",
-    "Unidentified Hovership","Wrenn and Six","Yggdrasil, Rebirth Engine",
+    "Unidentified Hovership","Wrenn and Six","Wrenn and Seven","Yggdrasil, Rebirth Engine",
     # New from merged_amulet
     "Abrade","Abrupt Decay","Abundant Harvest","Adventurous Impulse","Aether Gust",
     "Avoid Fate","Basic Conjuration","Batterskull","Broken Wings","Cartographer's Survey",

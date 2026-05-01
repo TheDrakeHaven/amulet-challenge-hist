@@ -241,7 +241,7 @@ def sort_by_type(df, card_col):
     type_order = {"Creature": 0, "Spell": 1, "Land": 2, "Sideboard": 3, "Unknown": 4}
     df = df.copy()
     df["_type"] = df[card_col].apply(
-        lambda s: "Sideboard" if "(SB)" in str(s) else get_card_type(s)
+        lambda s: "Sideboard" if str(s).startswith("sb_") or "(SB)" in str(s) else get_card_type(s)
     )
     df["_type_order"] = df["_type"].map(type_order).fillna(4)
     df = df.sort_values(["_type_order", card_col]).drop(columns=["_type", "_type_order"])
@@ -937,8 +937,8 @@ with tab6:
 
     # ── Filters ──────────────────────────────────────────────────────────
     all_species = species_scores.index.tolist()
-    sb_species  = [s for s in all_species if "(SB)" in str(s)]
-    mb_species  = [s for s in all_species if "(SB)" not in str(s)]
+    sb_species  = [s for s in all_species if str(s).startswith("sb_") or "(SB)" in str(s)]
+    mb_species  = [s for s in all_species if not str(s).startswith("sb_") and "(SB)" not in str(s)]
 
     filter_col1, filter_col2 = st.columns(2)
     with filter_col1:
@@ -967,7 +967,7 @@ with tab6:
     plot_df.columns = ["species", "Dim1", "Dim2"]
     plot_df["card_type"] = plot_df["species"].apply(get_card_type)
     plot_df["deck_slot"] = plot_df["species"].apply(
-        lambda s: "Sideboard" if "(SB)" in str(s) else "Maindeck"
+        lambda s: "Sideboard" if str(s).startswith("sb_") or "(SB)" in str(s) else "Maindeck"
     )
 
     if color_mode == "Card type":

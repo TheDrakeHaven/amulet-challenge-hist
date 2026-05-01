@@ -349,23 +349,12 @@ def render_decklist_html(
 # FILE UPLOAD
 # ─────────────────────────────────────────
 
-file_path = "amulet_chal.xlsx"
-
-df = pd.read_excel(file_path, sheet_name="Sheet1")
-
-output = BytesIO()
-with pd.ExcelWriter(output, engine="openpyxl") as writer:
-    df.to_excel(writer, index=False, sheet_name="Sheet1")
-
-file_bytes = output.getvalue()
-
 # ─────────────────────────────────────────
 # LOAD MAIN SHEET
 # ─────────────────────────────────────────
 
 with st.spinner("Processing main deck sheet…"):
-    xl = pd.ExcelFile(BytesIO(file_bytes))
-    amulet_df = xl.parse(0)
+    amulet_df = pd.read_csv("amulet_chal.xlsx")
 
     amulet_df = amulet_df.drop_duplicates(keep="first")
 
@@ -468,7 +457,7 @@ with tab3:
     st.plotly_chart(fig_heat, use_container_width=True)
 
 # ─────────────────────────────────────────
-# CCA SCORES — loaded from repository file
+# CCA COMPUTATION
 # ─────────────────────────────────────────
 
 ERA_ORDER = [
@@ -484,53 +473,72 @@ ERA_ORDER = [
 ]
 
 
-def load_cca_scores():
-    """Load pre-computed CCA scores from cca_scores.xlsx in the repository."""
-    with st.spinner("Loading CCA scores…"):
-        cca_file = "cca_scores.xlsx"
-        xl = pd.ExcelFile(cca_file)
+def run_cca_computation():
+    """Run Correspondence Analysis via prince.CA and store results in session_state."""
+    with st.spinner("Running Correspondence Analysis…"):
+        try:
+            # ── Fit CA on the filtered card matrix (cards appearing > 12 times) ──
+            ca = prince.CA(n_components=2, random_state=42)
+            ca = ca.fit(amulet_filtered)
 
-        # ── Site scores ───────────────────────────────────────────────────
-        ord_data = xl.parse("CCA_Site_Scores")
-        if "Date" in ord_data.columns:
-            ord_data["Date"] = pd.to_datetime(ord_data["Date"], errors="coerce").dt.strftime("%m-%d-%Y")
+            # ── Site scores (one row per deck) ────────────────────────────
+            site_coords = ca.row_coordinates(amulet_filtered)
+            site_coords.columns = ["CA1", "CA2"]
+            site_coords = site_coords.reset_index(drop=True)
 
-        # Merge Place from amulet_comb if not present in file
-        if "Place" not in ord_data.columns and "Place" in amulet_comb.columns:
-            place_lookup = amulet_comb[["Name", "Date", "Place"]].drop_duplicates()
-            ord_data = ord_data.merge(place_lookup, on=["Name", "Date"], how="left")
+            # Attach metadata
+            ord_data = pd.concat(
+                [amulet_env.drop(columns=["row_number"], errors="ignore").reset_index(drop=True),
+                 site_coords],
+                axis=1
+            )
+            if "Date" in ord_data.columns:
+                ord_data["Date"] = pd.to_datetime(
+                    ord_data["Date"], errors="coerce"
+                ).dt.strftime("%m-%d-%Y")
 
-        # ── Species scores ────────────────────────────────────────────────
-        species_scores = xl.parse("CCA_Species_Scores")
-        if "card" not in species_scores.columns:
-            species_scores = species_scores.rename(columns={species_scores.columns[0]: "card"})
+            # ── Species scores (one row per card) ─────────────────────────
+            col_coords = ca.column_coordinates(amulet_filtered)
+            col_coords.columns = ["CA1", "CA2"]
+            col_coords = col_coords.reset_index()
+            col_coords.rename(columns={col_coords.columns[0]: "card"}, inplace=True)
 
-        # ── Environmental centroids (weighted averages of site scores) ────
-        env_centroids = {}
-        for env_var in ["next_ban", "current_set"]:
-            if env_var in ord_data.columns:
-                centroids = (
-                    ord_data.groupby(env_var)[["CA1", "CA2"]]
-                    .mean()
-                    .reset_index()
-                    .rename(columns={env_var: "label"})
-                )
-                env_centroids[env_var] = centroids
+            # ── Environmental centroids ───────────────────────────────────
+            env_centroids = {}
+            for env_var in ["next_ban", "current_set"]:
+                if env_var in ord_data.columns:
+                    centroids = (
+                        ord_data.groupby(env_var)[["CA1", "CA2"]]
+                        .mean()
+                        .reset_index()
+                        .rename(columns={env_var: "label"})
+                    )
+                    env_centroids[env_var] = centroids
 
-        st.session_state["cca_result"]        = ord_data
-        st.session_state["cca_species"]       = species_scores
-        st.session_state["cca_env_centroids"] = env_centroids
-        st.session_state["cca_eigenvalues"]   = None  # not stored in file
-        st.session_state["cca_total_inertia"] = None
+            # ── Eigenvalues / inertia ─────────────────────────────────────
+            eigenvalues   = ca.eigenvalues_
+            total_inertia = float(eigenvalues.sum()) if eigenvalues is not None else None
 
-        # ── Provide the file itself as the download ───────────────────────
-        with open(cca_file, "rb") as f:
-            st.session_state["cca_excel"] = f.read()
+            st.session_state["cca_result"]        = ord_data
+            st.session_state["cca_species"]       = col_coords
+            st.session_state["cca_env_centroids"] = env_centroids
+            st.session_state["cca_eigenvalues"]   = eigenvalues
+            st.session_state["cca_total_inertia"] = total_inertia
+
+            # ── Export to Excel for download ──────────────────────────────
+            excel_buf = BytesIO()
+            with pd.ExcelWriter(excel_buf, engine="openpyxl") as writer:
+                ord_data.to_excel(writer, sheet_name="CCA_Site_Scores",    index=False)
+                col_coords.to_excel(writer, sheet_name="CCA_Species_Scores", index=False)
+            st.session_state["cca_excel"] = excel_buf.getvalue()
+
+        except Exception as e:
+            st.error(f"CCA computation failed: {e}")
 
 
-# ── Load CCA scores on app start ──────────
+# ── Run CCA on app start ───────────────────
 if "cca_result" not in st.session_state:
-    load_cca_scores()
+    run_cca_computation()
 # ── Tab 4: CCA – Era & Set ────────────────
 with tab4:
     st.subheader("CCA Ordination – Era & Set")

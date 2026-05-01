@@ -354,7 +354,7 @@ def render_decklist_html(
 # ─────────────────────────────────────────
 
 with st.spinner("Processing main deck sheet…"):
-    amulet_df = pd.read_csv("amulet_chal.xlsx")
+    amulet_df = pd.read_csv("merged_amulet.csv")
 
     amulet_df = amulet_df.drop_duplicates(keep="first")
 

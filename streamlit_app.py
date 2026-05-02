@@ -2076,13 +2076,6 @@ with tab8:
         "**Stress** (Kruskal's normalized stress) measures ordination quality."
     )
 
-    # ── Resolve data: uploaded file → session state → nothing ────────────
-    uploaded_nmds = st.file_uploader(
-        "Upload pre-computed NMDS results (.xlsx) to skip re-computation",
-        type=["xlsx"],
-        key="nmds_upload",
-    )
-
     GITHUB_NMDS_URL = (
         "https://raw.githubusercontent.com/"
         "TheDrakeHaven/amulet-challenge-hist/main/nmds_results.xlsx"
@@ -2238,44 +2231,7 @@ with tab8:
 
         fig_nmds.update_layout(height=800)
         st.plotly_chart(fig_nmds, use_container_width=True)
-
-        # ── Download ──────────────────────────────────────────────────────
-        with st.expander("⬇️ Download NMDS Data"):
-            dl1, dl2, dl3 = st.columns(3)
-            with dl1:
-                st.markdown("**Site Scores** (deck coordinates)")
-                st.download_button(
-                    "Download site scores (.csv)",
-                    data=ord_nmds.to_csv(index=False).encode("utf-8"),
-                    file_name="nmds_site_scores.csv",
-                    mime="text/csv",
-                    key="dl_nmds_sites",
-                )
-            with dl2:
-                st.markdown("**Card WA Scores** (species scores)")
-                st.download_button(
-                    "Download card scores (.csv)",
-                    data=species_nmds.to_csv(index=False).encode("utf-8"),
-                    file_name="nmds_card_scores.csv",
-                    mime="text/csv",
-                    key="dl_nmds_species",
-                )
-            with dl3:
-                st.markdown("**Combined (.xlsx)** — reupload to skip re-computation")
-                buf = BytesIO()
-                with pd.ExcelWriter(buf, engine="openpyxl") as writer:
-                    ord_nmds.to_excel(writer, sheet_name="Site_Scores", index=False)
-                    species_nmds.to_excel(writer, sheet_name="Card_WA_Scores", index=False)
-                    pd.DataFrame({"stress": [stress_nmds]}).to_excel(
-                        writer, sheet_name="Metadata", index=False)
-                st.download_button(
-                    "Download combined (.xlsx)",
-                    data=buf.getvalue(),
-                    file_name="nmds_results.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key="dl_nmds_excel",
-                )
-
+        
         # ── Stressplot (only when bc_dist available) ──────────────────────
         if bc_dist is not None:
             with st.expander("🔍 Stressplot — rank-order preservation check"):

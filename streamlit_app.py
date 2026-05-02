@@ -2077,14 +2077,6 @@ with tab8:
         "dissimilarities — axes have no absolute meaning, only relative positions matter. "
         "**Stress** (Kruskal's normalized stress) measures ordination quality."
     )
-
-    # ── Resolve data: uploaded file → session state → nothing ────────────
-    uploaded_nmds = st.file_uploader(
-        "Upload pre-computed NMDS results (.xlsx) to skip re-computation",
-        type=["xlsx"],
-        key="nmds_upload",
-    )
-
     GITHUB_NMDS_URL = (
         "https://raw.githubusercontent.com/"
         "TheDrakeHaven/amulet-challenge-hist/main/nmds_results.xlsx"
@@ -2109,17 +2101,7 @@ with tab8:
                 )
         return od, sp, st_val, cents
 
-    if uploaded_nmds is not None:
-        # 1. User-uploaded file takes top priority
-        try:
-            ord_nmds, species_nmds, stress_nmds, centroids_nmds = _load_nmds_excel(uploaded_nmds)
-            bc_dist = None
-            st.success(f"✅ Loaded {len(ord_nmds):,} site scores from uploaded file.")
-        except Exception as e:
-            st.error(f"Failed to load uploaded NMDS file: {e}")
-            ord_nmds = None
-
-    elif "nmds_github" in st.session_state:
+    if "nmds_github" in st.session_state:
         # 2. Already fetched from GitHub this session (cached to avoid re-fetching)
         ord_nmds       = st.session_state["nmds_github"]["ord"]
         species_nmds   = st.session_state["nmds_github"]["species"]

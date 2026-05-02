@@ -1207,7 +1207,7 @@ def render_decklist_html(
 # ─────────────────────────────────────────
 
 with st.spinner("Processing main deck sheet…"):
-    amulet_df = pd.read_csv("amulet_chal.csv")
+    amulet_df = pd.read_csv("merged_amulet.csv")
 
     amulet_df = amulet_df.drop_duplicates(keep="first")
     amulet_df = amulet_df.drop(columns=["Maindeck_Total", "Sideboard_Total"], errors="ignore")
@@ -1234,6 +1234,14 @@ with st.spinner("Processing main deck sheet…"):
          amulet_int.reset_index(drop=True)],
         axis=1
     )
+
+_date_min = pd.to_datetime(amulet_env["Date"], errors="coerce").min()
+_date_max = pd.to_datetime(amulet_env["Date"], errors="coerce").max()
+st.caption(
+    f"📊 {len(amulet_df):,} decklists · "
+    f"{_date_min.strftime('%b %Y')} → {_date_max.strftime('%b %Y')} · "
+    f"{amulet_env['next_ban'].nunique()} eras"
+)
 
 numeric = amulet_int.select_dtypes(include="number")
 col_sums = numeric.sum()

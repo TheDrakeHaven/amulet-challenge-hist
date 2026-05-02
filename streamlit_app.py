@@ -2100,16 +2100,6 @@ with tab8:
                 )
         return od, sp, st_val, cents
 
-    if uploaded_nmds is not None:
-        # 1. User-uploaded file takes top priority
-        try:
-            ord_nmds, species_nmds, stress_nmds, centroids_nmds = _load_nmds_excel(uploaded_nmds)
-            bc_dist = None
-            st.success(f"✅ Loaded {len(ord_nmds):,} site scores from uploaded file.")
-        except Exception as e:
-            st.error(f"Failed to load uploaded NMDS file: {e}")
-            ord_nmds = None
-
     elif "nmds_github" in st.session_state:
         # 2. Already fetched from GitHub this session (cached to avoid re-fetching)
         ord_nmds       = st.session_state["nmds_github"]["ord"]

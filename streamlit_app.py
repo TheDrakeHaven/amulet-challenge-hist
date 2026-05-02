@@ -2071,6 +2071,57 @@ with tab7:
 # ── Tab 8: NMDS – Ecological Distance ────
 with tab8:
     st.subheader("NMDS – Ecological Distance (Bray-Curtis)")
+
+    # ── Load from file OR use computed results ────────────────────────────
+    uploaded_nmds = st.file_uploader(
+        "Load pre-computed NMDS results (.xlsx from a previous run)",
+        type=["xlsx"],
+        key="nmds_upload",
+    )
+
+    if uploaded_nmds is not None:
+        # Load from the uploaded Excel instead of computing
+        try:
+            xls = pd.ExcelFile(uploaded_nmds)
+            ord_nmds       = pd.read_excel(xls, sheet_name="Site_Scores")
+            species_nmds   = pd.read_excel(xls, sheet_name="Card_WA_Scores")
+            stress_nmds    = None   # not stored in the file
+            bc_dist        = None   # not stored in the file
+            centroids_nmds = {}
+            for env_var in ["current_era", "current_set"]:
+                if env_var in ord_nmds.columns:
+                    centroids_nmds[env_var] = (
+                        ord_nmds.groupby(env_var)[["NMDS1", "NMDS2"]]
+                        .mean().reset_index()
+                        .rename(columns={env_var: "label"})
+                    )
+            st.success(f"✅ Loaded {len(ord_nmds)} site scores from uploaded file.")
+        except Exception as e:
+            st.error(f"Failed to load NMDS file: {e}")
+            ord_nmds = None
+
+    elif "nmds_result" in st.session_state:
+        # Use the computed results
+        ord_nmds       = st.session_state["nmds_result"]
+        species_nmds   = st.session_state["nmds_species"]
+        centroids_nmds = st.session_state["nmds_env_centroids"]
+        stress_nmds    = st.session_state["nmds_stress"]
+        bc_dist        = st.session_state["nmds_dist"]
+    else:
+        ord_nmds = None
+
+    if ord_nmds is not None:
+        # ... rest of your existing tab8 display code ...
+        # Note: guard the stress metric and stressplot since they're None when loaded from file
+        if stress_nmds is not None:
+            m1.metric("NMDS Stress", f"{stress_nmds:.4f}")
+        else:
+            m1.metric("NMDS Stress", "N/A (loaded from file)")
+
+        # Guard the stressplot expander too:
+        if bc_dist is not None:
+            with st.expander("🔍 Stressplot"):
+                # ... stressplot code ...
     st.markdown(
         "**Non-metric Multidimensional Scaling** on Bray-Curtis dissimilarity. "
         "Unlike PCA/PCoA, NMDS preserves only the **rank order** of pairwise "

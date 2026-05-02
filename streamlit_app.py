@@ -1556,11 +1556,9 @@ def run_nmds_computation():
 
         except Exception as e:
             st.error(f"NMDS computation failed: {e}")
-# ── Run CCA on app start ───────────────────
+# ── Run PCA on app start (fast — no NMDS here, tab 8 handles it lazily) ──
 if "cca_result" not in st.session_state:
     run_pca_computation()
-if "nmds_result" not in st.session_state:
-    run_nmds_computation()
 # ── Tab 4: CCA – Era & Set ────────────────
 with tab4:
     st.subheader("PCA Ordination – Era & Set")
@@ -2119,8 +2117,16 @@ with tab8:
             st.error(f"Failed to load uploaded NMDS file: {e}")
             ord_nmds = None
 
+    elif "nmds_github" in st.session_state:
+        # 2. Already fetched from GitHub this session (cached to avoid re-fetching)
+        ord_nmds       = st.session_state["nmds_github"]["ord"]
+        species_nmds   = st.session_state["nmds_github"]["species"]
+        centroids_nmds = st.session_state["nmds_github"]["centroids"]
+        stress_nmds    = st.session_state["nmds_github"]["stress"]
+        bc_dist        = None
+
     elif "nmds_result" in st.session_state:
-        # 2. Already computed this session
+        # 3. Already computed this session
         ord_nmds       = st.session_state["nmds_result"]
         species_nmds   = st.session_state["nmds_species"]
         centroids_nmds = st.session_state["nmds_env_centroids"]
@@ -2128,19 +2134,25 @@ with tab8:
         bc_dist        = st.session_state["nmds_dist"]
 
     else:
-        # 3. Try loading from GitHub repo
+        # 4. Try loading from GitHub repo
         try:
-            import requests
-            resp = requests.get(GITHUB_NMDS_URL, timeout=15)
+            import requests as _requests
+            resp = _requests.get(GITHUB_NMDS_URL, timeout=15)
             resp.raise_for_status()
             from io import BytesIO as _BytesIO
-            ord_nmds, species_nmds, stress_nmds, centroids_nmds = _load_nmds_excel(
-                _BytesIO(resp.content)
-            )
+            od, sp, st_val, cents = _load_nmds_excel(_BytesIO(resp.content))
+            # Cache in session_state so reruns don't re-fetch
+            st.session_state["nmds_github"] = {
+                "ord": od, "species": sp, "stress": st_val, "centroids": cents
+            }
+            ord_nmds, species_nmds, stress_nmds, centroids_nmds = od, sp, st_val, cents
             bc_dist = None
             st.info(f"📥 Loaded {len(ord_nmds):,} pre-computed NMDS scores from GitHub.")
         except Exception as e:
-            st.warning(f"Could not load NMDS from GitHub ({e}). Running computation…")
+            st.warning(
+                f"⚠️ Could not load `nmds_results.xlsx` from GitHub: {e}  \n"
+                "Make sure the file has been committed to the repo. Running NMDS now…"
+            )
             run_nmds_computation()
             if "nmds_result" in st.session_state:
                 ord_nmds       = st.session_state["nmds_result"]

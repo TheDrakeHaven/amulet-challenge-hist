@@ -157,7 +157,10 @@ ban_events = pd.DataFrame({
 
 def assign_current_set(d):
     """Return the most recent set released on or before date d."""
-    valid = modern_sets[modern_sets["release_date"] <= d]
+    ts = pd.to_datetime(d, errors="coerce")
+    if pd.isna(ts):
+        return "Unknown"
+    valid = modern_sets[modern_sets["release_date"] <= ts]
     if valid.empty:
         return "Unknown"
     return valid.iloc[-1]["set"]
@@ -165,7 +168,10 @@ def assign_current_set(d):
 
 def assign_ban_era(d, events_df):
     """findInterval equivalent: return the era label for date d."""
-    idx = (events_df["date"] <= d).sum()
+    ts = pd.to_datetime(d, errors="coerce")
+    if pd.isna(ts):
+        return events_df.iloc[0]["event"]
+    idx = (events_df["date"] <= ts).sum()
     if idx >= len(events_df):
         idx = len(events_df) - 1
     return events_df.iloc[idx]["event"]

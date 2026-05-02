@@ -1541,7 +1541,7 @@ def run_nmds_computation():
 
             # Environmental centroids
             env_centroids = {}
-            for env_var in ["current_era", "current_set"]:
+            for env_var in ["next_era", "current_set"]:
                 if env_var in ord_data.columns:
                     env_centroids[env_var] = (
                         ord_data.groupby(env_var)[["NMDS1", "NMDS2"]]
@@ -2103,14 +2103,14 @@ with tab8:
         ctrl1, ctrl2 = st.columns(2)
         with ctrl1:
             color_by_nmds = st.selectbox(
-                "Color sites by:", ["current_era", "current_set"], key="nmds_color")
+                "Color sites by:", ["next_era", "current_set"], key="nmds_color")
         with ctrl2:
             show_centroids_nmds = st.checkbox(
                 "Show centroids", value=True, key="nmds_centroids")
         show_species_nmds = st.checkbox(
             "Show top card vectors (WA biplot)", value=False, key="nmds_species_chk")
 
-        hover_nmds = [c for c in ["Name", "Date", "current_era", "current_set"]
+        hover_nmds = [c for c in ["Name", "Date", "next_era", "current_set"]
                       if c in ord_nmds.columns]
         plot_nmds = ord_nmds.copy()
         plot_nmds[color_by_nmds] = (
@@ -2188,7 +2188,7 @@ with tab8:
         st.markdown("#### 🃏 Outlier Decklists By Era (NMDS)")
         nv = ord_nmds[["NMDS1", "NMDS2"]].values
         for era in ERA_ORDER:
-            era_idx = ord_nmds.index[ord_nmds["current_era"] == era].tolist()
+            era_idx = ord_nmds.index[ord_nmds["next_era"] == era].tolist()
             if len(era_idx) < 2:
                 continue
             era_coords = nv[era_idx]
@@ -2218,7 +2218,7 @@ with tab8:
                 card_cols_d = [c for c in amulet_int.columns if c in deck_row.index]
                 decklist    = pd.Series({c: deck_row[c] for c in card_cols_d}).astype(int)
                 decklist    = decklist[decklist > 0].sort_values(ascending=False)
-                era_rows    = amulet_comb[amulet_comb["current_era"] == era]
+                era_rows    = amulet_comb[amulet_comb["next_era"] == era]
                 era_cards   = era_rows[[c for c in amulet_int.columns if c in era_rows.columns]]
                 median_deck = era_cards.median().round(2)
                 median_deck = median_deck[median_deck > 0].sort_values(ascending=False)

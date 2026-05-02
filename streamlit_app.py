@@ -10,6 +10,8 @@ import re
 from io import BytesIO
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+from sklearn.manifold import MDS
+from scipy.spatial.distance import cdist
 
 st.set_page_config(page_title="Amulet Challenge Analysis", layout="wide")
 st.title("🪬 Amulet Challenge Analysis")
@@ -1257,13 +1259,14 @@ amulet_filtered = amulet_int[keep_cols]
 # TABS
 # ─────────────────────────────────────────
 
-tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "🃏 Deck Data",
     "📈 Median by Era",
     "🗺️ PCA – Era & Set",
     "🎴 PCA – Card Inclusion",
     "🃏 Card Similarity (PCA)",
-    "🔍 Era-Specific Cards"
+    "🔍 Era-Specific Cards",
+    "🌐 PCoA – Ecological Distance"
 ])
 
 # ── Tab 2: Deck Data ─────────────────────
@@ -1490,9 +1493,79 @@ def run_pca_computation():
 
         except Exception as e:
             st.error(f"PCA computation failed: {e}")
+def run_pcoa_computation():
+    """Run PCoA (classical MDS on Bray-Curtis dissimilarity) and store in session_state."""
+    with st.spinner("Running PCoA (Bray-Curtis + metric MDS)…"):
+        try:
+            X = amulet_filtered.values.astype(float)
+
+            # ── Bray-Curtis dissimilarity ─────────────────────────────────
+            # BC(i,j) = sum|x_ik - x_jk| / sum(x_ik + x_jk)
+            bc_dist = cdist(X, X, metric="braycurtis")
+
+            # ── Classical metric MDS (= PCoA) ─────────────────────────────
+            mds = MDS(
+                n_components=2,
+                metric=True,
+                dissimilarity="precomputed",
+                random_state=42,
+                n_init=1,
+                max_iter=500,
+                normalized_stress=False,
+            )
+            coords = mds.fit_transform(bc_dist)
+            stress = float(mds.stress_)
+
+            site_coords = pd.DataFrame(coords, columns=["PCo1", "PCo2"])
+            ord_data = pd.concat(
+                [amulet_env.drop(columns=["row_number"], errors="ignore").reset_index(drop=True),
+                 site_coords],
+                axis=1
+            )
+            if "Date" in ord_data.columns:
+                ord_data["Date"] = pd.to_datetime(
+                    ord_data["Date"], errors="coerce"
+                ).dt.strftime("%m-%d-%Y")
+
+            # ── Species scores via weighted average (WA biplot) ───────────
+            # wa_k = sum_i(x_ik * PCo_j_i) / sum_i(x_ik)
+            col_totals = X.sum(axis=0)
+            col_totals[col_totals == 0] = 1  # avoid division by zero
+            wa1 = (X * coords[:, 0:1]).sum(axis=0) / col_totals
+            wa2 = (X * coords[:, 1:2]).sum(axis=0) / col_totals
+            species = pd.DataFrame({
+                "card": amulet_filtered.columns,
+                "PCo1": wa1,
+                "PCo2": wa2,
+            })
+
+            # ── Environmental centroids ───────────────────────────────────
+            env_centroids = {}
+            for env_var in ["current_era", "current_set"]:
+                if env_var in ord_data.columns:
+                    centroids = (
+                        ord_data.groupby(env_var)[["PCo1", "PCo2"]]
+                        .mean()
+                        .reset_index()
+                        .rename(columns={env_var: "label"})
+                    )
+                    env_centroids[env_var] = centroids
+
+            st.session_state["pcoa_result"]        = ord_data
+            st.session_state["pcoa_species"]       = species
+            st.session_state["pcoa_env_centroids"] = env_centroids
+            st.session_state["pcoa_stress"]        = stress
+            st.session_state["pcoa_dist"]          = bc_dist
+
+        except Exception as e:
+            st.error(f"PCoA computation failed: {e}")
+
+
 # ── Run CCA on app start ───────────────────
 if "cca_result" not in st.session_state:
     run_pca_computation()
+if "pcoa_result" not in st.session_state:
+    run_pcoa_computation()
 # ── Tab 4: CCA – Era & Set ────────────────
 with tab4:
     st.subheader("PCA Ordination – Era & Set")
@@ -1999,3 +2072,217 @@ with tab7:
             )
             fig_heat.update_layout(height=max(400, len(heat_cards) * 18))
             st.plotly_chart(fig_heat, use_container_width=True)
+
+# ── Tab 8: PCoA – Ecological Distance ────
+with tab8:
+    st.subheader("PCoA – Ecological Distance (Bray-Curtis)")
+    st.markdown(
+        "Principal Coordinates Analysis on **Bray-Curtis dissimilarity** between decklists. "
+        "Unlike PCA (which uses Euclidean distance on standardised counts), PCoA treats "
+        "each deck as a community of cards and measures how different two decklists are "
+        "in terms of shared card composition. "
+        "Points that are close together share similar card proportions; "
+        "distant points have very different deck compositions."
+    )
+
+    if "pcoa_result" in st.session_state:
+        ord_pcoa       = st.session_state["pcoa_result"]
+        species_pcoa   = st.session_state["pcoa_species"]
+        centroids_pcoa = st.session_state["pcoa_env_centroids"]
+        stress_pcoa    = st.session_state["pcoa_stress"]
+        bc_dist        = st.session_state["pcoa_dist"]
+
+        # ── Stress metric ─────────────────────────────────────────────────
+        m1, m2, m3 = st.columns(3)
+        m1.metric("MDS Stress", f"{stress_pcoa:.4f}",
+                  help="Lower is better. < 0.1 = excellent, < 0.2 = good, < 0.3 = fair.")
+        m2.metric("Decklists", len(ord_pcoa))
+        m3.metric("Card Variables", amulet_filtered.shape[1])
+
+        if stress_pcoa < 0.1:
+            st.success("✅ Stress < 0.1 — excellent ordination fit.")
+        elif stress_pcoa < 0.2:
+            st.info("ℹ️ Stress < 0.2 — good ordination fit.")
+        else:
+            st.warning("⚠️ Stress ≥ 0.2 — interpret with caution.")
+
+        # ── Controls ──────────────────────────────────────────────────────
+        ctrl1, ctrl2 = st.columns(2)
+        with ctrl1:
+            color_by_pcoa = st.selectbox(
+                "Color sites by:",
+                ["current_era", "current_set"],
+                key="pcoa_color"
+            )
+        with ctrl2:
+            show_centroids_pcoa = st.checkbox(
+                "Show era/set centroids", value=True, key="pcoa_centroids"
+            )
+
+        show_species_pcoa = st.checkbox(
+            "Show top card vectors (WA biplot)", value=False, key="pcoa_species_chk"
+        )
+
+        # ── Site scatter ──────────────────────────────────────────────────
+        hover_pcoa = [c for c in ["Name", "Date", "current_era", "current_set"]
+                      if c in ord_pcoa.columns]
+        fig_pcoa = px.scatter(
+            ord_pcoa, x="PCo1", y="PCo2",
+            color=color_by_pcoa,
+            hover_data=hover_pcoa,
+            title=f"PCoA (Bray-Curtis) – sites colored by {color_by_pcoa}",
+            template="plotly_white",
+            opacity=0.75,
+        )
+        fig_pcoa.update_traces(marker=dict(size=7))
+        fig_pcoa.update_xaxes(title_text="PCo1")
+        fig_pcoa.update_yaxes(title_text="PCo2")
+
+        # ── Centroid overlay ──────────────────────────────────────────────
+        if show_centroids_pcoa and color_by_pcoa in centroids_pcoa:
+            cents = centroids_pcoa[color_by_pcoa]
+            fig_pcoa.add_trace(go.Scatter(
+                x=cents["PCo1"], y=cents["PCo2"],
+                mode="markers+text",
+                text=cents["label"],
+                textposition="top center",
+                marker=dict(size=14, symbol="diamond", color="black",
+                            line=dict(width=1, color="white")),
+                name=f"{color_by_pcoa} centroids",
+                showlegend=True,
+            ))
+
+        # ── WA species scores overlay ─────────────────────────────────────
+        if show_species_pcoa:
+            top_n_pcoa = st.slider("Top N card vectors", 5, 30, 10, key="pcoa_top_n")
+            sp = species_pcoa.copy()
+            sp["dist"] = np.sqrt(sp["PCo1"]**2 + sp["PCo2"]**2)
+            sp_top = sp.nlargest(top_n_pcoa, "dist")
+            fig_pcoa.add_trace(go.Scatter(
+                x=sp_top["PCo1"], y=sp_top["PCo2"],
+                mode="markers+text",
+                text=sp_top["card"],
+                textposition="top right",
+                marker=dict(size=10, symbol="triangle-up", color="crimson"),
+                name="Card WA scores",
+                showlegend=True,
+            ))
+
+        fig_pcoa.update_layout(height=800)
+        st.plotly_chart(fig_pcoa, use_container_width=True)
+
+        # ── Shepard diagram (distance preservation check) ─────────────────
+        with st.expander("🔍 Shepard Diagram — how well does the 2D ordination preserve distances?"):
+            st.markdown(
+                "Each point plots the original Bray-Curtis dissimilarity (x-axis) against "
+                "the Euclidean distance in the 2D PCoA space (y-axis). "
+                "A tight linear cloud = good preservation."
+            )
+            n = bc_dist.shape[0]
+            idx_i, idx_j = np.triu_indices(n, k=1)
+            orig_dist = bc_dist[idx_i, idx_j]
+            pco_coords = ord_pcoa[["PCo1", "PCo2"]].values
+            ord_dist   = np.sqrt(
+                (pco_coords[idx_i, 0] - pco_coords[idx_j, 0])**2 +
+                (pco_coords[idx_i, 1] - pco_coords[idx_j, 1])**2
+            )
+            # Sample if large
+            if len(orig_dist) > 5000:
+                rng = np.random.default_rng(42)
+                sel = rng.choice(len(orig_dist), 5000, replace=False)
+                orig_dist = orig_dist[sel]
+                ord_dist  = ord_dist[sel]
+
+            fig_shep = px.scatter(
+                x=orig_dist, y=ord_dist,
+                labels={"x": "Bray-Curtis dissimilarity", "y": "PCoA Euclidean distance"},
+                title="Shepard Diagram",
+                opacity=0.3,
+                template="plotly_white",
+            )
+            # Add y=x reference line
+            lim = max(orig_dist.max(), ord_dist.max())
+            fig_shep.add_shape(
+                type="line", x0=0, y0=0, x1=lim, y1=lim,
+                line=dict(color="red", dash="dash", width=1),
+            )
+            fig_shep.update_layout(height=450)
+            st.plotly_chart(fig_shep, use_container_width=True)
+
+        # ── Most dissimilar deck per era ──────────────────────────────────
+        st.markdown("#### 🃏 Outlier Decklists By Era (PCoA)")
+        pco_vals = ord_pcoa[["PCo1", "PCo2"]].values
+        for era in ERA_ORDER:
+            era_idx = ord_pcoa.index[ord_pcoa["current_era"] == era].tolist()
+            if len(era_idx) < 2:
+                continue
+            era_coords = pco_vals[era_idx]
+            best_mean_dist, best_idx = -1, None
+            for ii, idx in enumerate(era_idx):
+                others = np.delete(era_coords, ii, axis=0)
+                dists  = np.sqrt(
+                    (era_coords[ii, 0] - others[:, 0])**2 +
+                    (era_coords[ii, 1] - others[:, 1])**2
+                )
+                md = dists.mean()
+                if md > best_mean_dist:
+                    best_mean_dist, best_idx = md, idx
+
+            outlier_name = ord_pcoa.loc[best_idx, "Name"] if "Name" in ord_pcoa.columns else ""
+            outlier_date = ord_pcoa.loc[best_idx, "Date"] if "Date" in ord_pcoa.columns else ""
+            label = f"{outlier_name} ({outlier_date})  —  {era}"
+
+            with st.expander(label):
+                match = amulet_comb[
+                    (amulet_comb["Name"] == outlier_name) &
+                    (amulet_comb["Date"].astype(str).str.contains(
+                        outlier_date[:7] if outlier_date else "NOMATCH", na=False))
+                ]
+                if match.empty:
+                    st.info("Decklist not found.")
+                else:
+                    deck_row   = match.iloc[0]
+                    card_cols_d = [c for c in amulet_int.columns if c in deck_row.index]
+                    decklist   = (
+                        pd.Series({c: deck_row[c] for c in card_cols_d})
+                        .astype(int)
+                    )
+                    decklist   = decklist[decklist > 0].sort_values(ascending=False)
+
+                    era_rows   = amulet_comb[amulet_comb["current_era"] == era]
+                    era_cards  = era_rows[[c for c in amulet_int.columns
+                                           if c in era_rows.columns]]
+                    median_deck = era_cards.median().round(2)
+                    median_deck = median_deck[median_deck > 0].sort_values(ascending=False)
+
+                    col_m, col_o, col_med = st.columns([1, 1.5, 1.5])
+                    with col_m:
+                        st.markdown(f"**{outlier_name}** — {outlier_date}")
+                        st.markdown(f"Mean PCoA distance: **{best_mean_dist:.4f}**")
+                        st.markdown(f"Era N: **{len(era_idx)}**")
+
+                    median_cards = set(median_deck[median_deck > 0].index)
+                    era_id_pcoa  = re.sub(r"[^a-zA-Z0-9]+", "-", era).strip("-").lower()
+
+                    with col_o:
+                        st.markdown("**Outlier Decklist** *(hover = card image · green = not in median)*")
+                        deck_df = decklist.reset_index()
+                        deck_df.columns = ["Card", "Copies"]
+                        deck_df = sort_by_type(deck_df, "Card")
+                        render_decklist_html(
+                            deck_df, "Card", "Copies",
+                            highlight_set=median_cards,
+                            table_id=f"pcoa-outlier-{era_id_pcoa}",
+                        )
+                    with col_med:
+                        st.markdown(f"**Median Decklist ({era})**")
+                        med_df = median_deck.reset_index()
+                        med_df.columns = ["Card", "Median Copies"]
+                        med_df = sort_by_type(med_df, "Card")
+                        render_decklist_html(
+                            med_df, "Card", "Median Copies",
+                            highlight_set=None,
+                            table_id=f"pcoa-median-{era_id_pcoa}",
+                        )
+    else:
+        st.info("PCoA computation failed. Check your data.")

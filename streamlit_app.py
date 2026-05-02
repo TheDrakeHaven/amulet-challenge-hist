@@ -2318,7 +2318,8 @@ with tab8:
 
     else:
         st.info("NMDS data not available. Run computation or upload a previous result.")
-    # ── Tab 9: NMDS – Card Inclusion ─────────
+        
+# ── Tab 9: NMDS – Card Inclusion ─────────
 with tab9:
     st.subheader("NMDS – Card Inclusion")
     st.markdown(
@@ -2380,8 +2381,7 @@ with tab9:
     else:
         st.info("NMDS data not yet available. Visit the NMDS tab first to load or compute results.")
  
- 
-# ── Tab 10: NMDS – Card Similarity ───────
+ # ── Tab 10: NMDS – Card Similarity ───────
 with tab10:
     st.subheader("NMDS – Card Similarity (WA Species Scores)")
     st.markdown(

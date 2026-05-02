@@ -2085,40 +2085,71 @@ with tab8:
         key="nmds_upload",
     )
 
+    GITHUB_NMDS_URL = (
+        "https://raw.githubusercontent.com/"
+        "TheDrakeHaven/amulet-challenge-hist/main/nmds_results.xlsx"
+    )
+
+    def _load_nmds_excel(source):
+        """Load NMDS sheets from a file-like object or URL string."""
+        xls          = pd.ExcelFile(source)
+        od           = pd.read_excel(xls, sheet_name="Site_Scores")
+        sp           = pd.read_excel(xls, sheet_name="Card_WA_Scores")
+        st_val       = None
+        if "Metadata" in xls.sheet_names:
+            meta = pd.read_excel(xls, sheet_name="Metadata")
+            if "stress" in meta.columns:
+                st_val = float(meta["stress"].iloc[0])
+        cents = {}
+        for ev in ["current_era", "current_set"]:
+            if ev in od.columns:
+                cents[ev] = (
+                    od.groupby(ev)[["NMDS1", "NMDS2"]]
+                    .mean().reset_index().rename(columns={ev: "label"})
+                )
+        return od, sp, st_val, cents
+
     if uploaded_nmds is not None:
+        # 1. User-uploaded file takes top priority
         try:
-            xls          = pd.ExcelFile(uploaded_nmds)
-            ord_nmds     = pd.read_excel(xls, sheet_name="Site_Scores")
-            species_nmds = pd.read_excel(xls, sheet_name="Card_WA_Scores")
-            bc_dist      = None  # not stored in file
-            # Load stress from Metadata sheet if present
-            if "Metadata" in xls.sheet_names:
-                meta_df     = pd.read_excel(xls, sheet_name="Metadata")
-                stress_nmds = float(meta_df["stress"].iloc[0]) if "stress" in meta_df.columns else None
-            else:
-                stress_nmds = None
-            # Recompute centroids from site scores
-            centroids_nmds = {}
-            for env_var in ["current_era", "current_set"]:
-                if env_var in ord_nmds.columns:
-                    centroids_nmds[env_var] = (
-                        ord_nmds.groupby(env_var)[["NMDS1", "NMDS2"]]
-                        .mean().reset_index()
-                        .rename(columns={env_var: "label"})
-                    )
+            ord_nmds, species_nmds, stress_nmds, centroids_nmds = _load_nmds_excel(uploaded_nmds)
+            bc_dist = None
             st.success(f"✅ Loaded {len(ord_nmds):,} site scores from uploaded file.")
         except Exception as e:
-            st.error(f"Failed to load NMDS file: {e}")
+            st.error(f"Failed to load uploaded NMDS file: {e}")
             ord_nmds = None
 
     elif "nmds_result" in st.session_state:
+        # 2. Already computed this session
         ord_nmds       = st.session_state["nmds_result"]
         species_nmds   = st.session_state["nmds_species"]
         centroids_nmds = st.session_state["nmds_env_centroids"]
         stress_nmds    = st.session_state["nmds_stress"]
         bc_dist        = st.session_state["nmds_dist"]
+
     else:
-        ord_nmds = None
+        # 3. Try loading from GitHub repo
+        try:
+            import requests
+            resp = requests.get(GITHUB_NMDS_URL, timeout=15)
+            resp.raise_for_status()
+            from io import BytesIO as _BytesIO
+            ord_nmds, species_nmds, stress_nmds, centroids_nmds = _load_nmds_excel(
+                _BytesIO(resp.content)
+            )
+            bc_dist = None
+            st.info(f"📥 Loaded {len(ord_nmds):,} pre-computed NMDS scores from GitHub.")
+        except Exception as e:
+            st.warning(f"Could not load NMDS from GitHub ({e}). Running computation…")
+            run_nmds_computation()
+            if "nmds_result" in st.session_state:
+                ord_nmds       = st.session_state["nmds_result"]
+                species_nmds   = st.session_state["nmds_species"]
+                centroids_nmds = st.session_state["nmds_env_centroids"]
+                stress_nmds    = st.session_state["nmds_stress"]
+                bc_dist        = st.session_state["nmds_dist"]
+            else:
+                ord_nmds = None
 
     if ord_nmds is not None:
 

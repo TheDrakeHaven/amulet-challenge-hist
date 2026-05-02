@@ -2099,7 +2099,7 @@ with tab8:
                 stress_nmds = None
             # Recompute centroids from site scores
             centroids_nmds = {}
-            for env_var in ["next_ban", "current_set"]:
+            for env_var in ["current_era", "current_set"]:
                 if env_var in ord_nmds.columns:
                     centroids_nmds[env_var] = (
                         ord_nmds.groupby(env_var)[["NMDS1", "NMDS2"]]
@@ -2144,7 +2144,7 @@ with tab8:
         ctrl1, ctrl2 = st.columns(2)
         with ctrl1:
             color_by_nmds = st.selectbox(
-                "Color sites by:", ["next_ban", "current_set"], key="nmds_color")
+                "Color sites by:", ["current_era", "current_set"], key="nmds_color")
         with ctrl2:
             show_centroids_nmds = st.checkbox(
                 "Show centroids", value=True, key="nmds_centroids")
@@ -2152,7 +2152,7 @@ with tab8:
             "Show top card vectors (WA biplot)", value=False, key="nmds_species_chk")
 
         # ── Site scatter ──────────────────────────────────────────────────
-        hover_nmds = [c for c in ["Name", "Date", "next_ban", "current_set"]
+        hover_nmds = [c for c in ["Name", "Date", "current_era", "current_set"]
                       if c in ord_nmds.columns]
         plot_nmds = ord_nmds.copy()
         plot_nmds[color_by_nmds] = (
@@ -2273,7 +2273,7 @@ with tab8:
         st.markdown("#### 🃏 Outlier Decklists By Era (NMDS)")
         nv = ord_nmds[["NMDS1", "NMDS2"]].values
         for era in ERA_ORDER:
-            era_col = "next_ban" if "next_ban" in ord_nmds.columns else "next_ban"
+            era_col = "current_era" if "current_era" in ord_nmds.columns else "next_ban"
             era_idx = ord_nmds.index[ord_nmds[era_col] == era].tolist()
             if len(era_idx) < 2:
                 continue
@@ -2304,7 +2304,7 @@ with tab8:
                 card_cols_d = [c for c in amulet_int.columns if c in deck_row.index]
                 decklist    = pd.Series({c: deck_row[c] for c in card_cols_d}).astype(int)
                 decklist    = decklist[decklist > 0].sort_values(ascending=False)
-                era_col_cb  = "next_ban" if "next_ban" in amulet_comb.columns else "next_ban"
+                era_col_cb  = "current_era" if "current_era" in amulet_comb.columns else "next_ban"
                 era_rows    = amulet_comb[amulet_comb[era_col_cb] == era]
                 era_cards   = era_rows[[c for c in amulet_int.columns if c in era_rows.columns]]
                 median_deck = era_cards.median().round(2)

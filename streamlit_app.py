@@ -2071,37 +2071,47 @@ with tab7:
 # ── Tab 8: NMDS – Ecological Distance ────
 with tab8:
     st.subheader("NMDS – Ecological Distance (Bray-Curtis)")
+    st.markdown(
+        "**Non-metric Multidimensional Scaling** on Bray-Curtis dissimilarity. "
+        "Unlike PCA/PCoA, NMDS preserves only the **rank order** of pairwise "
+        "dissimilarities — axes have no absolute meaning, only relative positions matter. "
+        "**Stress** (Kruskal's normalized stress) measures ordination quality."
+    )
 
-    # ── Load from file OR use computed results ────────────────────────────
+    # ── Resolve data: uploaded file → session state → nothing ────────────
     uploaded_nmds = st.file_uploader(
-        "Load pre-computed NMDS results (.xlsx from a previous run)",
+        "Upload pre-computed NMDS results (.xlsx) to skip re-computation",
         type=["xlsx"],
         key="nmds_upload",
     )
 
     if uploaded_nmds is not None:
-        # Load from the uploaded Excel instead of computing
         try:
-            xls = pd.ExcelFile(uploaded_nmds)
-            ord_nmds       = pd.read_excel(xls, sheet_name="Site_Scores")
-            species_nmds   = pd.read_excel(xls, sheet_name="Card_WA_Scores")
-            stress_nmds    = None   # not stored in the file
-            bc_dist        = None   # not stored in the file
+            xls          = pd.ExcelFile(uploaded_nmds)
+            ord_nmds     = pd.read_excel(xls, sheet_name="Site_Scores")
+            species_nmds = pd.read_excel(xls, sheet_name="Card_WA_Scores")
+            bc_dist      = None  # not stored in file
+            # Load stress from Metadata sheet if present
+            if "Metadata" in xls.sheet_names:
+                meta_df     = pd.read_excel(xls, sheet_name="Metadata")
+                stress_nmds = float(meta_df["stress"].iloc[0]) if "stress" in meta_df.columns else None
+            else:
+                stress_nmds = None
+            # Recompute centroids from site scores
             centroids_nmds = {}
-            for env_var in ["current_era", "current_set"]:
+            for env_var in ["next_ban", "current_set"]:
                 if env_var in ord_nmds.columns:
                     centroids_nmds[env_var] = (
                         ord_nmds.groupby(env_var)[["NMDS1", "NMDS2"]]
                         .mean().reset_index()
                         .rename(columns={env_var: "label"})
                     )
-            st.success(f"✅ Loaded {len(ord_nmds)} site scores from uploaded file.")
+            st.success(f"✅ Loaded {len(ord_nmds):,} site scores from uploaded file.")
         except Exception as e:
             st.error(f"Failed to load NMDS file: {e}")
             ord_nmds = None
 
     elif "nmds_result" in st.session_state:
-        # Use the computed results
         ord_nmds       = st.session_state["nmds_result"]
         species_nmds   = st.session_state["nmds_species"]
         centroids_nmds = st.session_state["nmds_env_centroids"]
@@ -2111,46 +2121,26 @@ with tab8:
         ord_nmds = None
 
     if ord_nmds is not None:
-        # ... rest of your existing tab8 display code ...
-        # Note: guard the stress metric and stressplot since they're None when loaded from file
-        if stress_nmds is not None:
-            m1.metric("NMDS Stress", f"{stress_nmds:.4f}")
-        else:
-            m1.metric("NMDS Stress", "N/A (loaded from file)")
 
-        # Guard the stressplot expander too:
-        if bc_dist is not None:
-            with st.expander("🔍 Stressplot"):
-            # ... stressplot code ...    
-    st.markdown(
-        "**Non-metric Multidimensional Scaling** on Bray-Curtis dissimilarity. "
-        "Unlike PCA/PCoA, NMDS preserves only the **rank order** of pairwise "
-        "dissimilarities — axes have no absolute meaning, only relative positions matter. "
-        "**Stress** (Kruskal's normalized stress) measures ordination quality."
-    )
-
-    if "nmds_result" in st.session_state:
-        ord_nmds       = st.session_state["nmds_result"]
-        species_nmds   = st.session_state["nmds_species"]
-        centroids_nmds = st.session_state["nmds_env_centroids"]
-        stress_nmds    = st.session_state["nmds_stress"]
-        bc_dist        = st.session_state["nmds_dist"]
-
+        # ── Stress metrics ────────────────────────────────────────────────
         m1, m2, m3 = st.columns(3)
-        m1.metric("NMDS Stress", f"{stress_nmds:.4f}",
-                  help="< 0.05 excellent · < 0.10 good · < 0.20 fair · ≥ 0.20 poor")
+        if stress_nmds is not None:
+            m1.metric("NMDS Stress", f"{stress_nmds:.4f}",
+                      help="< 0.05 excellent · < 0.10 good · < 0.20 fair · ≥ 0.20 poor")
+            if stress_nmds < 0.05:
+                st.success("✅ Stress < 0.05 — excellent.")
+            elif stress_nmds < 0.10:
+                st.success("✅ Stress < 0.10 — good.")
+            elif stress_nmds < 0.20:
+                st.info("ℹ️ Stress < 0.20 — fair; interpret carefully.")
+            else:
+                st.warning("⚠️ Stress ≥ 0.20 — poor fit.")
+        else:
+            m1.metric("NMDS Stress", "N/A", help="Not available when loaded from file.")
         m2.metric("Decklists", len(ord_nmds))
         m3.metric("Card Variables", amulet_filtered.shape[1])
 
-        if stress_nmds < 0.05:
-            st.success("✅ Stress < 0.05 — excellent.")
-        elif stress_nmds < 0.10:
-            st.success("✅ Stress < 0.10 — good.")
-        elif stress_nmds < 0.20:
-            st.info("ℹ️ Stress < 0.20 — fair; interpret carefully.")
-        else:
-            st.warning("⚠️ Stress ≥ 0.20 — poor fit.")
-
+        # ── Controls ──────────────────────────────────────────────────────
         ctrl1, ctrl2 = st.columns(2)
         with ctrl1:
             color_by_nmds = st.selectbox(
@@ -2161,6 +2151,7 @@ with tab8:
         show_species_nmds = st.checkbox(
             "Show top card vectors (WA biplot)", value=False, key="nmds_species_chk")
 
+        # ── Site scatter ──────────────────────────────────────────────────
         hover_nmds = [c for c in ["Name", "Date", "next_ban", "current_set"]
                       if c in ord_nmds.columns]
         plot_nmds = ord_nmds.copy()
@@ -2168,12 +2159,12 @@ with tab8:
             plot_nmds[color_by_nmds].fillna("Unknown")
             if color_by_nmds in plot_nmds.columns else "Unknown"
         )
-
+        stress_label = f"  |  stress = {stress_nmds:.4f}" if stress_nmds is not None else ""
         fig_nmds = px.scatter(
             plot_nmds, x="NMDS1", y="NMDS2",
             color=color_by_nmds,
             hover_data=[c for c in hover_nmds if c in plot_nmds.columns],
-            title=f"NMDS (Bray-Curtis) – {color_by_nmds}  |  stress = {stress_nmds:.4f}",
+            title=f"NMDS (Bray-Curtis) – {color_by_nmds}{stress_label}",
             template="plotly_white", opacity=0.75,
         )
         fig_nmds.update_traces(marker=dict(size=7))
@@ -2205,41 +2196,85 @@ with tab8:
         fig_nmds.update_layout(height=800)
         st.plotly_chart(fig_nmds, use_container_width=True)
 
-        with st.expander("🔍 Stressplot — rank-order preservation check"):
-            st.markdown(
-                "Original Bray-Curtis dissimilarity (x) vs NMDS distance (y). "
-                "A monotone relationship is sufficient — NMDS only needs to preserve rank order."
-            )
-            n = bc_dist.shape[0]
-            idx_i, idx_j = np.triu_indices(n, k=1)
-            orig_d = bc_dist[idx_i, idx_j]
-            nv     = ord_nmds[["NMDS1", "NMDS2"]].values
-            ord_d  = np.sqrt(
-                (nv[idx_i, 0] - nv[idx_j, 0])**2 +
-                (nv[idx_i, 1] - nv[idx_j, 1])**2
-            )
-            if len(orig_d) > 5000:
-                rng  = np.random.default_rng(42)
-                sel  = rng.choice(len(orig_d), 5000, replace=False)
-                orig_d = orig_d[sel]; ord_d = ord_d[sel]
-            sort_idx = np.argsort(orig_d)
-            mono_y   = np.maximum.accumulate(ord_d[sort_idx])
-            fig_sp = px.scatter(
-                x=orig_d, y=ord_d, opacity=0.25, template="plotly_white",
-                labels={"x": "Bray-Curtis dissimilarity", "y": "NMDS distance"},
-                title="Stressplot",
-            )
-            fig_sp.add_trace(go.Scatter(
-                x=orig_d[sort_idx], y=mono_y, mode="lines",
-                line=dict(color="red", width=1.5), name="Monotone fit",
-            ))
-            fig_sp.update_layout(height=450)
-            st.plotly_chart(fig_sp, use_container_width=True)
+        # ── Download ──────────────────────────────────────────────────────
+        with st.expander("⬇️ Download NMDS Data"):
+            dl1, dl2, dl3 = st.columns(3)
+            with dl1:
+                st.markdown("**Site Scores** (deck coordinates)")
+                st.download_button(
+                    "Download site scores (.csv)",
+                    data=ord_nmds.to_csv(index=False).encode("utf-8"),
+                    file_name="nmds_site_scores.csv",
+                    mime="text/csv",
+                    key="dl_nmds_sites",
+                )
+            with dl2:
+                st.markdown("**Card WA Scores** (species scores)")
+                st.download_button(
+                    "Download card scores (.csv)",
+                    data=species_nmds.to_csv(index=False).encode("utf-8"),
+                    file_name="nmds_card_scores.csv",
+                    mime="text/csv",
+                    key="dl_nmds_species",
+                )
+            with dl3:
+                st.markdown("**Combined (.xlsx)** — reupload to skip re-computation")
+                buf = BytesIO()
+                with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+                    ord_nmds.to_excel(writer, sheet_name="Site_Scores", index=False)
+                    species_nmds.to_excel(writer, sheet_name="Card_WA_Scores", index=False)
+                    pd.DataFrame({"stress": [stress_nmds]}).to_excel(
+                        writer, sheet_name="Metadata", index=False)
+                st.download_button(
+                    "Download combined (.xlsx)",
+                    data=buf.getvalue(),
+                    file_name="nmds_results.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="dl_nmds_excel",
+                )
 
+        # ── Stressplot (only when bc_dist available) ──────────────────────
+        if bc_dist is not None:
+            with st.expander("🔍 Stressplot — rank-order preservation check"):
+                st.markdown(
+                    "Original Bray-Curtis dissimilarity (x) vs NMDS distance (y). "
+                    "A monotone relationship is sufficient — NMDS only needs rank order."
+                )
+                n = bc_dist.shape[0]
+                idx_i, idx_j = np.triu_indices(n, k=1)
+                orig_d = bc_dist[idx_i, idx_j]
+                nv     = ord_nmds[["NMDS1", "NMDS2"]].values
+                ord_d  = np.sqrt(
+                    (nv[idx_i, 0] - nv[idx_j, 0])**2 +
+                    (nv[idx_i, 1] - nv[idx_j, 1])**2
+                )
+                if len(orig_d) > 5000:
+                    rng    = np.random.default_rng(42)
+                    sel    = rng.choice(len(orig_d), 5000, replace=False)
+                    orig_d = orig_d[sel]; ord_d = ord_d[sel]
+                sort_idx = np.argsort(orig_d)
+                mono_y   = np.maximum.accumulate(ord_d[sort_idx])
+                fig_sp = px.scatter(
+                    x=orig_d, y=ord_d, opacity=0.25, template="plotly_white",
+                    labels={"x": "Bray-Curtis dissimilarity", "y": "NMDS distance"},
+                    title="Stressplot",
+                )
+                fig_sp.add_trace(go.Scatter(
+                    x=orig_d[sort_idx], y=mono_y, mode="lines",
+                    line=dict(color="red", width=1.5), name="Monotone fit",
+                ))
+                fig_sp.update_layout(height=450)
+                st.plotly_chart(fig_sp, use_container_width=True)
+        else:
+            st.caption("ℹ️ Stressplot not available when loaded from file "
+                       "(Bray-Curtis matrix is not stored in the download).")
+
+        # ── Outlier decklists per era ─────────────────────────────────────
         st.markdown("#### 🃏 Outlier Decklists By Era (NMDS)")
         nv = ord_nmds[["NMDS1", "NMDS2"]].values
         for era in ERA_ORDER:
-            era_idx = ord_nmds.index[ord_nmds["next_ban"] == era].tolist()
+            era_col = "next_ban" if "next_ban" in ord_nmds.columns else "next_ban"
+            era_idx = ord_nmds.index[ord_nmds[era_col] == era].tolist()
             if len(era_idx) < 2:
                 continue
             era_coords = nv[era_idx]
@@ -2269,7 +2304,8 @@ with tab8:
                 card_cols_d = [c for c in amulet_int.columns if c in deck_row.index]
                 decklist    = pd.Series({c: deck_row[c] for c in card_cols_d}).astype(int)
                 decklist    = decklist[decklist > 0].sort_values(ascending=False)
-                era_rows    = amulet_comb[amulet_comb["next_ban"] == era]
+                era_col_cb  = "next_ban" if "next_ban" in amulet_comb.columns else "next_ban"
+                era_rows    = amulet_comb[amulet_comb[era_col_cb] == era]
                 era_cards   = era_rows[[c for c in amulet_int.columns if c in era_rows.columns]]
                 median_deck = era_cards.median().round(2)
                 median_deck = median_deck[median_deck > 0].sort_values(ascending=False)
@@ -2294,48 +2330,6 @@ with tab8:
                     med_df = sort_by_type(med_df, "Card")
                     render_decklist_html(med_df, "Card", "Median Copies",
                         highlight_set=None, table_id=f"nmds-median-{era_id_n}")
+
     else:
-        st.info("NMDS computation failed. Check your data.")
-
-    # ── Download NMDS data ────────────────────────────────────────────────────────
-with st.expander("⬇️ Download NMDS Data"):
-    dl1, dl2, dl3 = st.columns(3)
-
-    # Site scores (deck coordinates)
-    with dl1:
-        st.markdown("**Site Scores** (deck coordinates)")
-        csv_sites = ord_nmds.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            "Download site scores (.csv)",
-            data=csv_sites,
-            file_name="nmds_site_scores.csv",
-            mime="text/csv",
-            key="dl_nmds_sites",
-        )
-
-    # Species scores (card WA scores)
-    with dl2:
-        st.markdown("**Card WA Scores** (species scores)")
-        csv_species = species_nmds.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            "Download card scores (.csv)",
-            data=csv_species,
-            file_name="nmds_card_scores.csv",
-            mime="text/csv",
-            key="dl_nmds_species",
-        )
-
-    # Excel with both sheets
-    with dl3:
-        st.markdown("**Both sheets** (.xlsx)")
-        buf = BytesIO()
-        with pd.ExcelWriter(buf, engine="openpyxl") as writer:
-            ord_nmds.to_excel(writer, sheet_name="Site_Scores", index=False)
-            species_nmds.to_excel(writer, sheet_name="Card_WA_Scores", index=False)
-        st.download_button(
-            "Download combined (.xlsx)",
-            data=buf.getvalue(),
-            file_name="nmds_results.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="dl_nmds_excel",
-        )
+        st.info("NMDS data not available. Run computation or upload a previous result.")

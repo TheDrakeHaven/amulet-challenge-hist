@@ -2121,8 +2121,7 @@ with tab8:
         # Guard the stressplot expander too:
         if bc_dist is not None:
             with st.expander("🔍 Stressplot"):
-                # ... stressplot code ...
-    
+            # ... stressplot code ...    
     st.markdown(
         "**Non-metric Multidimensional Scaling** on Bray-Curtis dissimilarity. "
         "Unlike PCA/PCoA, NMDS preserves only the **rank order** of pairwise "

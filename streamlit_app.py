@@ -2126,10 +2126,17 @@ with tab8:
         # ── Site scatter ──────────────────────────────────────────────────
         hover_pcoa = [c for c in ["Name", "Date", "current_era", "current_set"]
                       if c in ord_pcoa.columns]
+        # Guard: fill NaN in color column so plotly doesn't crash
+        plot_pcoa = ord_pcoa.copy()
+        if color_by_pcoa in plot_pcoa.columns:
+            plot_pcoa[color_by_pcoa] = plot_pcoa[color_by_pcoa].fillna("Unknown")
+        else:
+            plot_pcoa[color_by_pcoa] = "Unknown"
+
         fig_pcoa = px.scatter(
-            ord_pcoa, x="PCo1", y="PCo2",
+            plot_pcoa, x="PCo1", y="PCo2",
             color=color_by_pcoa,
-            hover_data=hover_pcoa,
+            hover_data=[c for c in hover_pcoa if c in plot_pcoa.columns],
             title=f"PCoA (Bray-Curtis) – sites colored by {color_by_pcoa}",
             template="plotly_white",
             opacity=0.75,
@@ -2139,7 +2146,7 @@ with tab8:
         fig_pcoa.update_yaxes(title_text="PCo2")
 
         # ── Centroid overlay ──────────────────────────────────────────────
-        if show_centroids_pcoa and color_by_pcoa in centroids_pcoa:
+        if show_centroids_pcoa and color_by_pcoa in centroids_pcoa and centroids_pcoa:
             cents = centroids_pcoa[color_by_pcoa]
             fig_pcoa.add_trace(go.Scatter(
                 x=cents["PCo1"], y=cents["PCo2"],

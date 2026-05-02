@@ -1207,7 +1207,7 @@ def render_decklist_html(
 # ─────────────────────────────────────────
 
 with st.spinner("Processing main deck sheet…"):
-    amulet_df = pd.read_csv("merged_amulet.csv")
+    amulet_df = pd.read_csv("amulet_chal.csv")
 
     amulet_df = amulet_df.drop_duplicates(keep="first")
     amulet_df = amulet_df.drop(columns=["Maindeck_Total", "Sideboard_Total"], errors="ignore")

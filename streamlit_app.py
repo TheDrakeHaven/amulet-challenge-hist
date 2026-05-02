@@ -2100,7 +2100,7 @@ with tab8:
                 )
         return od, sp, st_val, cents
 
-    elif "nmds_github" in st.session_state:
+    if "nmds_github" in st.session_state:
         # 2. Already fetched from GitHub this session (cached to avoid re-fetching)
         ord_nmds       = st.session_state["nmds_github"]["ord"]
         species_nmds   = st.session_state["nmds_github"]["species"]

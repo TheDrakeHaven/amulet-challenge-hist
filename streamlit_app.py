@@ -1541,7 +1541,7 @@ def run_pcoa_computation():
 
             # ── Environmental centroids ───────────────────────────────────
             env_centroids = {}
-            for env_var in ["current_era", "current_set"]:
+            for env_var in ["next_ban", "current_set"]:
                 if env_var in ord_data.columns:
                     centroids = (
                         ord_data.groupby(env_var)[["PCo1", "PCo2"]]
@@ -2111,7 +2111,7 @@ with tab8:
         with ctrl1:
             color_by_pcoa = st.selectbox(
                 "Color sites by:",
-                ["current_era", "current_set"],
+                ["next_ban", "current_set"],
                 key="pcoa_color"
             )
         with ctrl2:
@@ -2124,7 +2124,7 @@ with tab8:
         )
 
         # ── Site scatter ──────────────────────────────────────────────────
-        hover_pcoa = [c for c in ["Name", "Date", "current_era", "current_set"]
+        hover_pcoa = [c for c in ["Name", "Date", "next_ban", "current_set"]
                       if c in ord_pcoa.columns]
         # Guard: fill NaN in color column so plotly doesn't crash
         plot_pcoa = ord_pcoa.copy()
@@ -2220,7 +2220,7 @@ with tab8:
         st.markdown("#### 🃏 Outlier Decklists By Era (PCoA)")
         pco_vals = ord_pcoa[["PCo1", "PCo2"]].values
         for era in ERA_ORDER:
-            era_idx = ord_pcoa.index[ord_pcoa["current_era"] == era].tolist()
+            era_idx = ord_pcoa.index[ord_pcoa["next_ban"] == era].tolist()
             if len(era_idx) < 2:
                 continue
             era_coords = pco_vals[era_idx]
@@ -2256,7 +2256,7 @@ with tab8:
                     )
                     decklist   = decklist[decklist > 0].sort_values(ascending=False)
 
-                    era_rows   = amulet_comb[amulet_comb["current_era"] == era]
+                    era_rows   = amulet_comb[amulet_comb["next_ban"] == era]
                     era_cards  = era_rows[[c for c in amulet_int.columns
                                            if c in era_rows.columns]]
                     median_deck = era_cards.median().round(2)

@@ -2364,13 +2364,11 @@ with tab9:
         "Sites (decklists) plotted in NMDS space, coloured by the number of copies "
         "of a selected card. Reveals where in compositional space a card concentrates."
     )
-
+ 
     # Resolve NMDS data from whatever source tab 8 used
-    _nmds_ord = (
-        st.session_state.get("nmds_github", {}).get("ord")
-        or st.session_state.get("nmds_result")
-    )
-
+    _gh9 = st.session_state.get("nmds_github")
+    _nmds_ord = _gh9["ord"] if _gh9 is not None else st.session_state.get("nmds_result")
+ 
     if _nmds_ord is not None:
         card_options9 = amulet_int.sum().sort_values(ascending=False).index.tolist()
         selected_card9 = st.selectbox(
@@ -2378,7 +2376,7 @@ with tab9:
             card_options9,
             key="nmds_card_select"
         )
-
+ 
         # Merge selected card copies into the NMDS site scores via Name + Date
         plot9 = _nmds_ord.copy()
         if selected_card9 in amulet_comb.columns:
@@ -2395,12 +2393,12 @@ with tab9:
                     pd.to_numeric(plot9[selected_card9], errors="coerce")
                       .fillna(0).astype(int)
                 )
-
-        hover9 = [c for c in ["Name", "Date", "next_ban", "current_set"]
+ 
+        hover9 = [c for c in ["Name", "Date", "current_era", "current_set"]
                   if c in plot9.columns]
         if selected_card9 in plot9.columns and selected_card9 not in hover9:
             hover9.append(selected_card9)
-
+ 
         fig9 = px.scatter(
             plot9, x="NMDS1", y="NMDS2",
             color=selected_card9 if selected_card9 in plot9.columns else None,
@@ -2415,11 +2413,11 @@ with tab9:
         fig9.update_yaxes(title_text="NMDS2 (no units)")
         fig9.update_layout(height=800)
         st.plotly_chart(fig9, use_container_width=True)
-
+ 
     else:
         st.info("NMDS data not yet available. Visit the NMDS tab first to load or compute results.")
-
-
+ 
+ 
 # ── Tab 10: NMDS – Card Similarity ───────
 with tab10:
     st.subheader("NMDS – Card Similarity (WA Species Scores)")
@@ -2429,20 +2427,18 @@ with tab10:
         "Unlike PCA loadings, WA scores reflect ecological co-occurrence in "
         "Bray-Curtis space rather than linear correlation."
     )
-
-    _nmds_species = (
-        st.session_state.get("nmds_github", {}).get("species")
-        or st.session_state.get("nmds_species")
-    )
-
+ 
+    _gh10 = st.session_state.get("nmds_github")
+    _nmds_species = _gh10["species"] if _gh10 is not None else st.session_state.get("nmds_species")
+ 
     if _nmds_species is not None:
         wa_scores = _nmds_species.copy()
-
+ 
         # ── Filters ──────────────────────────────────────────────────────
         all_sp10 = wa_scores["card"].tolist()
         sb_sp10  = [s for s in all_sp10 if str(s).startswith("sb_") or "(SB)" in str(s)]
         mb_sp10  = [s for s in all_sp10 if not str(s).startswith("sb_") and "(SB)" not in str(s)]
-
+ 
         fc1, fc2 = st.columns(2)
         with fc1:
             sb_filter10 = st.radio(
@@ -2458,21 +2454,21 @@ with tab10:
                 horizontal=True,
                 key="nmds_sim_color_mode",
             )
-
+ 
         if sb_filter10 == "Maindeck only":
             filtered10 = wa_scores[wa_scores["card"].isin(mb_sp10)]
         elif sb_filter10 == "Sideboard (SB) only":
             filtered10 = wa_scores[wa_scores["card"].isin(sb_sp10)]
         else:
             filtered10 = wa_scores
-
+ 
         filtered10 = filtered10.copy()
         filtered10["card_type"] = filtered10["card"].apply(get_card_type)
         filtered10["deck_slot"] = filtered10["card"].apply(
             lambda s: "Sideboard" if str(s).startswith("sb_") or "(SB)" in str(s)
                       else "Maindeck"
         )
-
+ 
         if color_mode10 == "Card type":
             color_map10 = {
                 "Land":     "#2ca02c",
@@ -2484,7 +2480,7 @@ with tab10:
         else:
             color_map10 = {"Maindeck": "#1f77b4", "Sideboard": "#d62728"}
             filtered10["_color"] = filtered10["deck_slot"]
-
+ 
         fig10 = px.scatter(
             filtered10,
             x="NMDS1", y="NMDS2",
@@ -2506,6 +2502,7 @@ with tab10:
             legend_title_text="Card Type" if color_mode10 == "Card type" else "Deck Slot",
         )
         st.plotly_chart(fig10, use_container_width=True)
-
+ 
     else:
         st.info("NMDS data not yet available. Visit the NMDS tab first to load or compute results.")
+ 

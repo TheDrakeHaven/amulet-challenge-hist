@@ -2245,3 +2245,46 @@ with tab8:
                         highlight_set=None, table_id=f"nmds-median-{era_id_n}")
     else:
         st.info("NMDS computation failed. Check your data.")
+
+    # ── Download NMDS data ────────────────────────────────────────────────────────
+with st.expander("⬇️ Download NMDS Data"):
+    dl1, dl2, dl3 = st.columns(3)
+
+    # Site scores (deck coordinates)
+    with dl1:
+        st.markdown("**Site Scores** (deck coordinates)")
+        csv_sites = ord_nmds.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            "Download site scores (.csv)",
+            data=csv_sites,
+            file_name="nmds_site_scores.csv",
+            mime="text/csv",
+            key="dl_nmds_sites",
+        )
+
+    # Species scores (card WA scores)
+    with dl2:
+        st.markdown("**Card WA Scores** (species scores)")
+        csv_species = species_nmds.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            "Download card scores (.csv)",
+            data=csv_species,
+            file_name="nmds_card_scores.csv",
+            mime="text/csv",
+            key="dl_nmds_species",
+        )
+
+    # Excel with both sheets
+    with dl3:
+        st.markdown("**Both sheets** (.xlsx)")
+        buf = BytesIO()
+        with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+            ord_nmds.to_excel(writer, sheet_name="Site_Scores", index=False)
+            species_nmds.to_excel(writer, sheet_name="Card_WA_Scores", index=False)
+        st.download_button(
+            "Download combined (.xlsx)",
+            data=buf.getvalue(),
+            file_name="nmds_results.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="dl_nmds_excel",
+        )

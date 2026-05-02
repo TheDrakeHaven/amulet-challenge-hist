@@ -19,7 +19,10 @@ st.title("🪬 Amulet Challenge Analysis")
 # ─────────────────────────────────────────
 
 modern_sets = pd.DataFrame({
-  "set": [
+    "set": [
+        # 2014
+        "KTK","FRF",
+
         # 2015
         "BFZ","OGW",
 
@@ -57,6 +60,9 @@ modern_sets = pd.DataFrame({
         "ECL","TMT","SOS"
     ],
     "release_date": pd.to_datetime([
+        # 2014
+        "2014-09-26","2015-01-23",
+
         # 2015
         "2015-10-02","2016-01-22",
 
@@ -93,8 +99,7 @@ modern_sets = pd.DataFrame({
         # 2026
         "2026-01-23","2026-03-06","2026-04-24"
     ])
-}
-).sort_values("release_date").reset_index(drop=True)
+}).sort_values("release_date").reset_index(drop=True)
 
 ban_events = pd.DataFrame({
     "event": [

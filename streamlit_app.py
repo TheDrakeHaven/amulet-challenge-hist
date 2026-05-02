@@ -1266,7 +1266,7 @@ tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "🎴 PCA – Card Inclusion",
     "🃏 Card Similarity (PCA)",
     "🔍 Era-Specific Cards",
-    "🌐 PCoA – Ecological Distance"
+    "🌐 NMDS – Ecological Distance"
 ])
 
 # ── Tab 2: Deck Data ─────────────────────
@@ -1493,79 +1493,74 @@ def run_pca_computation():
 
         except Exception as e:
             st.error(f"PCA computation failed: {e}")
-def run_pcoa_computation():
-    """Run PCoA (classical MDS on Bray-Curtis dissimilarity) and store in session_state."""
-    with st.spinner("Running PCoA (Bray-Curtis + metric MDS)…"):
+def run_nmds_computation():
+    """Run NMDS (non-metric MDS on Bray-Curtis dissimilarity) and cache in session_state."""
+    with st.spinner("Running NMDS (Bray-Curtis, non-metric, 5 random starts)…"):
         try:
             X = amulet_filtered.values.astype(float)
 
-            # ── Bray-Curtis dissimilarity ─────────────────────────────────
-            # BC(i,j) = sum|x_ik - x_jk| / sum(x_ik + x_jk)
+            # Bray-Curtis dissimilarity
             bc_dist = cdist(X, X, metric="braycurtis")
+            bc_dist = np.nan_to_num(bc_dist, nan=0.0)
 
-            # ── Classical metric MDS (= PCoA) ─────────────────────────────
-            mds = MDS(
-                n_components=2,
-                metric=True,
-                dissimilarity="precomputed",
-                random_state=42,
-                n_init=1,
-                max_iter=500,
-                normalized_stress=False,
-            )
-            coords = mds.fit_transform(bc_dist)
-            stress = float(mds.stress_)
+            # Non-metric MDS — 5 random starts, keep lowest stress
+            best_stress, best_coords = np.inf, None
+            for seed in range(5):
+                mds = MDS(
+                    n_components=2, metric=False, dissimilarity="precomputed",
+                    random_state=seed, n_init=1, max_iter=1000,
+                    normalized_stress=True, eps=1e-6,
+                )
+                c = mds.fit_transform(bc_dist)
+                if mds.stress_ < best_stress:
+                    best_stress = mds.stress_
+                    best_coords = c
 
-            site_coords = pd.DataFrame(coords, columns=["PCo1", "PCo2"])
+            coords = best_coords
+            stress = float(best_stress)
+
+            site_coords = pd.DataFrame(coords, columns=["NMDS1", "NMDS2"])
             ord_data = pd.concat(
                 [amulet_env.drop(columns=["row_number"], errors="ignore").reset_index(drop=True),
-                 site_coords],
-                axis=1
+                 site_coords], axis=1
             )
             if "Date" in ord_data.columns:
-                ord_data["Date"] = pd.to_datetime(
-                    ord_data["Date"], errors="coerce"
-                ).dt.strftime("%m-%d-%Y")
+                ord_data["Date"] = (
+                    pd.to_datetime(ord_data["Date"], errors="coerce")
+                    .dt.strftime("%m-%d-%Y")
+                )
 
-            # ── Species scores via weighted average (WA biplot) ───────────
-            # wa_k = sum_i(x_ik * PCo_j_i) / sum_i(x_ik)
+            # WA species scores
             col_totals = X.sum(axis=0)
-            col_totals[col_totals == 0] = 1  # avoid division by zero
-            wa1 = (X * coords[:, 0:1]).sum(axis=0) / col_totals
-            wa2 = (X * coords[:, 1:2]).sum(axis=0) / col_totals
+            col_totals[col_totals == 0] = 1
             species = pd.DataFrame({
-                "card": amulet_filtered.columns,
-                "PCo1": wa1,
-                "PCo2": wa2,
+                "card":  amulet_filtered.columns,
+                "NMDS1": (X * coords[:, 0:1]).sum(axis=0) / col_totals,
+                "NMDS2": (X * coords[:, 1:2]).sum(axis=0) / col_totals,
             })
 
-            # ── Environmental centroids ───────────────────────────────────
+            # Environmental centroids
             env_centroids = {}
-            for env_var in ["next_ban", "current_set"]:
+            for env_var in ["current_era", "current_set"]:
                 if env_var in ord_data.columns:
-                    centroids = (
-                        ord_data.groupby(env_var)[["PCo1", "PCo2"]]
-                        .mean()
-                        .reset_index()
-                        .rename(columns={env_var: "label"})
+                    env_centroids[env_var] = (
+                        ord_data.groupby(env_var)[["NMDS1", "NMDS2"]]
+                        .mean().reset_index().rename(columns={env_var: "label"})
                     )
-                    env_centroids[env_var] = centroids
 
-            st.session_state["pcoa_result"]        = ord_data
-            st.session_state["pcoa_species"]       = species
-            st.session_state["pcoa_env_centroids"] = env_centroids
-            st.session_state["pcoa_stress"]        = stress
-            st.session_state["pcoa_dist"]          = bc_dist
+            st.session_state["nmds_result"]        = ord_data
+            st.session_state["nmds_species"]       = species
+            st.session_state["nmds_env_centroids"] = env_centroids
+            st.session_state["nmds_stress"]        = stress
+            st.session_state["nmds_dist"]          = bc_dist
 
         except Exception as e:
-            st.error(f"PCoA computation failed: {e}")
-
-
+            st.error(f"NMDS computation failed: {e}")
 # ── Run CCA on app start ───────────────────
 if "cca_result" not in st.session_state:
     run_pca_computation()
-if "pcoa_result" not in st.session_state:
-    run_pcoa_computation()
+if "nmds_result" not in st.session_state:
+    run_nmds_computation()
 # ── Tab 4: CCA – Era & Set ────────────────
 with tab4:
     st.subheader("PCA Ordination – Era & Set")
@@ -2073,157 +2068,130 @@ with tab7:
             fig_heat.update_layout(height=max(400, len(heat_cards) * 18))
             st.plotly_chart(fig_heat, use_container_width=True)
 
-# ── Tab 8: PCoA – Ecological Distance ────
+# ── Tab 8: NMDS – Ecological Distance ────
 with tab8:
-    st.subheader("PCoA – Ecological Distance (Bray-Curtis)")
+    st.subheader("NMDS – Ecological Distance (Bray-Curtis)")
     st.markdown(
-        "Principal Coordinates Analysis on **Bray-Curtis dissimilarity** between decklists. "
-        "Unlike PCA (which uses Euclidean distance on standardised counts), PCoA treats "
-        "each deck as a community of cards and measures how different two decklists are "
-        "in terms of shared card composition. "
-        "Points that are close together share similar card proportions; "
-        "distant points have very different deck compositions."
+        "**Non-metric Multidimensional Scaling** on Bray-Curtis dissimilarity. "
+        "Unlike PCA/PCoA, NMDS preserves only the **rank order** of pairwise "
+        "dissimilarities — axes have no absolute meaning, only relative positions matter. "
+        "**Stress** (Kruskal's normalized stress) measures ordination quality."
     )
 
-    if "pcoa_result" in st.session_state:
-        ord_pcoa       = st.session_state["pcoa_result"]
-        species_pcoa   = st.session_state["pcoa_species"]
-        centroids_pcoa = st.session_state["pcoa_env_centroids"]
-        stress_pcoa    = st.session_state["pcoa_stress"]
-        bc_dist        = st.session_state["pcoa_dist"]
+    if "nmds_result" in st.session_state:
+        ord_nmds       = st.session_state["nmds_result"]
+        species_nmds   = st.session_state["nmds_species"]
+        centroids_nmds = st.session_state["nmds_env_centroids"]
+        stress_nmds    = st.session_state["nmds_stress"]
+        bc_dist        = st.session_state["nmds_dist"]
 
-        # ── Stress metric ─────────────────────────────────────────────────
         m1, m2, m3 = st.columns(3)
-        m1.metric("MDS Stress", f"{stress_pcoa:.4f}",
-                  help="Lower is better. < 0.1 = excellent, < 0.2 = good, < 0.3 = fair.")
-        m2.metric("Decklists", len(ord_pcoa))
+        m1.metric("NMDS Stress", f"{stress_nmds:.4f}",
+                  help="< 0.05 excellent · < 0.10 good · < 0.20 fair · ≥ 0.20 poor")
+        m2.metric("Decklists", len(ord_nmds))
         m3.metric("Card Variables", amulet_filtered.shape[1])
 
-        if stress_pcoa < 0.1:
-            st.success("✅ Stress < 0.1 — excellent ordination fit.")
-        elif stress_pcoa < 0.2:
-            st.info("ℹ️ Stress < 0.2 — good ordination fit.")
+        if stress_nmds < 0.05:
+            st.success("✅ Stress < 0.05 — excellent.")
+        elif stress_nmds < 0.10:
+            st.success("✅ Stress < 0.10 — good.")
+        elif stress_nmds < 0.20:
+            st.info("ℹ️ Stress < 0.20 — fair; interpret carefully.")
         else:
-            st.warning("⚠️ Stress ≥ 0.2 — interpret with caution.")
+            st.warning("⚠️ Stress ≥ 0.20 — poor fit.")
 
-        # ── Controls ──────────────────────────────────────────────────────
         ctrl1, ctrl2 = st.columns(2)
         with ctrl1:
-            color_by_pcoa = st.selectbox(
-                "Color sites by:",
-                ["next_ban", "current_set"],
-                key="pcoa_color"
-            )
+            color_by_nmds = st.selectbox(
+                "Color sites by:", ["current_era", "current_set"], key="nmds_color")
         with ctrl2:
-            show_centroids_pcoa = st.checkbox(
-                "Show era/set centroids", value=True, key="pcoa_centroids"
-            )
+            show_centroids_nmds = st.checkbox(
+                "Show centroids", value=True, key="nmds_centroids")
+        show_species_nmds = st.checkbox(
+            "Show top card vectors (WA biplot)", value=False, key="nmds_species_chk")
 
-        show_species_pcoa = st.checkbox(
-            "Show top card vectors (WA biplot)", value=False, key="pcoa_species_chk"
+        hover_nmds = [c for c in ["Name", "Date", "current_era", "current_set"]
+                      if c in ord_nmds.columns]
+        plot_nmds = ord_nmds.copy()
+        plot_nmds[color_by_nmds] = (
+            plot_nmds[color_by_nmds].fillna("Unknown")
+            if color_by_nmds in plot_nmds.columns else "Unknown"
         )
 
-        # ── Site scatter ──────────────────────────────────────────────────
-        hover_pcoa = [c for c in ["Name", "Date", "next_ban", "current_set"]
-                      if c in ord_pcoa.columns]
-        # Guard: fill NaN in color column so plotly doesn't crash
-        plot_pcoa = ord_pcoa.copy()
-        if color_by_pcoa in plot_pcoa.columns:
-            plot_pcoa[color_by_pcoa] = plot_pcoa[color_by_pcoa].fillna("Unknown")
-        else:
-            plot_pcoa[color_by_pcoa] = "Unknown"
-
-        fig_pcoa = px.scatter(
-            plot_pcoa, x="PCo1", y="PCo2",
-            color=color_by_pcoa,
-            hover_data=[c for c in hover_pcoa if c in plot_pcoa.columns],
-            title=f"PCoA (Bray-Curtis) – sites colored by {color_by_pcoa}",
-            template="plotly_white",
-            opacity=0.75,
+        fig_nmds = px.scatter(
+            plot_nmds, x="NMDS1", y="NMDS2",
+            color=color_by_nmds,
+            hover_data=[c for c in hover_nmds if c in plot_nmds.columns],
+            title=f"NMDS (Bray-Curtis) – {color_by_nmds}  |  stress = {stress_nmds:.4f}",
+            template="plotly_white", opacity=0.75,
         )
-        fig_pcoa.update_traces(marker=dict(size=7))
-        fig_pcoa.update_xaxes(title_text="PCo1")
-        fig_pcoa.update_yaxes(title_text="PCo2")
+        fig_nmds.update_traces(marker=dict(size=7))
+        fig_nmds.update_xaxes(title_text="NMDS1 (no units)")
+        fig_nmds.update_yaxes(title_text="NMDS2 (no units)")
 
-        # ── Centroid overlay ──────────────────────────────────────────────
-        if show_centroids_pcoa and color_by_pcoa in centroids_pcoa and centroids_pcoa:
-            cents = centroids_pcoa[color_by_pcoa]
-            fig_pcoa.add_trace(go.Scatter(
-                x=cents["PCo1"], y=cents["PCo2"],
-                mode="markers+text",
-                text=cents["label"],
-                textposition="top center",
+        if show_centroids_nmds and color_by_nmds in centroids_nmds:
+            cents = centroids_nmds[color_by_nmds]
+            fig_nmds.add_trace(go.Scatter(
+                x=cents["NMDS1"], y=cents["NMDS2"],
+                mode="markers+text", text=cents["label"], textposition="top center",
                 marker=dict(size=14, symbol="diamond", color="black",
                             line=dict(width=1, color="white")),
-                name=f"{color_by_pcoa} centroids",
-                showlegend=True,
+                name=f"{color_by_nmds} centroids", showlegend=True,
             ))
 
-        # ── WA species scores overlay ─────────────────────────────────────
-        if show_species_pcoa:
-            top_n_pcoa = st.slider("Top N card vectors", 5, 30, 10, key="pcoa_top_n")
-            sp = species_pcoa.copy()
-            sp["dist"] = np.sqrt(sp["PCo1"]**2 + sp["PCo2"]**2)
-            sp_top = sp.nlargest(top_n_pcoa, "dist")
-            fig_pcoa.add_trace(go.Scatter(
-                x=sp_top["PCo1"], y=sp_top["PCo2"],
-                mode="markers+text",
-                text=sp_top["card"],
-                textposition="top right",
+        if show_species_nmds:
+            top_n_nmds = st.slider("Top N card vectors", 5, 30, 10, key="nmds_top_n")
+            sp = species_nmds.copy()
+            sp["dist"] = np.sqrt(sp["NMDS1"]**2 + sp["NMDS2"]**2)
+            sp_top = sp.nlargest(top_n_nmds, "dist")
+            fig_nmds.add_trace(go.Scatter(
+                x=sp_top["NMDS1"], y=sp_top["NMDS2"],
+                mode="markers+text", text=sp_top["card"], textposition="top right",
                 marker=dict(size=10, symbol="triangle-up", color="crimson"),
-                name="Card WA scores",
-                showlegend=True,
+                name="Card WA scores", showlegend=True,
             ))
 
-        fig_pcoa.update_layout(height=800)
-        st.plotly_chart(fig_pcoa, use_container_width=True)
+        fig_nmds.update_layout(height=800)
+        st.plotly_chart(fig_nmds, use_container_width=True)
 
-        # ── Shepard diagram (distance preservation check) ─────────────────
-        with st.expander("🔍 Shepard Diagram — how well does the 2D ordination preserve distances?"):
+        with st.expander("🔍 Stressplot — rank-order preservation check"):
             st.markdown(
-                "Each point plots the original Bray-Curtis dissimilarity (x-axis) against "
-                "the Euclidean distance in the 2D PCoA space (y-axis). "
-                "A tight linear cloud = good preservation."
+                "Original Bray-Curtis dissimilarity (x) vs NMDS distance (y). "
+                "A monotone relationship is sufficient — NMDS only needs to preserve rank order."
             )
             n = bc_dist.shape[0]
             idx_i, idx_j = np.triu_indices(n, k=1)
-            orig_dist = bc_dist[idx_i, idx_j]
-            pco_coords = ord_pcoa[["PCo1", "PCo2"]].values
-            ord_dist   = np.sqrt(
-                (pco_coords[idx_i, 0] - pco_coords[idx_j, 0])**2 +
-                (pco_coords[idx_i, 1] - pco_coords[idx_j, 1])**2
+            orig_d = bc_dist[idx_i, idx_j]
+            nv     = ord_nmds[["NMDS1", "NMDS2"]].values
+            ord_d  = np.sqrt(
+                (nv[idx_i, 0] - nv[idx_j, 0])**2 +
+                (nv[idx_i, 1] - nv[idx_j, 1])**2
             )
-            # Sample if large
-            if len(orig_dist) > 5000:
-                rng = np.random.default_rng(42)
-                sel = rng.choice(len(orig_dist), 5000, replace=False)
-                orig_dist = orig_dist[sel]
-                ord_dist  = ord_dist[sel]
+            if len(orig_d) > 5000:
+                rng  = np.random.default_rng(42)
+                sel  = rng.choice(len(orig_d), 5000, replace=False)
+                orig_d = orig_d[sel]; ord_d = ord_d[sel]
+            sort_idx = np.argsort(orig_d)
+            mono_y   = np.maximum.accumulate(ord_d[sort_idx])
+            fig_sp = px.scatter(
+                x=orig_d, y=ord_d, opacity=0.25, template="plotly_white",
+                labels={"x": "Bray-Curtis dissimilarity", "y": "NMDS distance"},
+                title="Stressplot",
+            )
+            fig_sp.add_trace(go.Scatter(
+                x=orig_d[sort_idx], y=mono_y, mode="lines",
+                line=dict(color="red", width=1.5), name="Monotone fit",
+            ))
+            fig_sp.update_layout(height=450)
+            st.plotly_chart(fig_sp, use_container_width=True)
 
-            fig_shep = px.scatter(
-                x=orig_dist, y=ord_dist,
-                labels={"x": "Bray-Curtis dissimilarity", "y": "PCoA Euclidean distance"},
-                title="Shepard Diagram",
-                opacity=0.3,
-                template="plotly_white",
-            )
-            # Add y=x reference line
-            lim = max(orig_dist.max(), ord_dist.max())
-            fig_shep.add_shape(
-                type="line", x0=0, y0=0, x1=lim, y1=lim,
-                line=dict(color="red", dash="dash", width=1),
-            )
-            fig_shep.update_layout(height=450)
-            st.plotly_chart(fig_shep, use_container_width=True)
-
-        # ── Most dissimilar deck per era ──────────────────────────────────
-        st.markdown("#### 🃏 Outlier Decklists By Era (PCoA)")
-        pco_vals = ord_pcoa[["PCo1", "PCo2"]].values
+        st.markdown("#### 🃏 Outlier Decklists By Era (NMDS)")
+        nv = ord_nmds[["NMDS1", "NMDS2"]].values
         for era in ERA_ORDER:
-            era_idx = ord_pcoa.index[ord_pcoa["next_ban"] == era].tolist()
+            era_idx = ord_nmds.index[ord_nmds["current_era"] == era].tolist()
             if len(era_idx) < 2:
                 continue
-            era_coords = pco_vals[era_idx]
+            era_coords = nv[era_idx]
             best_mean_dist, best_idx = -1, None
             for ii, idx in enumerate(era_idx):
                 others = np.delete(era_coords, ii, axis=0)
@@ -2235,11 +2203,9 @@ with tab8:
                 if md > best_mean_dist:
                     best_mean_dist, best_idx = md, idx
 
-            outlier_name = ord_pcoa.loc[best_idx, "Name"] if "Name" in ord_pcoa.columns else ""
-            outlier_date = ord_pcoa.loc[best_idx, "Date"] if "Date" in ord_pcoa.columns else ""
-            label = f"{outlier_name} ({outlier_date})  —  {era}"
-
-            with st.expander(label):
+            outlier_name = ord_nmds.loc[best_idx, "Name"] if "Name" in ord_nmds.columns else ""
+            outlier_date = ord_nmds.loc[best_idx, "Date"] if "Date" in ord_nmds.columns else ""
+            with st.expander(f"{outlier_name} ({outlier_date})  —  {era}"):
                 match = amulet_comb[
                     (amulet_comb["Name"] == outlier_name) &
                     (amulet_comb["Date"].astype(str).str.contains(
@@ -2247,49 +2213,35 @@ with tab8:
                 ]
                 if match.empty:
                     st.info("Decklist not found.")
-                else:
-                    deck_row   = match.iloc[0]
-                    card_cols_d = [c for c in amulet_int.columns if c in deck_row.index]
-                    decklist   = (
-                        pd.Series({c: deck_row[c] for c in card_cols_d})
-                        .astype(int)
-                    )
-                    decklist   = decklist[decklist > 0].sort_values(ascending=False)
-
-                    era_rows   = amulet_comb[amulet_comb["next_ban"] == era]
-                    era_cards  = era_rows[[c for c in amulet_int.columns
-                                           if c in era_rows.columns]]
-                    median_deck = era_cards.median().round(2)
-                    median_deck = median_deck[median_deck > 0].sort_values(ascending=False)
-
-                    col_m, col_o, col_med = st.columns([1, 1.5, 1.5])
-                    with col_m:
-                        st.markdown(f"**{outlier_name}** — {outlier_date}")
-                        st.markdown(f"Mean PCoA distance: **{best_mean_dist:.4f}**")
-                        st.markdown(f"Era N: **{len(era_idx)}**")
-
-                    median_cards = set(median_deck[median_deck > 0].index)
-                    era_id_pcoa  = re.sub(r"[^a-zA-Z0-9]+", "-", era).strip("-").lower()
-
-                    with col_o:
-                        st.markdown("**Outlier Decklist** *(hover = card image · green = not in median)*")
-                        deck_df = decklist.reset_index()
-                        deck_df.columns = ["Card", "Copies"]
-                        deck_df = sort_by_type(deck_df, "Card")
-                        render_decklist_html(
-                            deck_df, "Card", "Copies",
-                            highlight_set=median_cards,
-                            table_id=f"pcoa-outlier-{era_id_pcoa}",
-                        )
-                    with col_med:
-                        st.markdown(f"**Median Decklist ({era})**")
-                        med_df = median_deck.reset_index()
-                        med_df.columns = ["Card", "Median Copies"]
-                        med_df = sort_by_type(med_df, "Card")
-                        render_decklist_html(
-                            med_df, "Card", "Median Copies",
-                            highlight_set=None,
-                            table_id=f"pcoa-median-{era_id_pcoa}",
-                        )
+                    continue
+                deck_row    = match.iloc[0]
+                card_cols_d = [c for c in amulet_int.columns if c in deck_row.index]
+                decklist    = pd.Series({c: deck_row[c] for c in card_cols_d}).astype(int)
+                decklist    = decklist[decklist > 0].sort_values(ascending=False)
+                era_rows    = amulet_comb[amulet_comb["current_era"] == era]
+                era_cards   = era_rows[[c for c in amulet_int.columns if c in era_rows.columns]]
+                median_deck = era_cards.median().round(2)
+                median_deck = median_deck[median_deck > 0].sort_values(ascending=False)
+                median_cards = set(median_deck[median_deck > 0].index)
+                era_id_n = re.sub(r"[^a-zA-Z0-9]+", "-", era).strip("-").lower()
+                col_m, col_o, col_med = st.columns([1, 1.5, 1.5])
+                with col_m:
+                    st.markdown(f"**{outlier_name}** — {outlier_date}")
+                    st.markdown(f"Mean NMDS distance: **{best_mean_dist:.4f}**")
+                    st.markdown(f"Era N: **{len(era_idx)}**")
+                with col_o:
+                    st.markdown("**Outlier Decklist** *(hover = card · green = not in median)*")
+                    deck_df = decklist.reset_index()
+                    deck_df.columns = ["Card", "Copies"]
+                    deck_df = sort_by_type(deck_df, "Card")
+                    render_decklist_html(deck_df, "Card", "Copies",
+                        highlight_set=median_cards, table_id=f"nmds-outlier-{era_id_n}")
+                with col_med:
+                    st.markdown(f"**Median Decklist ({era})**")
+                    med_df = median_deck.reset_index()
+                    med_df.columns = ["Card", "Median Copies"]
+                    med_df = sort_by_type(med_df, "Card")
+                    render_decklist_html(med_df, "Card", "Median Copies",
+                        highlight_set=None, table_id=f"nmds-median-{era_id_n}")
     else:
-        st.info("PCoA computation failed. Check your data.")
+        st.info("NMDS computation failed. Check your data.")

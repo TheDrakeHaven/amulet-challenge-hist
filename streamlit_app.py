@@ -1242,7 +1242,7 @@ with st.spinner("Processing main deck sheet…"):
     amulet_int = amulet_df[[c for c in amulet_df.columns if c not in meta_cols]].copy()
 
     amulet_env["current_set"] = amulet_env["Date"].apply(assign_current_set)
-    amulet_env["next_ban"]    = amulet_env["Date"].apply(lambda d: assign_ban_era(d, ban_events))
+    amulet_env["current_era"] = amulet_env["Date"].apply(lambda d: assign_ban_era(d, ban_events))
 
     amulet_comb = pd.concat(
         [amulet_env.drop(columns=["row_number"], errors="ignore").reset_index(drop=True),
@@ -1255,7 +1255,7 @@ _date_max = pd.to_datetime(amulet_env["Date"], errors="coerce").max()
 st.caption(
     f"📊 {len(amulet_df):,} decklists · "
     f"{_date_min.strftime('%b %Y')} → {_date_max.strftime('%b %Y')} · "
-    f"{amulet_env['next_ban'].nunique()} eras"
+    f"{amulet_env['current_era'].nunique()} eras"
 )
 
 numeric = amulet_int.select_dtypes(include="number")
@@ -1382,12 +1382,12 @@ with tab3:
     num_cols = [c for c in num_cols if amulet_comb[c].sum() > 25]
     num_cols = [c for c in num_cols if amulet_comb[c].sum() < 1800]
     mean_deck = (
-        amulet_comb.groupby("next_ban")[num_cols]
+        amulet_comb.groupby("current_era")[num_cols]
         .mean()
         .reset_index()
     )
     st.markdown("**Heatmap of Mean Counts**")
-    heat_data = mean_deck.set_index("next_ban")[num_cols]
+    heat_data = mean_deck.set_index("current_era")[num_cols]
     era_order = [
         "Pre-Splinter Twin/Summer Bloom Ban",
         "Pre-Gitaxian Probe/GGT Ban",
@@ -1472,7 +1472,7 @@ def run_pca_computation():
             loadings.rename(columns={"index": "card"}, inplace=True)
 
             env_centroids = {}
-            for env_var in ["next_ban", "current_set"]:
+            for env_var in ["current_era", "current_set"]:
                 if env_var in ord_data.columns:
                     centroids = (
                         ord_data.groupby(env_var)[["CA1", "CA2"]]
@@ -1579,7 +1579,7 @@ with tab4:
 
         color_by = st.selectbox(
             "Color sites by:",
-            ["next_ban", "current_set"],
+            ["current_era", "current_set"],
             key="cca_color_tab4"
         )
 
@@ -1587,7 +1587,7 @@ with tab4:
         show_species   = st.checkbox("Show top card vectors", value=False, key="show_species_tab4")
 
         # ── Site scatter ──────────────────────────────────────────────────
-        hover_cols = [c for c in ["Name", "Date", "next_ban", "current_set"] if c in ord_data.columns]
+        hover_cols = [c for c in ["Name", "Date", "current_era", "current_set"] if c in ord_data.columns]
         fig = px.scatter(
             ord_data, x="CA1", y="CA2",
             color=color_by,
@@ -1648,7 +1648,7 @@ with tab4:
 
         rows = []
         for era in ERA_ORDER:
-            era_idx = ord_data.index[ord_data["next_ban"] == era].tolist()
+            era_idx = ord_data.index[ord_data["current_era"] == era].tolist()
             if len(era_idx) < 2:
                 continue
 
@@ -1678,7 +1678,7 @@ with tab4:
         # Store best_idx per era for expander lookup
         era_best_idx = {}
         for era in ERA_ORDER:
-            era_idx = ord_data.index[ord_data["next_ban"] == era].tolist()
+            era_idx = ord_data.index[ord_data["current_era"] == era].tolist()
             if len(era_idx) < 2:
                 continue
             era_coords = ord_data.loc[era_idx, ["CA1", "CA2"]].values
@@ -1728,7 +1728,7 @@ with tab4:
                     decklist = decklist[decklist > 0].sort_values(ascending=False)
 
                     # ── Median decklist for this era ──────────────────────
-                    era_rows = amulet_comb[amulet_comb["next_ban"] == era]
+                    era_rows = amulet_comb[amulet_comb["current_era"] == era]
                     era_cards = era_rows[[c for c in amulet_int.columns if c in era_rows.columns]]
                     median_deck = era_cards.median().round(2)
                     median_deck = median_deck[median_deck > 0].sort_values(ascending=False)
@@ -1819,7 +1819,7 @@ with tab5:
                       .astype(int)
                 )
 
-        hover_cols = [c for c in ["Name", "Date", "next_ban", "current_set"]
+        hover_cols = [c for c in ["Name", "Date", "current_era", "current_set"]
                       if c in plot_data.columns]
         if selected_card in plot_data.columns and selected_card not in hover_cols:
             hover_cols.append(selected_card)
@@ -1946,18 +1946,18 @@ with tab7:
         "Use the slider to control the minimum number of appearances required."
     )
 
-    era_order_display = [e for e in ERA_ORDER if e in amulet_comb["next_ban"].values]
+    era_order_display = [e for e in ERA_ORDER if e in amulet_comb["current_era"].values]
     card_cols_era = [c for c in amulet_int.columns]
 
     # Build era × card count matrix (raw) and era deck sizes
     era_card_raw = (
-        amulet_comb.groupby("next_ban")[card_cols_era]
+        amulet_comb.groupby("current_era")[card_cols_era]
         .sum()
         .reindex(era_order_display)
         .fillna(0)
     )
     era_sizes = (
-        amulet_comb.groupby("next_ban")
+        amulet_comb.groupby("current_era")
         .size()
         .reindex(era_order_display)
         .fillna(1)  # avoid division by zero
@@ -2391,7 +2391,7 @@ with tab8:
         st.markdown("#### 🃏 Outlier Decklists By Era (NMDS)")
         nv = ord_nmds[["NMDS1", "NMDS2"]].values
         for era in ERA_ORDER:
-            era_col = "current_era" if "current_era" in ord_nmds.columns else "next_ban"
+            era_col = "current_era"
             era_idx = ord_nmds.index[ord_nmds[era_col] == era].tolist()
             if len(era_idx) < 2:
                 continue
@@ -2422,7 +2422,7 @@ with tab8:
                 card_cols_d = [c for c in amulet_int.columns if c in deck_row.index]
                 decklist    = pd.Series({c: deck_row[c] for c in card_cols_d}).astype(int)
                 decklist    = decklist[decklist > 0].sort_values(ascending=False)
-                era_col_cb  = "current_era" if "current_era" in amulet_comb.columns else "next_ban"
+                era_col_cb  = "current_era"
                 era_rows    = amulet_comb[amulet_comb[era_col_cb] == era]
                 era_cards   = era_rows[[c for c in amulet_int.columns if c in era_rows.columns]]
                 median_deck = era_cards.median().round(2)

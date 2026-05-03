@@ -22,11 +22,14 @@ st.title("🪬 Amulet Challenge Analysis")
 
 modern_sets = pd.DataFrame({
     "set": [
+        # 2013
+        "THS","BNG",
+
         # 2014
-        "KTK","FRF",
+        "JOU","M15","KTK","FRF",
 
         # 2015
-        "BFZ","OGW",
+        "DTK","ORI","BFZ","OGW",
 
         # 2016
         "SOI","EMN","KLD","AER",
@@ -62,11 +65,14 @@ modern_sets = pd.DataFrame({
         "ECL","TMT","SOS"
     ],
     "release_date": pd.to_datetime([
+        # 2013
+        "2013-09-27","2014-02-07",
+
         # 2014
-        "2014-09-26","2015-01-23",
+        "2014-05-02","2014-07-18","2014-09-26","2015-01-23",
 
         # 2015
-        "2015-10-02","2016-01-22",
+        "2015-03-27","2015-07-17","2015-10-02","2016-01-22",
 
         # 2016
         "2016-04-08","2016-07-22","2016-09-30","2017-01-20",
@@ -105,11 +111,11 @@ modern_sets = pd.DataFrame({
 
 ban_events = pd.DataFrame({
     "event": [
-        # 2015–2016
+        # 2013–2015
         "Pre-Splinter Twin/Summer Bloom Ban",
-        "Pre-Gitaxian Probe/GGT Ban",
 
-        # 2017–2019
+        # 2016–2019
+        "Pre-Gitaxian Probe/GGT Ban",
         "Pre-MH1 Release",
         "Pre-Lattice/Oko Ban",
 
@@ -129,13 +135,13 @@ ban_events = pd.DataFrame({
         "Current"
     ],
     "date": pd.to_datetime([
-        # 2015–2016
+        # 2013–2015 (covers all pre-Twin data back to 2013)
         "2016-01-18",  # Splinter Twin + Summer Bloom ban
-        "2017-04-24",  # Probe + GGT ban
 
-        # 2017–2019
+        # 2016–2019
+        "2017-04-24",  # Probe + GGT ban
         "2019-06-14",  # MH1 release
-        "2020-01-13",  # Opal + Oko ban
+        "2020-01-13",  # Mox Opal + Oko + Lattice ban
 
         # 2020–2026
         "2020-07-13",
@@ -2073,6 +2079,14 @@ with tab8:
         "dissimilarities — axes have no absolute meaning, only relative positions matter. "
         "**Stress** (Kruskal's normalized stress) measures ordination quality."
     )
+
+    # ── Resolve data: uploaded file → session state → nothing ────────────
+    uploaded_nmds = st.file_uploader(
+        "Upload pre-computed NMDS results (.xlsx) to skip re-computation",
+        type=["xlsx"],
+        key="nmds_upload",
+    )
+
     GITHUB_NMDS_URL = (
         "https://raw.githubusercontent.com/"
         "TheDrakeHaven/amulet-challenge-hist/main/nmds_results.xlsx"
@@ -2089,7 +2103,7 @@ with tab8:
             if "stress" in meta.columns:
                 st_val = float(meta["stress"].iloc[0])
         cents = {}
-        for ev in ["next_ban", "current_set"]:
+        for ev in ["current_era", "current_set"]:
             if ev in od.columns:
                 cents[ev] = (
                     od.groupby(ev)[["NMDS1", "NMDS2"]]
@@ -2097,7 +2111,17 @@ with tab8:
                 )
         return od, sp, st_val, cents
 
-    if "nmds_github" in st.session_state:
+    if uploaded_nmds is not None:
+        # 1. User-uploaded file takes top priority
+        try:
+            ord_nmds, species_nmds, stress_nmds, centroids_nmds = _load_nmds_excel(uploaded_nmds)
+            bc_dist = None
+            st.success(f"✅ Loaded {len(ord_nmds):,} site scores from uploaded file.")
+        except Exception as e:
+            st.error(f"Failed to load uploaded NMDS file: {e}")
+            ord_nmds = None
+
+    elif "nmds_github" in st.session_state:
         # 2. Already fetched from GitHub this session (cached to avoid re-fetching)
         ord_nmds       = st.session_state["nmds_github"]["ord"]
         species_nmds   = st.session_state["nmds_github"]["species"]
@@ -2167,7 +2191,7 @@ with tab8:
         ctrl1, ctrl2 = st.columns(2)
         with ctrl1:
             color_by_nmds = st.selectbox(
-                "Color sites by:", ["next_ban", "current_set"], key="nmds_color")
+                "Color sites by:", ["current_era", "current_set"], key="nmds_color")
         with ctrl2:
             show_centroids_nmds = st.checkbox(
                 "Show centroids", value=True, key="nmds_centroids")
@@ -2175,7 +2199,7 @@ with tab8:
             "Show top card vectors (WA biplot)", value=False, key="nmds_species_chk")
 
         # ── Site scatter ──────────────────────────────────────────────────
-        hover_nmds = [c for c in ["Name", "Date", "next_ban", "current_set"]
+        hover_nmds = [c for c in ["Name", "Date", "current_era", "current_set"]
                       if c in ord_nmds.columns]
         plot_nmds = ord_nmds.copy()
         plot_nmds[color_by_nmds] = (
@@ -2296,7 +2320,7 @@ with tab8:
         st.markdown("#### 🃏 Outlier Decklists By Era (NMDS)")
         nv = ord_nmds[["NMDS1", "NMDS2"]].values
         for era in ERA_ORDER:
-            era_col = "next_ban" if "next_ban" in ord_nmds.columns else "next_ban"
+            era_col = "current_era" if "current_era" in ord_nmds.columns else "next_ban"
             era_idx = ord_nmds.index[ord_nmds[era_col] == era].tolist()
             if len(era_idx) < 2:
                 continue
@@ -2327,7 +2351,7 @@ with tab8:
                 card_cols_d = [c for c in amulet_int.columns if c in deck_row.index]
                 decklist    = pd.Series({c: deck_row[c] for c in card_cols_d}).astype(int)
                 decklist    = decklist[decklist > 0].sort_values(ascending=False)
-                era_col_cb  = "next_ban" if "next_ban" in amulet_comb.columns else "next_ban"
+                era_col_cb  = "current_era" if "current_era" in amulet_comb.columns else "next_ban"
                 era_rows    = amulet_comb[amulet_comb[era_col_cb] == era]
                 era_cards   = era_rows[[c for c in amulet_int.columns if c in era_rows.columns]]
                 median_deck = era_cards.median().round(2)
@@ -2364,11 +2388,11 @@ with tab9:
         "Sites (decklists) plotted in NMDS space, coloured by the number of copies "
         "of a selected card. Reveals where in compositional space a card concentrates."
     )
- 
+
     # Resolve NMDS data from whatever source tab 8 used
     _gh9 = st.session_state.get("nmds_github")
     _nmds_ord = _gh9["ord"] if _gh9 is not None else st.session_state.get("nmds_result")
- 
+
     if _nmds_ord is not None:
         card_options9 = amulet_int.sum().sort_values(ascending=False).index.tolist()
         selected_card9 = st.selectbox(
@@ -2376,7 +2400,7 @@ with tab9:
             card_options9,
             key="nmds_card_select"
         )
- 
+
         # Merge selected card copies into the NMDS site scores via Name + Date
         plot9 = _nmds_ord.copy()
         if selected_card9 in amulet_comb.columns:
@@ -2393,12 +2417,12 @@ with tab9:
                     pd.to_numeric(plot9[selected_card9], errors="coerce")
                       .fillna(0).astype(int)
                 )
- 
+
         hover9 = [c for c in ["Name", "Date", "current_era", "current_set"]
                   if c in plot9.columns]
         if selected_card9 in plot9.columns and selected_card9 not in hover9:
             hover9.append(selected_card9)
- 
+
         fig9 = px.scatter(
             plot9, x="NMDS1", y="NMDS2",
             color=selected_card9 if selected_card9 in plot9.columns else None,
@@ -2413,11 +2437,11 @@ with tab9:
         fig9.update_yaxes(title_text="NMDS2 (no units)")
         fig9.update_layout(height=800)
         st.plotly_chart(fig9, use_container_width=True)
- 
+
     else:
         st.info("NMDS data not yet available. Visit the NMDS tab first to load or compute results.")
- 
- 
+
+
 # ── Tab 10: NMDS – Card Similarity ───────
 with tab10:
     st.subheader("NMDS – Card Similarity (WA Species Scores)")
@@ -2427,18 +2451,18 @@ with tab10:
         "Unlike PCA loadings, WA scores reflect ecological co-occurrence in "
         "Bray-Curtis space rather than linear correlation."
     )
- 
+
     _gh10 = st.session_state.get("nmds_github")
     _nmds_species = _gh10["species"] if _gh10 is not None else st.session_state.get("nmds_species")
- 
+
     if _nmds_species is not None:
         wa_scores = _nmds_species.copy()
- 
+
         # ── Filters ──────────────────────────────────────────────────────
         all_sp10 = wa_scores["card"].tolist()
         sb_sp10  = [s for s in all_sp10 if str(s).startswith("sb_") or "(SB)" in str(s)]
         mb_sp10  = [s for s in all_sp10 if not str(s).startswith("sb_") and "(SB)" not in str(s)]
- 
+
         fc1, fc2 = st.columns(2)
         with fc1:
             sb_filter10 = st.radio(
@@ -2454,21 +2478,21 @@ with tab10:
                 horizontal=True,
                 key="nmds_sim_color_mode",
             )
- 
+
         if sb_filter10 == "Maindeck only":
             filtered10 = wa_scores[wa_scores["card"].isin(mb_sp10)]
         elif sb_filter10 == "Sideboard (SB) only":
             filtered10 = wa_scores[wa_scores["card"].isin(sb_sp10)]
         else:
             filtered10 = wa_scores
- 
+
         filtered10 = filtered10.copy()
         filtered10["card_type"] = filtered10["card"].apply(get_card_type)
         filtered10["deck_slot"] = filtered10["card"].apply(
             lambda s: "Sideboard" if str(s).startswith("sb_") or "(SB)" in str(s)
                       else "Maindeck"
         )
- 
+
         if color_mode10 == "Card type":
             color_map10 = {
                 "Land":     "#2ca02c",
@@ -2480,7 +2504,7 @@ with tab10:
         else:
             color_map10 = {"Maindeck": "#1f77b4", "Sideboard": "#d62728"}
             filtered10["_color"] = filtered10["deck_slot"]
- 
+
         fig10 = px.scatter(
             filtered10,
             x="NMDS1", y="NMDS2",
@@ -2502,7 +2526,6 @@ with tab10:
             legend_title_text="Card Type" if color_mode10 == "Card type" else "Deck Slot",
         )
         st.plotly_chart(fig10, use_container_width=True)
- 
+
     else:
         st.info("NMDS data not yet available. Visit the NMDS tab first to load or compute results.")
- 

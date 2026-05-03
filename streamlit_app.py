@@ -2094,21 +2094,31 @@ with tab8:
 
     def _load_nmds_excel(source):
         """Load NMDS sheets from a file-like object or URL string."""
-        xls          = pd.ExcelFile(source)
-        od           = pd.read_excel(xls, sheet_name="Site_Scores")
-        sp           = pd.read_excel(xls, sheet_name="Card_WA_Scores")
-        st_val       = None
+        xls = pd.ExcelFile(source)
+        od  = pd.read_excel(xls, sheet_name="Site_Scores")
+        sp  = pd.read_excel(xls, sheet_name="Card_WA_Scores")
+        # Read stress safely — Metadata sheet may be empty or missing
+        st_val = None
         if "Metadata" in xls.sheet_names:
-            meta = pd.read_excel(xls, sheet_name="Metadata")
-            if "stress" in meta.columns:
-                st_val = float(meta["stress"].iloc[0])
+            try:
+                meta = pd.read_excel(xls, sheet_name="Metadata")
+                if "stress" in meta.columns and len(meta) > 0:
+                    val = meta["stress"].iloc[0]
+                    if pd.notna(val):
+                        st_val = float(val)
+            except Exception:
+                pass
+        # Recompute centroids from site scores
         cents = {}
         for ev in ["current_era", "current_set"]:
             if ev in od.columns:
-                cents[ev] = (
-                    od.groupby(ev)[["NMDS1", "NMDS2"]]
-                    .mean().reset_index().rename(columns={ev: "label"})
-                )
+                try:
+                    cents[ev] = (
+                        od.groupby(ev)[["NMDS1", "NMDS2"]]
+                        .mean().reset_index().rename(columns={ev: "label"})
+                    )
+                except Exception:
+                    pass
         return od, sp, st_val, cents
 
     if uploaded_nmds is not None:

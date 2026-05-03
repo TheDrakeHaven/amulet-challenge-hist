@@ -2631,9 +2631,9 @@ with tab11:
                 status.text(f"Running NMDS for {era}… ({i+1}/{len(eras_to_run)})")
                 progress.progress((i + 1) / len(eras_to_run))
 
-                era_rows  = amulet_comb[amulet_comb["current_era"] == era]
-                era_cards = amulet_int.loc[era_rows.index]
-                X_era     = era_cards.values.astype(float)
+                era_mask  = (amulet_comb["current_era"] == era).values
+                era_rows  = amulet_comb[era_mask].reset_index(drop=True)
+                X_era     = amulet_int.values[era_mask].astype(float)
 
                 try:
                     bc = cdist(X_era, X_era, metric="braycurtis")

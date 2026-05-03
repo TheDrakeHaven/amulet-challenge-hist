@@ -2727,18 +2727,35 @@ with tab11:
                         fig_era = px.scatter(
                             sites, x="NMDS1", y="NMDS2",
                             hover_data=hover_cols_era,
-                            title=f"{era}<br><sup>n={n}  stress={stress:.3f}</sup>",
-                            template="plotly_white",
-                            opacity=0.65,
+                            template="plotly_dark",
+                            opacity=0.70,
                         )
                         fig_era.update_traces(
-                            marker=dict(size=6, color="#1f77b4",
+                            marker=dict(size=5, color="#00d4ff",
                                         line=dict(width=0))
                         )
                         fig_era.update_xaxes(title_text="NMDS1", showgrid=True,
-                                             gridcolor="#eee", zeroline=False)
+                                             gridcolor="#333", zeroline=False)
                         fig_era.update_yaxes(title_text="NMDS2", showgrid=True,
-                                             gridcolor="#eee", zeroline=False)
+                                             gridcolor="#333", zeroline=False)
+                        # Era label in top-left corner
+                        fig_era.add_annotation(
+                            x=0.02, y=0.97, xref="paper", yref="paper",
+                            text=f"<b>{era}</b>",
+                            showarrow=False,
+                            font=dict(size=11, color="white"),
+                            bgcolor="rgba(0,0,0,0.5)",
+                            borderpad=4,
+                            align="left",
+                        )
+                        # Stress + n in bottom-right
+                        fig_era.add_annotation(
+                            x=0.98, y=0.03, xref="paper", yref="paper",
+                            text=f"n={n}  stress={stress:.3f}",
+                            showarrow=False,
+                            font=dict(size=9, color="#aaa"),
+                            align="right",
+                        )
 
                         if show_species_era:
                             sp = res["species"].copy()
@@ -2757,9 +2774,9 @@ with tab11:
 
                         fig_era.update_layout(
                             height=380,
-                            plot_bgcolor="white",
-                            paper_bgcolor="white",
-                            margin=dict(t=60, b=40, l=40, r=20),
+                            plot_bgcolor="#1a1a2e",
+                            paper_bgcolor="#0d0d1a",
+                            margin=dict(t=20, b=40, l=40, r=20),
                             showlegend=False,
                         )
                         st.plotly_chart(fig_era, width='stretch')

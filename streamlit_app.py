@@ -1283,14 +1283,14 @@ with tab2:
 
     with subtab_data:
         st.subheader("Amulet Deck – Main Sheet")
-        st.dataframe(amulet_comb, use_container_width=True)
+        st.dataframe(amulet_comb, width='stretch')
 
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("**Average Card Frequency**")
             means = amulet_int.mean(numeric_only=True).sort_values(ascending=False)
             st.dataframe(means.rename("Mean").reset_index().rename(columns={"index": "Card"}),
-                         use_container_width=True)
+                         width='stretch')
         with col2:
             st.markdown("**Top 8 Count**")
             name_counts = (
@@ -1298,7 +1298,7 @@ with tab2:
                 .value_counts(dropna=False)
                 .sort_values(ascending=False)
             )
-            st.dataframe(name_counts, use_container_width=True)
+            st.dataframe(name_counts, width='stretch')
 
     with subtab_totals:
         st.subheader("Total Maindeck Card Copies")
@@ -1364,12 +1364,12 @@ with tab2:
             height=500,
             legend_title_text="Card Type",
         )
-        st.plotly_chart(fig_bar, use_container_width=True)
+        st.plotly_chart(fig_bar, width='stretch')
 
         # ── Full table ────────────────────────────────────────────────────
         st.dataframe(
             display_totals,
-            use_container_width=True,
+            width='stretch',
             hide_index=True,
         )
 
@@ -1416,7 +1416,7 @@ with tab3:
         title="Mean Card Counts by Ban Era"
     )
     fig_heat.update_layout(height=750)
-    st.plotly_chart(fig_heat, use_container_width=True)
+    st.plotly_chart(fig_heat, width='stretch')
 
 # ─────────────────────────────────────────
 # PCA COMPUTATION
@@ -1512,9 +1512,9 @@ def run_nmds_computation():
             # Non-metric MDS — fixed seed for reproducibility
             # n_init=5 runs 5 internal starts; random_state=42 makes it deterministic
             mds = MDS(
-                n_components=2, metric=False, dissimilarity="precomputed",
+                n_components=2, metric_mds=False, dissimilarity="precomputed",
                 random_state=123, n_init=20, max_iter=5000,
-                normalized_stress=True, eps=1e-6,
+                normalized_stress=True, eps=1e-6, init="random",
             )
             coords = mds.fit_transform(bc_dist)
             stress  = float(mds.stress_)
@@ -1633,7 +1633,7 @@ with tab4:
             fig.update_yaxes(title_text=f"PC2 ({eigenvalues[1]*100:.1f}% variance)")
 
         fig.update_layout(height=800)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
         # ── Most Dissimilar Site per Ban Era ────────────────────────────
         name_col  = "Name"  if "Name"  in ord_data.columns else None
@@ -1840,7 +1840,7 @@ with tab5:
             fig2.update_yaxes(title_text=f"PC2 ({eigenvalues[1]*100:.1f}% variance)")
 
         fig2.update_layout(height=800)
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, width='stretch')
 
     else:
         st.info("PCA computation failed. Check your data.")
@@ -1935,7 +1935,7 @@ with tab6:
         height=1000,
         legend_title_text="Card Type" if color_mode == "Card type" else "Deck Slot",
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 # ── Tab 7: Era-Specific Cards ─────────────
 with tab7:
@@ -2026,7 +2026,7 @@ with tab7:
             template="plotly_white",
         )
         fig_bar.update_layout(showlegend=False, height=350)
-        st.plotly_chart(fig_bar, use_container_width=True)
+        st.plotly_chart(fig_bar, width='stretch')
 
         # ── Filter by era ──────────────────────────────────────────────────
         era_filter = st.multiselect(
@@ -2048,7 +2048,7 @@ with tab7:
         if type_filter:
             result_df = result_df[result_df["Card Type"].isin(type_filter)]
 
-        st.dataframe(result_df, use_container_width=True, hide_index=True)
+        st.dataframe(result_df, width='stretch', hide_index=True)
 
         # ── Heatmap of era-specific cards ─────────────────────────────────
         st.markdown("**Heatmap of Era-Specific Cards** *(color = mean copies per deck)*")
@@ -2064,7 +2064,7 @@ with tab7:
                 title="Era-Specific Cards — Mean Copies per Deck by Era",
             )
             fig_heat.update_layout(height=max(400, len(heat_cards) * 18))
-            st.plotly_chart(fig_heat, use_container_width=True)
+            st.plotly_chart(fig_heat, width='stretch')
 
 # ── Tab 8: NMDS – Ecological Distance ────
 with tab8:
@@ -2312,7 +2312,7 @@ with tab8:
                 showlegend=True,
             ))
 
-        st.plotly_chart(fig_nmds, use_container_width=True)
+        st.plotly_chart(fig_nmds, width='stretch')
 
         # ── Download ──────────────────────────────────────────────────────
         with st.expander("⬇️ Download NMDS Data"):
@@ -2382,7 +2382,7 @@ with tab8:
                     line=dict(color="red", width=1.5), name="Monotone fit",
                 ))
                 fig_sp.update_layout(height=450)
-                st.plotly_chart(fig_sp, use_container_width=True)
+                st.plotly_chart(fig_sp, width='stretch')
         else:
             st.caption("ℹ️ Stressplot not available when loaded from file "
                        "(Bray-Curtis matrix is not stored in the download).")
@@ -2507,7 +2507,7 @@ with tab9:
         fig9.update_xaxes(title_text="NMDS1 (no units)")
         fig9.update_yaxes(title_text="NMDS2 (no units)")
         fig9.update_layout(height=800)
-        st.plotly_chart(fig9, use_container_width=True)
+        st.plotly_chart(fig9, width='stretch')
 
     else:
         st.info("NMDS data not yet available. Visit the NMDS tab first to load or compute results.")
@@ -2596,7 +2596,7 @@ with tab10:
             height=1000,
             legend_title_text="Card Type" if color_mode10 == "Card type" else "Deck Slot",
         )
-        st.plotly_chart(fig10, use_container_width=True)
+        st.plotly_chart(fig10, width='stretch')
 
     else:
         st.info("NMDS data not yet available. Visit the NMDS tab first to load or compute results.")

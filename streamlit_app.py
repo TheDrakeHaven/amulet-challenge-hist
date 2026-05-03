@@ -1265,7 +1265,7 @@ amulet_filtered = amulet_int[numeric.columns]
 # TABS
 # ─────────────────────────────────────────
 
-tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
     "🃏 Deck Data",
     "📈 Median by Era",
     "🗺️ PCA – Era & Set",
@@ -1274,7 +1274,8 @@ tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
     "🔍 Era-Specific Cards",
     "🌐 NMDS – Ecological Distance",
     "🎴 NMDS – Card Inclusion",
-    "🃏 NMDS – Card Similarity"
+    "🃏 NMDS – Card Similarity",
+    "🗺️ NMDS Per Era"
 ])
 
 # ── Tab 2: Deck Data ─────────────────────
@@ -2600,3 +2601,186 @@ with tab10:
 
     else:
         st.info("NMDS data not yet available. Visit the NMDS tab first to load or compute results.")
+
+
+# ── Tab 11: NMDS Per Era ──────────────────
+with tab11:
+    st.subheader("NMDS Per Era — Independent Ordinations")
+    st.markdown(
+        "Each ban era is ordinated **independently** using its own Bray-Curtis NMDS. "
+        "This removes the constraint of a single global ordination and shows each era's "
+        "internal compositional structure on its own terms. "
+        "Eras with fewer than **10 decklists** are skipped."
+    )
+
+    MIN_ERA_N = st.slider("Minimum decklists per era", 5, 30, 10, key="per_era_min_n")
+    run_per_era = st.button("▶️ Run Per-Era NMDS", key="per_era_run")
+
+    if run_per_era or "per_era_nmds" in st.session_state:
+        if run_per_era:
+            per_era_results = {}
+            era_errors      = {}
+            progress = st.progress(0)
+            status   = st.empty()
+
+            eras_to_run = [e for e in ERA_ORDER
+                           if e in amulet_comb["current_era"].values
+                           and (amulet_comb["current_era"] == e).sum() >= MIN_ERA_N]
+
+            for i, era in enumerate(eras_to_run):
+                status.text(f"Running NMDS for {era}… ({i+1}/{len(eras_to_run)})")
+                progress.progress((i + 1) / len(eras_to_run))
+
+                era_rows  = amulet_comb[amulet_comb["current_era"] == era]
+                era_cards = amulet_int.loc[era_rows.index]
+                X_era     = era_cards.values.astype(float)
+
+                try:
+                    bc = cdist(X_era, X_era, metric="braycurtis")
+                    bc = np.nan_to_num(bc, nan=0.0)
+
+                    _mds_kw = dict(
+                        n_components=2,
+                        dissimilarity="precomputed",
+                        random_state=123,
+                        n_init=4,
+                        max_iter=1000,
+                        normalized_stress=True,
+                        eps=1e-6,
+                    )
+                    import sklearn as _sk
+                    if tuple(int(x) for x in _sk.__version__.split(".")[:2]) >= (1, 5):
+                        _mds_kw["metric_mds"] = False
+                        _mds_kw["init"] = "random"
+                    else:
+                        _mds_kw["metric"] = False
+
+                    mds_era = MDS(**_mds_kw)
+                    coords  = mds_era.fit_transform(bc)
+                    stress  = float(mds_era.stress_)
+
+                    site_df = era_rows[["Name", "Date", "Event"]
+                                       if "Event" in era_rows.columns
+                                       else ["Name", "Date"]].copy().reset_index(drop=True)
+                    site_df["NMDS1"]  = coords[:, 0]
+                    site_df["NMDS2"]  = coords[:, 1]
+                    site_df["stress"] = stress
+
+                    # WA species scores
+                    col_tot = X_era.sum(axis=0)
+                    col_tot[col_tot == 0] = 1
+                    species_df = pd.DataFrame({
+                        "card":  amulet_int.columns,
+                        "NMDS1": (X_era * coords[:, 0:1]).sum(axis=0) / col_tot,
+                        "NMDS2": (X_era * coords[:, 1:2]).sum(axis=0) / col_tot,
+                    })
+
+                    per_era_results[era] = {
+                        "sites":   site_df,
+                        "species": species_df,
+                        "stress":  stress,
+                        "n":       len(era_rows),
+                    }
+                except Exception as e:
+                    era_errors[era] = str(e)
+
+            progress.empty()
+            status.empty()
+            st.session_state["per_era_nmds"]        = per_era_results
+            st.session_state["per_era_nmds_errors"] = era_errors
+            st.success(f"✅ Completed NMDS for {len(per_era_results)} eras.")
+
+        # Display results
+        per_era_results = st.session_state.get("per_era_nmds", {})
+        era_errors      = st.session_state.get("per_era_nmds_errors", {})
+
+        if era_errors:
+            with st.expander(f"⚠️ {len(era_errors)} eras failed"):
+                for era, err in era_errors.items():
+                    st.write(f"**{era}**: {err}")
+
+        if per_era_results:
+            # ── Controls ─────────────────────────────────────────────────────
+            show_species_era = st.checkbox(
+                "Show top card vectors", value=False, key="per_era_species"
+            )
+            if show_species_era:
+                top_n_era = st.slider("Top N card vectors", 3, 20, 8, key="per_era_top_n")
+
+            ncols = st.radio("Columns", [1, 2, 3], index=1, horizontal=True, key="per_era_ncols")
+
+            # ── Grid of plots ─────────────────────────────────────────────────
+            eras_done = [e for e in ERA_ORDER if e in per_era_results]
+            rows      = [eras_done[i:i+ncols] for i in range(0, len(eras_done), ncols)]
+
+            for row_eras in rows:
+                cols = st.columns(ncols)
+                for col, era in zip(cols, row_eras):
+                    res    = per_era_results[era]
+                    sites  = res["sites"]
+                    stress = res["stress"]
+                    n      = res["n"]
+
+                    with col:
+                        hover_cols_era = [c for c in ["Name", "Date", "Event"]
+                                          if c in sites.columns]
+                        fig_era = px.scatter(
+                            sites, x="NMDS1", y="NMDS2",
+                            hover_data=hover_cols_era,
+                            title=f"{era}<br><sup>n={n}  stress={stress:.3f}</sup>",
+                            template="plotly_white",
+                            opacity=0.65,
+                        )
+                        fig_era.update_traces(
+                            marker=dict(size=6, color="#1f77b4",
+                                        line=dict(width=0))
+                        )
+                        fig_era.update_xaxes(title_text="NMDS1", showgrid=True,
+                                             gridcolor="#eee", zeroline=False)
+                        fig_era.update_yaxes(title_text="NMDS2", showgrid=True,
+                                             gridcolor="#eee", zeroline=False)
+
+                        if show_species_era:
+                            sp = res["species"].copy()
+                            sp["dist"] = np.sqrt(sp["NMDS1"]**2 + sp["NMDS2"]**2)
+                            sp_top = sp.nlargest(top_n_era, "dist")
+                            fig_era.add_trace(go.Scatter(
+                                x=sp_top["NMDS1"], y=sp_top["NMDS2"],
+                                mode="markers+text",
+                                text=sp_top["card"],
+                                textposition="top right",
+                                textfont=dict(size=8, color="crimson"),
+                                marker=dict(size=7, symbol="triangle-up",
+                                            color="crimson"),
+                                name="Cards", showlegend=False,
+                            ))
+
+                        fig_era.update_layout(
+                            height=380,
+                            plot_bgcolor="white",
+                            paper_bgcolor="white",
+                            margin=dict(t=60, b=40, l=40, r=20),
+                            showlegend=False,
+                        )
+                        st.plotly_chart(fig_era, width='stretch')
+
+            # ── Stress summary table ──────────────────────────────────────────
+            with st.expander("📊 Stress summary by era"):
+                stress_df = pd.DataFrame([
+                    {"Era": e, "N": per_era_results[e]["n"],
+                     "Stress": round(per_era_results[e]["stress"], 4),
+                     "Quality": (
+                         "Excellent" if per_era_results[e]["stress"] < 0.05 else
+                         "Good"      if per_era_results[e]["stress"] < 0.10 else
+                         "Fair"      if per_era_results[e]["stress"] < 0.20 else
+                         "Poor"
+                     )}
+                    for e in eras_done
+                ])
+                st.dataframe(stress_df, hide_index=True, width='stretch')
+
+        else:
+            if not run_per_era:
+                st.info("Click **▶️ Run Per-Era NMDS** to compute ordinations for each era.")
+    else:
+        st.info("Click **▶️ Run Per-Era NMDS** to compute ordinations for each era.")

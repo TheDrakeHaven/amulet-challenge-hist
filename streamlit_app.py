@@ -1545,7 +1545,7 @@ def run_nmds_computation():
 
             # Environmental centroids
             env_centroids = {}
-            for env_var in ["next_ban", "current_set"]:
+            for env_var in ["current_era", "current_set"]:
                 if env_var in ord_data.columns:
                     env_centroids[env_var] = (
                         ord_data.groupby(env_var)[["NMDS1", "NMDS2"]]
@@ -2166,6 +2166,32 @@ with tab8:
                 bc_dist        = st.session_state["nmds_dist"]
             else:
                 ord_nmds = None
+
+    # ── Manual run button ────────────────────────────────────────────────
+    if st.button("🔁 Run NMDS computation now", key="nmds_run_btn"):
+        run_nmds_computation()
+        if "nmds_result" in st.session_state:
+            ord_nmds       = st.session_state["nmds_result"]
+            species_nmds   = st.session_state["nmds_species"]
+            centroids_nmds = st.session_state["nmds_env_centroids"]
+            stress_nmds    = st.session_state["nmds_stress"]
+            bc_dist        = st.session_state["nmds_dist"]
+            # Auto-generate download immediately after computation
+            _buf = BytesIO()
+            with pd.ExcelWriter(_buf, engine="openpyxl") as _writer:
+                ord_nmds.to_excel(_writer, sheet_name="Site_Scores", index=False)
+                species_nmds.to_excel(_writer, sheet_name="Card_WA_Scores", index=False)
+                pd.DataFrame({"stress": [stress_nmds]}).to_excel(
+                    _writer, sheet_name="Metadata", index=False)
+            st.success(f"✅ NMDS complete — stress = {stress_nmds:.4f}")
+            st.download_button(
+                "⬇️ Download nmds_results.xlsx",
+                data=_buf.getvalue(),
+                file_name="nmds_results.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="dl_nmds_after_run",
+            )
+            st.caption("Commit this file to GitHub to skip re-computation on future loads.")
 
     if ord_nmds is not None:
 

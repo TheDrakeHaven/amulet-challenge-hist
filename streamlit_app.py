@@ -1720,21 +1720,6 @@ with tab8:
         "Axes have no ecological units — only relative distances matter."
     )
 
-    # File uploader so user can provide a fresh nmds_results.xlsx
-    uploaded_nmds = st.file_uploader(
-        "Upload nmds_results.xlsx (optional — overrides GitHub pre-computed file)",
-        type=["xlsx"], key="nmds_upload_tab8"
-    )
-    if uploaded_nmds is not None:
-        try:
-            od, sp, st_val, cents = _load_nmds_excel(uploaded_nmds)
-            st.session_state["nmds_github"] = {
-                "ord": od, "species": sp, "stress": st_val, "centroids": cents
-            }
-            st.success(f"✅ Loaded {len(od):,} site scores from uploaded file.")
-        except Exception as e:
-            st.error(f"Failed to load file: {e}")
-
     ord_nmds, species_nmds, stress_nmds, env_cents_nmds = _resolve_nmds()
 
     if ord_nmds is not None:
@@ -1775,16 +1760,16 @@ with tab8:
             color=color_by_nmds,
             hover_data=hover_nmds,
             title=f"NMDS – sites colored by {color_by_nmds}{stress_label}",
-            template="plotly_white",
-            opacity=0.55,
+            template="plotly_dark",
+            opacity=0.65,
         )
         fig_n.update_traces(marker=dict(size=6, line=dict(width=0)))
         fig_n.update_xaxes(title_text="NMDS1 (no units)", showgrid=True,
-                           gridcolor="#eee", zeroline=False)
+                           gridcolor="#333", zeroline=False)
         fig_n.update_yaxes(title_text="NMDS2 (no units)", showgrid=True,
-                           gridcolor="#eee", zeroline=False)
+                           gridcolor="#333", zeroline=False)
         fig_n.update_layout(
-            plot_bgcolor="white", paper_bgcolor="white",
+            plot_bgcolor="#1a1a2e", paper_bgcolor="#0d0d1a",
             legend=dict(orientation="v", yanchor="top", y=1,
                         xanchor="left", x=1.01, font=dict(size=11),
                         itemsizing="constant"),
@@ -1921,13 +1906,7 @@ with tab8:
                             render_decklist_html(med_df2, "Card", "Median Copies",
                                                  None, f"nmds-median-{era_id2}", 350)
     else:
-        st.info(
-            "No NMDS scores available. Commit `nmds_results.xlsx` to the GitHub repo "
-            "or upload one using the file uploader above."
-        )
-        if st.button("▶️ Run NMDS now", key="nmds_run_tab8"):
-            run_nmds_computation()
-            st.rerun()
+        st.info("Loading NMDS scores from GitHub… refresh if this persists.")
 
 
 # ── Tab 9: NMDS – Card Inclusion ─────────
@@ -1975,17 +1954,18 @@ with tab9:
             color_continuous_scale="thermal",
             hover_data=[c for c in hover9 if c in plot9.columns],
             title=f"NMDS – sites colored by copies of {selected_card9}",
-            template="plotly_white",
+            template="plotly_dark",
             opacity=0.8,
         )
         fig9.update_traces(marker=dict(size=8))
-        fig9.update_xaxes(title_text="NMDS1 (no units)", zeroline=False)
-        fig9.update_yaxes(title_text="NMDS2 (no units)", zeroline=False)
-        fig9.update_layout(height=800)
+        fig9.update_xaxes(title_text="NMDS1 (no units)", showgrid=True,
+                          gridcolor="#333", zeroline=False)
+        fig9.update_yaxes(title_text="NMDS2 (no units)", showgrid=True,
+                          gridcolor="#333", zeroline=False)
+        fig9.update_layout(
+            plot_bgcolor="#1a1a2e", paper_bgcolor="#0d0d1a", height=800
+        )
         st.plotly_chart(fig9, width='stretch')
 
     else:
-        st.info(
-            "No NMDS scores available. Visit the **NMDS – Era & Set** tab "
-            "to upload or compute NMDS results first."
-        )
+        st.info("Loading NMDS scores from GitHub… refresh if this persists.")

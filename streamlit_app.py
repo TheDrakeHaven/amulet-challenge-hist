@@ -848,12 +848,13 @@ st.caption(
 # TABS
 # ─────────────────────────────────────────
 
-tab2, tab3, tab7, tab8, tab9 = st.tabs([
+tab2, tab3, tab7, tab8, tab9, tab10 = st.tabs([
     "🃏 Deck Data",
     "📈 Median by Era",
     "🔍 Era-Specific Cards",
     "🌐 NMDS – Era & Set",
     "🎴 NMDS – Card Inclusion",
+    "🃏 NMDS – Card Similarity",
 ])
 
 # ── Tab 2: Deck Data ─────────────────────
@@ -1089,6 +1090,16 @@ def _load_nmds_excel(source):
     xls = pd.ExcelFile(source)
     od  = pd.read_excel(xls, sheet_name="Site_Scores")
     sp  = pd.read_excel(xls, sheet_name="Card_WA_Scores")
+    # Normalise species df: ensure "card" column exists
+    if "card" not in sp.columns:
+        # Try first unnamed column or index
+        sp = sp.reset_index()
+        if sp.columns[0] in ("index", "Unnamed: 0", "level_0"):
+            sp = sp.rename(columns={sp.columns[0]: "card"})
+    # Ensure NMDS1/NMDS2 columns exist
+    for ax in ["NMDS1", "NMDS2"]:
+        if ax not in sp.columns and ax.lower() in sp.columns:
+            sp = sp.rename(columns={ax.lower(): ax})
     st_val = None
     if "Metadata" in xls.sheet_names:
         try:
@@ -1416,19 +1427,26 @@ with tab8:
                 )
 
         if show_species_nmds:
-            top_n_n = st.slider("Top N card vectors", 5, 30, 10, key="nmds_top_n_tab8")
-            sp = species_nmds.copy()
-            sp["dist"] = np.sqrt(sp["NMDS1"]**2 + sp["NMDS2"]**2)
-            sp_top = sp.nlargest(top_n_n, "dist")
-            fig_n.add_trace(go.Scatter(
-                x=sp_top["NMDS1"], y=sp_top["NMDS2"],
-                mode="markers+text", text=sp_top["card"],
-                textposition="top right",
-                textfont=dict(size=10, color="crimson"),
-                marker=dict(size=10, symbol="triangle-up", color="crimson",
-                            line=dict(width=1, color="white")),
-                name="Card WA scores", showlegend=True,
-            ))
+            if species_nmds is None:
+                st.warning("Species scores not available — re-run NMDS and commit nmds_results.xlsx.")
+            else:
+                top_n_n = st.slider("Top N card vectors", 5, 30, 10, key="nmds_top_n_tab8")
+                sp = species_nmds.copy()
+                if "card" not in sp.columns:
+                    sp = sp.reset_index()
+                    # rename first column to "card" whatever it's called
+                    sp = sp.rename(columns={sp.columns[0]: "card"})
+                sp["dist"] = np.sqrt(sp["NMDS1"]**2 + sp["NMDS2"]**2)
+                sp_top = sp.nlargest(top_n_n, "dist")
+                fig_n.add_trace(go.Scatter(
+                    x=sp_top["NMDS1"], y=sp_top["NMDS2"],
+                    mode="markers+text", text=sp_top["card"],
+                    textposition="top right",
+                    textfont=dict(size=10, color="crimson"),
+                    marker=dict(size=10, symbol="triangle-up", color="crimson",
+                                line=dict(width=1, color="white")),
+                    name="Card WA scores", showlegend=True,
+                ))
 
         sel8 = st.plotly_chart(fig_n, width='stretch', on_select="rerun", key="nmds_plot8")
 
@@ -1610,6 +1628,115 @@ with tab9:
                 st.markdown("---")
                 st.markdown("### 🃏 Selected Deck")
                 _render_nmds_decklist(pt_idx9, ord_nmds9)
+
+    else:
+        st.info("Loading NMDS scores from GitHub… refresh if this persists.")
+
+
+# ── Tab 10: NMDS – Card Similarity ────────
+with tab10:
+    st.subheader("NMDS – Card Similarity (WA Species Scores)")
+    st.markdown(
+        "Cards plotted by their **weighted-average (WA) position** in NMDS space. "
+        "Cards that co-occur in similar decklists cluster together. "
+        "Unlike PCA loadings, WA scores reflect ecological co-occurrence in "
+        "Bray-Curtis space rather than linear correlation."
+    )
+
+    _, species_nmds10, _, _ = _resolve_nmds()
+
+    if species_nmds10 is not None:
+        wa = species_nmds10.copy()
+        if "card" not in wa.columns:
+            wa = wa.reset_index()
+            wa = wa.rename(columns={wa.columns[0]: "card"})
+
+        # ── Filters ──────────────────────────────────────────────────────
+        fc1, fc2 = st.columns(2)
+        with fc1:
+            sb_filter10 = st.radio(
+                "Show cards:",
+                options=["Maindeck only", "Sideboard (SB) only", "All"],
+                horizontal=True,
+                key="nmds_sim_sb",
+            )
+        with fc2:
+            color_mode10 = st.radio(
+                "Color by:",
+                options=["Card type", "Maindeck / Sideboard"],
+                horizontal=True,
+                key="nmds_sim_color",
+            )
+
+        # ── Copy filter: only show cards with ≥30 maindeck copies ────────
+        if "card" in wa.columns:
+            card_totals_mb10 = amulet_comb[
+                [c for c in amulet_int.columns if not c.startswith("sb_")]
+            ].sum(axis=0)
+
+        def is_sb(name):
+            return str(name).startswith("sb_") or "(SB)" in str(name)
+
+        if sb_filter10 == "Maindeck only":
+            # Maindeck cards with ≥30 copies
+            wa = wa[wa["card"].apply(lambda c: not is_sb(c))]
+            if "card" in wa.columns:
+                wa = wa[wa["card"].apply(
+                    lambda c: card_totals_mb10.get(c, 0) >= 30
+                )]
+        elif sb_filter10 == "Sideboard (SB) only":
+            wa = wa[wa["card"].apply(is_sb)]
+        # "All" keeps everything
+
+        wa = wa.copy()
+        wa["card_type"] = wa["card"].apply(get_card_type)
+        wa["deck_slot"] = wa["card"].apply(
+            lambda s: "Sideboard" if is_sb(s) else "Maindeck"
+        )
+
+        if color_mode10 == "Card type":
+            color_map10 = {
+                "Land":     "#2ca02c",
+                "Creature": "#1f77b4",
+                "Spell":    "#ff7f0e",
+                "Unknown":  "#7f7f7f",
+            }
+            wa["_color"] = wa["card_type"]
+        else:
+            color_map10 = {"Maindeck": "#00d4ff", "Sideboard": "#d62728"}
+            wa["_color"] = wa["deck_slot"]
+
+        fig10 = px.scatter(
+            wa,
+            x="NMDS1", y="NMDS2",
+            text="card",
+            hover_name="card",
+            hover_data={"card_type": True, "deck_slot": True,
+                        "NMDS1": False, "NMDS2": False, "_color": False},
+            color="_color",
+            color_discrete_map=color_map10,
+            category_orders={"_color": list(color_map10.keys())},
+            template="plotly_dark",
+        )
+        fig10.update_traces(
+            mode="markers+text",
+            textposition="top center",
+            textfont=dict(size=9, color="rgba(255,255,255,0.75)"),
+            marker=dict(size=7, line=dict(width=0)),
+        )
+        fig10.update_xaxes(title_text="NMDS1 (no units)", showgrid=True,
+                           gridcolor="#333", zeroline=False)
+        fig10.update_yaxes(title_text="NMDS2 (no units)", showgrid=True,
+                           gridcolor="#333", zeroline=False)
+        fig10.update_layout(
+            title="Card WA Scores in NMDS Space",
+            plot_bgcolor="#1a1a2e",
+            paper_bgcolor="#0d0d1a",
+            legend_title_text="Card Type" if color_mode10 == "Card type" else "Deck Slot",
+            legend=dict(font=dict(size=11), itemsizing="constant"),
+            height=1000,
+        )
+        st.plotly_chart(fig10, width='stretch')
 
     else:
         st.info("Loading NMDS scores from GitHub… refresh if this persists.")

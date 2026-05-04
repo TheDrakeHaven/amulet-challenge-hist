@@ -1322,7 +1322,7 @@ def _render_nmds_decklist(row_idx, source_ord, label_prefix=""):
     decklist_s = pd.Series({c: deck_row[c] for c in card_cols_d}).astype(int)
     decklist_s = decklist_s[decklist_s > 0].sort_values(ascending=False)
 
-    era_v = source_ord.loc[row_idx, "current_era"] if "current_era" in source_ord.columns else None
+    era_v = source_ord.iloc[row_idx]["current_era"] if "current_era" in source_ord.columns else None
     _date_display = pd.to_datetime(date_v, errors="coerce")
     _date_display = _date_display.strftime("%m/%d/%Y") if pd.notna(_date_display) else str(date_v)[:10]
     st.markdown(f"**{label_prefix}{name_v}** — {_date_display}" +
@@ -1467,17 +1467,21 @@ with tab8:
         sel8 = st.plotly_chart(fig_n, width='stretch', on_select="rerun", key="nmds_plot8")
 
         # ── Click-to-decklist ─────────────────────────────────────────────
-        selected_pts8 = (sel8 or {}).get("selection", {}).get("points", [])
+        _raw_sel8 = (sel8 or {}).get("selection", {})
+        selected_pts8 = _raw_sel8.get("points", [])
         # Filter to trace 0 only (site scatter) — ignore centroid/species traces
-        selected_pts8 = [p for p in selected_pts8 if p.get("curve_number", 0) == 0]
+        selected_pts8 = [p for p in selected_pts8
+                         if p.get("curve_number", 0) == 0 or "curve_number" not in p]
+        with st.expander("🐛 Click debug", expanded=False):
+            st.write("raw selection:", _raw_sel8)
+            st.write("filtered points:", selected_pts8)
+
         if selected_pts8:
             pt8     = selected_pts8[0]
             pt_idx8 = pt8.get("point_index", 0)
             if 0 <= pt_idx8 < len(ord_nmds):
                 st.markdown("---")
                 st.markdown("### 🃏 Selected Deck")
-
-
                 _render_nmds_decklist(pt_idx8, ord_nmds)
 
         # ── Most Dissimilar Site per Era ──────────────────────────────────
@@ -1642,7 +1646,8 @@ with tab9:
         # ── Click-to-decklist ─────────────────────────────────────────────
         selected_pts9 = (sel9 or {}).get("selection", {}).get("points", [])
         # Filter to trace 0 only (site scatter)
-        selected_pts9 = [p for p in selected_pts9 if p.get("curve_number", 0) == 0]
+        selected_pts9 = [p for p in selected_pts9
+                         if p.get("curve_number", 0) == 0 or "curve_number" not in p]
         if selected_pts9:
             pt9     = selected_pts9[0]
             pt_idx9 = pt9.get("point_index", 0)

@@ -3,13 +3,11 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from sklearn.preprocessing import StandardScaler
 import io
 from datetime import date, datetime
 import re
 from io import BytesIO
 import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
 from sklearn.manifold import MDS
 from scipy.spatial.distance import cdist
 
@@ -845,19 +843,14 @@ st.caption(
     f"{amulet_env['current_era'].nunique()} eras"
 )
 
-numeric = amulet_int.select_dtypes(include="number")
-amulet_filtered = amulet_int[numeric.columns]
 
 # ─────────────────────────────────────────
 # TABS
 # ─────────────────────────────────────────
 
-tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+tab2, tab3, tab7, tab8, tab9 = st.tabs([
     "🃏 Deck Data",
     "📈 Median by Era",
-    "🗺️ PCA – Era & Set",
-    "🎴 PCA – Card Inclusion",
-    "🃏 Card Similarity (PCA)",
     "🔍 Era-Specific Cards",
     "🌐 NMDS – Era & Set",
     "🎴 NMDS – Card Inclusion",
@@ -1027,62 +1020,6 @@ ERA_ORDER = [
 ]
 
 
-def run_pca_computation():
-    """Run PCA via sklearn and store results in session_state."""
-    with st.spinner("Running PCA…"):
-        try:
-            scaler = StandardScaler()
-            X_scaled = scaler.fit_transform(amulet_filtered.values.astype(float))
-
-            pca = PCA(n_components=2, random_state=42)
-            site_arr = pca.fit_transform(X_scaled)
-
-            site_coords = pd.DataFrame(site_arr, columns=["CA1", "CA2"])
-            ord_data = pd.concat(
-                [amulet_env.drop(columns=["row_number"], errors="ignore").reset_index(drop=True),
-                 site_coords],
-                axis=1
-            )
-            if "Date" in ord_data.columns:
-                ord_data["Date"] = pd.to_datetime(
-                    ord_data["Date"], errors="coerce"
-                ).dt.strftime("%m-%d-%Y")
-
-            loadings = pd.DataFrame(
-                pca.components_.T,
-                index=amulet_filtered.columns,
-                columns=["CA1", "CA2"]
-            ).reset_index()
-            loadings.rename(columns={"index": "card"}, inplace=True)
-
-            env_centroids = {}
-            for env_var in ["current_era", "current_set"]:
-                if env_var in ord_data.columns:
-                    centroids = (
-                        ord_data.groupby(env_var)[["CA1", "CA2"]]
-                        .mean()
-                        .reset_index()
-                        .rename(columns={env_var: "label"})
-                    )
-                    env_centroids[env_var] = centroids
-
-            var_ratio     = pca.explained_variance_ratio_
-            total_inertia = float(var_ratio.sum())
-
-            st.session_state["cca_result"]        = ord_data
-            st.session_state["cca_species"]       = loadings
-            st.session_state["cca_env_centroids"] = env_centroids
-            st.session_state["cca_eigenvalues"]   = var_ratio
-            st.session_state["cca_total_inertia"] = total_inertia
-
-            excel_buf = BytesIO()
-            with pd.ExcelWriter(excel_buf, engine="openpyxl") as writer:
-                ord_data.to_excel(writer, sheet_name="PCA_Site_Scores",   index=False)
-                loadings.to_excel(writer, sheet_name="PCA_Card_Loadings", index=False)
-            st.session_state["cca_excel"] = excel_buf.getvalue()
-
-        except Exception as e:
-            st.error(f"PCA computation failed: {e}")
 def run_nmds_computation():
     """Run NMDS (non-metric MDS on Bray-Curtis dissimilarity) and cache in session_state."""
     with st.spinner("Running NMDS (Bray-Curtis, non-metric, 5 random starts)…"):
@@ -1211,377 +1148,6 @@ def _resolve_nmds():
     return None, None, None, {}
 
 # ── Run PCA on app start (fast — no NMDS here, tab 8 handles it lazily) ──
-if "cca_result" not in st.session_state:
-    run_pca_computation()
-# ── Tab 4: CCA – Era & Set ────────────────
-with tab4:
-    st.subheader("PCA Ordination – Era & Set")
-
-    if "cca_result" in st.session_state:
-        ord_data       = st.session_state["cca_result"]
-        species_scores = st.session_state["cca_species"]
-        env_centroids  = st.session_state["cca_env_centroids"]
-        eigenvalues    = st.session_state.get("cca_eigenvalues")
-        total_inertia  = st.session_state.get("cca_total_inertia")
-
-        # Inertia metrics
-        if eigenvalues is not None and total_inertia:
-            col_m1, col_m2, col_m3 = st.columns(3)
-            col_m1.metric("PC1 Variance", f"{eigenvalues[0]:.4f}")
-            col_m2.metric("PC2 Variance", f"{eigenvalues[1]:.4f}")
-            col_m3.metric("Total Variance", f"{total_inertia:.4f}")
-
-        color_by = st.selectbox(
-            "Color sites by:",
-            ["current_era", "current_set"],
-            key="cca_color_tab4"
-        )
-
-        show_centroids = st.checkbox("Show environmental centroids", value=True, key="show_centroids_tab4")
-        show_species   = st.checkbox("Show top card vectors", value=False, key="show_species_tab4")
-
-        # ── Site scatter ──────────────────────────────────────────────────
-        hover_cols = [c for c in ["Name", "Date", "current_era", "current_set"] if c in ord_data.columns]
-        fig = px.scatter(
-            ord_data, x="CA1", y="CA2",
-            color=color_by,
-            hover_data=hover_cols,
-            title=f"PCA – sites colored by {color_by}",
-            template="plotly_white",
-            opacity=0.75
-        )
-        fig.update_traces(marker=dict(size=8))
-
-        # ── Environmental centroid overlay ────────────────────────────────
-        if show_centroids and color_by in env_centroids:
-            cents = env_centroids[color_by]
-            fig.add_trace(go.Scatter(
-                x=cents["CA1"], y=cents["CA2"],
-                mode="markers+text",
-                text=cents["label"],
-                textposition="top center",
-                marker=dict(size=14, symbol="diamond", color="black", line=dict(width=1, color="white")),
-                name=f"{color_by} centroids",
-                showlegend=True
-            ))
-
-        # ── Top card species scores overlay ───────────────────────────────
-        if show_species:
-            top_n = st.slider("Number of top cards to display", 5, 30, 10, key="cca_top_n")
-            sp = species_scores.copy()
-            sp["dist"] = np.sqrt(sp["CA1"]**2 + sp["CA2"]**2)
-            sp_top = sp.nlargest(top_n, "dist")
-            fig.add_trace(go.Scatter(
-                x=sp_top["CA1"], y=sp_top["CA2"],
-                mode="markers+text",
-                text=sp_top["card"],
-                textposition="top right",
-                marker=dict(size=10, symbol="triangle-up", color="crimson"),
-                name="Card scores",
-                showlegend=True
-            ))
-
-        # ── Axis labels with % inertia if available ───────────────────────
-        if eigenvalues is not None and total_inertia:
-            fig.update_xaxes(title_text=f"PC1 ({eigenvalues[0]*100:.1f}% variance)")
-            fig.update_yaxes(title_text=f"PC2 ({eigenvalues[1]*100:.1f}% variance)")
-
-        fig.update_layout(height=800)
-        st.plotly_chart(fig, width='stretch')
-
-        # ── Most Dissimilar Site per Ban Era ────────────────────────────
-        name_col  = "Name"  if "Name"  in ord_data.columns else None
-        date_col  = "Date"  if "Date"  in ord_data.columns else None
-
-        def site_label(idx):
-            parts = []
-            if name_col: parts.append(str(ord_data.loc[idx, name_col]))
-            if date_col: parts.append(f"({ord_data.loc[idx, date_col]})")
-            return " ".join(parts) if parts else f"Site {idx}"
-
-
-        rows = []
-        for era in ERA_ORDER:
-            era_idx = ord_data.index[ord_data["current_era"] == era].tolist()
-            if len(era_idx) < 2:
-                continue
-
-            era_coords = ord_data.loc[era_idx, ["CA1", "CA2"]].values
-
-            # For each site, compute mean distance to all others in the era
-            best_mean_dist, best_idx = -1, None
-            for ii, idx in enumerate(era_idx):
-                others = np.delete(era_coords, ii, axis=0)
-                dists = np.sqrt(
-                    (era_coords[ii, 0] - others[:, 0])**2 +
-                    (era_coords[ii, 1] - others[:, 1])**2
-                )
-                mean_dist = dists.mean()
-                if mean_dist > best_mean_dist:
-                    best_mean_dist, best_idx = mean_dist, idx
-
-            rows.append({
-                "Era":              era,
-                "Outlier Deck":     site_label(best_idx),
-                "Mean CA Distance": f"{best_mean_dist:.4f}",
-                "Era N":            len(era_idx),
-            })
-
-        dissim_df = pd.DataFrame(rows)
-
-        # Store best_idx per era for expander lookup
-        era_best_idx = {}
-        for era in ERA_ORDER:
-            era_idx = ord_data.index[ord_data["current_era"] == era].tolist()
-            if len(era_idx) < 2:
-                continue
-            era_coords = ord_data.loc[era_idx, ["CA1", "CA2"]].values
-            best_mean_dist, best_idx = -1, None
-            for ii, idx in enumerate(era_idx):
-                others = np.delete(era_coords, ii, axis=0)
-                dists = np.sqrt(
-                    (era_coords[ii, 0] - others[:, 0])**2 +
-                    (era_coords[ii, 1] - others[:, 1])**2
-                )
-                mean_dist = dists.mean()
-                if mean_dist > best_mean_dist:
-                    best_mean_dist, best_idx = mean_dist, idx
-            era_best_idx[era] = best_idx
-
-        # ── Click-to-expand decklist per era ──────────────────────────────
-        st.markdown("#### 🃏 Outlier Decklists By Era")
-        for row in dissim_df.itertuples():
-            era  = row.Era
-            best_idx = era_best_idx.get(era)
-            if best_idx is None:
-                continue
-
-            label = f"{row._2}  —  {era}"  # Outlier Deck column
-            with st.expander(label):
-                # Pull the full card row from amulet_comb matched by Name+Date
-                outlier_name = ord_data.loc[best_idx, "Name"] if "Name" in ord_data.columns else None
-                outlier_date = ord_data.loc[best_idx, "Date"] if "Date" in ord_data.columns else None
-
-                if outlier_name and outlier_date:
-                    match = amulet_comb[
-                        (amulet_comb["Name"] == outlier_name) &
-                        (amulet_comb["Date"].astype(str).str.contains(outlier_date[:7], na=False))
-                    ]
-                else:
-                    match = pd.DataFrame()
-
-                if match.empty:
-                    st.info("Decklist not found in source data.")
-                else:
-                    deck_row = match.iloc[0]
-                    card_cols_deck = [c for c in amulet_int.columns if c in deck_row.index]
-                    decklist = (
-                        pd.Series({c: deck_row[c] for c in card_cols_deck})
-                        .astype(int)
-                    )
-                    decklist = decklist[decklist > 0].sort_values(ascending=False)
-
-                    # ── Median decklist for this era ──────────────────────
-                    era_rows = amulet_comb[amulet_comb["current_era"] == era]
-                    era_cards = era_rows[[c for c in amulet_int.columns if c in era_rows.columns]]
-                    median_deck = era_cards.median().round(2)
-                    median_deck = median_deck[median_deck > 0].sort_values(ascending=False)
-
-                    # ── Layout: meta | outlier decklist | median decklist ──
-                    col_meta, col_outlier, col_median = st.columns([1, 1.5, 1.5])
-
-                    with col_meta:
-                        st.markdown(f"**{outlier_name}** — {outlier_date}")
-                        if "Place" in ord_data.columns:
-                            st.markdown(f"Place: **{ord_data.loc[best_idx, 'Place']}**")
-                        st.markdown(f"Mean PC Distance: **{row._3}**")
-                        st.markdown(f"Era N: **{row._4}**")
-
-                    # Cards in outlier not present in median (median == 0)
-                    median_cards = set(median_deck[median_deck > 0].index)
-
-                    # Sanitise era string for use in CSS ids
-                    era_id = re.sub(r"[^a-zA-Z0-9]+", "-", era).strip("-").lower() or "era"
-
-                    with col_outlier:
-                        st.markdown("**Outlier Decklist** *(hover a row to see the card · green = not in era median)*")
-                        deck_df = decklist.reset_index()
-                        deck_df.columns = ["Card", "Copies"]
-                        deck_df = sort_by_type(deck_df, "Card")
-                        render_decklist_html(
-                            deck_df,
-                            card_col="Card",
-                            copies_col="Copies",
-                            highlight_set=median_cards,
-                            table_id=f"outlier-{era_id}",
-                            max_height=350,
-                        )
-
-                    with col_median:
-                        st.markdown(f"**Median Decklist ({era})** *(hover a row to see the card)*")
-                        median_df = median_deck.reset_index()
-                        median_df.columns = ["Card", "Median Copies"]
-                        median_df = sort_by_type(median_df, "Card")
-                        render_decklist_html(
-                            median_df,
-                            card_col="Card",
-                            copies_col="Median Copies",
-                            highlight_set=None,
-                            table_id=f"median-{era_id}",
-                            max_height=350,
-                        )
-
-    else:
-        st.info("PCA computation failed. Check your data.")
-
-# ── Tab 5: CCA – Card Inclusion ───────────
-with tab5:
-    st.subheader("PCA Ordination – Card Inclusion")
-
-    if "cca_result" in st.session_state:
-        ord_data       = st.session_state["cca_result"]
-        eigenvalues    = st.session_state.get("cca_eigenvalues")
-        total_inertia  = st.session_state.get("cca_total_inertia")
-
-        card_options = amulet_int.sum().sort_values(ascending=False).index.tolist()
-        selected_card = st.selectbox(
-            "Color sites by card count:",
-            card_options,
-            key="cca_card_select"
-        )
-
-        # ── Merge the selected card's copies into ord_data ────────────────
-        # The CCA scores file doesn't carry per-card columns, so we pull the
-        # selected card's count out of amulet_comb and join it onto the site
-        # scores by (Name, Date) before plotting.
-        plot_data = ord_data.copy()
-        if selected_card in amulet_comb.columns:
-            merge_keys = [k for k in ["Name", "Date"]
-                          if k in plot_data.columns and k in amulet_comb.columns]
-            if merge_keys:
-                card_lookup = (
-                    amulet_comb[merge_keys + [selected_card]]
-                    .drop_duplicates(subset=merge_keys)
-                )
-                # Drop any pre-existing column with the same name to avoid
-                # _x / _y suffix collisions on merge.
-                plot_data = plot_data.drop(columns=[selected_card], errors="ignore")
-                plot_data = plot_data.merge(card_lookup, on=merge_keys, how="left")
-                plot_data[selected_card] = (
-                    pd.to_numeric(plot_data[selected_card], errors="coerce")
-                      .fillna(0)
-                      .astype(int)
-                )
-
-        hover_cols = [c for c in ["Name", "Date", "current_era", "current_set"]
-                      if c in plot_data.columns]
-        if selected_card in plot_data.columns and selected_card not in hover_cols:
-            hover_cols.append(selected_card)
-
-        fig2 = px.scatter(
-            plot_data, x="CA1", y="CA2",
-            color=selected_card if selected_card in plot_data.columns else None,
-            color_continuous_scale="thermal",
-            hover_data=hover_cols,
-            title=f"PCA – sites colored by copies of {selected_card}",
-            template="plotly_white",
-            opacity=0.8
-        )
-        fig2.update_traces(marker=dict(size=8))
-
-        if eigenvalues is not None and total_inertia:
-            fig2.update_xaxes(title_text=f"PC1 ({eigenvalues[0]*100:.1f}% variance)")
-            fig2.update_yaxes(title_text=f"PC2 ({eigenvalues[1]*100:.1f}% variance)")
-
-        fig2.update_layout(height=800)
-        st.plotly_chart(fig2, width='stretch')
-
-    else:
-        st.info("PCA computation failed. Check your data.")
-
-
-# ── Tab 6: Card Similarity ────────────────
-with tab6:
-    st.subheader("Card Similarity")
-    st.title("Maindeck PCA – Card Loadings")
-
-    _scaler6 = StandardScaler()
-    _X6      = _scaler6.fit_transform(amulet_filtered.values.astype(float))
-    _pca6    = PCA(n_components=2, random_state=42)
-    _pca6.fit(_X6)
-    _var6    = _pca6.explained_variance_ratio_
-
-    species_scores = pd.DataFrame(
-        _pca6.components_.T,
-        index=amulet_filtered.columns,
-        columns=["Dim1", "Dim2"]
-    )
-
-    st.subheader("Card Loadings Plot")
-
-    # Maindeck only, cards with ≥30 total copies
-    card_totals_mb = amulet_comb[
-        [c for c in amulet_filtered.columns if not c.startswith("sb_")]
-    ].sum(axis=0)
-    mb_species = [
-        s for s in species_scores.index.tolist()
-        if not str(s).startswith("sb_") and "(SB)" not in str(s)
-        and card_totals_mb.get(s, 0) >= 30
-    ]
-
-    color_mode = st.radio(
-        "Color by:",
-        options=["Card type", "Maindeck / Sideboard"],
-        horizontal=True,
-        key="color_mode"
-    )
-
-    filtered_species = mb_species
-
-    plot_df = species_scores.loc[filtered_species].copy().reset_index()
-    plot_df.columns = ["species", "Dim1", "Dim2"]
-    plot_df["card_type"] = plot_df["species"].apply(get_card_type)
-    plot_df["deck_slot"] = plot_df["species"].apply(
-        lambda s: "Sideboard" if str(s).startswith("sb_") or "(SB)" in str(s) else "Maindeck"
-    )
-
-    if color_mode == "Card type":
-        color_col = "card_type"
-        color_map = {
-            "Land":     "#2ca02c",
-            "Creature": "#1f77b4",
-            "Spell":    "#ff7f0e",
-            "Unknown":  "#7f7f7f",
-        }
-    else:
-        color_col = "deck_slot"
-        color_map = {"Maindeck": "#1f77b4", "Sideboard": "#d62728"}
-
-    plot_df["_color"] = plot_df["card_type"] if color_mode == "Card type" else plot_df["deck_slot"]
-
-    fig = px.scatter(
-        plot_df,
-        x="Dim1",
-        y="Dim2",
-        text="species",
-        hover_name="species",
-        hover_data={"card_type": True, "deck_slot": True, "Dim1": False, "Dim2": False,
-                    "_color": False},
-        color="_color",
-        color_discrete_map=color_map,
-        category_orders={"_color": list(color_map.keys())},
-    )
-    fig.update_traces(mode="markers+text", textposition="top center", marker=dict(size=8))
-    fig.update_layout(
-        title="Card Loadings (PCA)",
-        xaxis_title=f"PC1 ({_var6[0]*100:.1f}% variance)",
-        yaxis_title=f"PC2 ({_var6[1]*100:.1f}% variance)",
-        template="simple_white",
-        height=1000,
-        legend_title_text="Card Type" if color_mode == "Card type" else "Deck Slot",
-    )
-    st.plotly_chart(fig, width='stretch')
-
 # ── Tab 7: Era-Specific Cards ─────────────
 with tab7:
     st.subheader("Era-Specific Cards")
@@ -1996,8 +1562,12 @@ with tab9:
             merge_keys9 = [k for k in ["Name", "Date"]
                            if k in plot9.columns and k in amulet_comb.columns]
             if merge_keys9:
+                # Cast merge keys to string on both sides to avoid dtype mismatch
+                for k in merge_keys9:
+                    plot9[k]             = plot9[k].astype(str)
                 card_lookup9 = (
                     amulet_comb[merge_keys9 + [selected_card9]]
+                    .assign(**{k: amulet_comb[k].astype(str) for k in merge_keys9})
                     .drop_duplicates(subset=merge_keys9)
                 )
                 plot9 = plot9.drop(columns=[selected_card9], errors="ignore")

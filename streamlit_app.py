@@ -1527,10 +1527,11 @@ with tab7:
         "Concentration score = share of a card's total appearances that fall within a single era. "
         "Use the slider to control the minimum number of appearances required."
     )
-
+ 
     era_order_display = [e for e in ERA_ORDER if e in amulet_comb["current_era"].values]
-    card_cols_era = [c for c in amulet_int.columns]
-
+    # Maindeck only — exclude sb_ columns
+    card_cols_era = [c for c in amulet_int.columns if not c.startswith("sb_")]
+ 
     # Build era × card count matrix (raw) and era deck sizes
     era_card_raw = (
         amulet_comb.groupby("current_era")[card_cols_era]
@@ -1544,15 +1545,15 @@ with tab7:
         .reindex(era_order_display)
         .fillna(1)  # avoid division by zero
     )
-
+ 
     # Normalize: mean copies per deck in each era
     era_card = era_card_raw.div(era_sizes, axis=0)
-
+ 
     col_s1, col_s2 = st.columns(2)
     with col_s1:
         min_appearances = st.slider(
             "Minimum total raw appearances across all eras",
-            min_value=1, max_value=50, value=5, step=1,
+            min_value=1, max_value=100, value=30, step=1,
             key="era_specific_min"
         )
     with col_s2:
@@ -1561,11 +1562,11 @@ with tab7:
             min_value=0.50, max_value=1.0, value=0.75, step=0.05,
             key="era_specific_conc"
         )
-
+ 
     # Eligibility still based on raw counts so rare cards are filtered correctly
     card_totals_raw = era_card_raw.sum(axis=0)
     eligible_cards = card_totals_raw[card_totals_raw >= min_appearances].index.tolist()
-
+ 
     rows = []
     for card in eligible_cards:
         col_data = era_card[card]          # normalized (per-deck rate)
@@ -1586,7 +1587,7 @@ with tab7:
                 "Total Raw Appearances": int(card_totals_raw[card]),
                 "Concentration":         round(concentration, 3),
             })
-
+ 
     if not rows:
         st.info("No cards meet the current filters. Try lowering the thresholds.")
     else:
@@ -1595,7 +1596,7 @@ with tab7:
             .sort_values(["Dominant Era", "Concentration"], ascending=[True, False])
             .reset_index(drop=True)
         )
-
+ 
         # ── Summary chart ─────────────────────────────────────────────────
         era_counts = result_df["Dominant Era"].value_counts().reindex(era_order_display).dropna()
         fig_bar = px.bar(
@@ -1609,7 +1610,7 @@ with tab7:
         )
         fig_bar.update_layout(showlegend=False, height=350)
         st.plotly_chart(fig_bar, width='stretch')
-
+ 
         # ── Filter by era ──────────────────────────────────────────────────
         era_filter = st.multiselect(
             "Filter by era (leave blank for all):",
@@ -1619,7 +1620,7 @@ with tab7:
         )
         if era_filter:
             result_df = result_df[result_df["Dominant Era"].isin(era_filter)]
-
+ 
         # ── Type filter ───────────────────────────────────────────────────
         type_filter = st.multiselect(
             "Filter by card type:",
@@ -1629,9 +1630,9 @@ with tab7:
         )
         if type_filter:
             result_df = result_df[result_df["Card Type"].isin(type_filter)]
-
+ 
         st.dataframe(result_df, width='stretch', hide_index=True)
-
+ 
         # ── Heatmap of era-specific cards ─────────────────────────────────
         st.markdown("**Heatmap of Era-Specific Cards** *(color = mean copies per deck)*")
         heat_cards = result_df["Card"].tolist()
@@ -1647,3 +1648,4 @@ with tab7:
             )
             fig_heat.update_layout(height=max(400, len(heat_cards) * 18))
             st.plotly_chart(fig_heat, width='stretch')
+ 

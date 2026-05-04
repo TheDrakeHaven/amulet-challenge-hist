@@ -1469,20 +1469,27 @@ with tab8:
         # ── Click-to-decklist ─────────────────────────────────────────────
         _raw_sel8 = (sel8 or {}).get("selection", {})
         selected_pts8 = _raw_sel8.get("points", [])
-        # Filter to trace 0 only (site scatter) — ignore centroid/species traces
-        selected_pts8 = [p for p in selected_pts8
-                         if p.get("curve_number", 0) == 0 or "curve_number" not in p]
-        with st.expander("🐛 Click debug", expanded=False):
-            st.write("raw selection:", _raw_sel8)
-            st.write("filtered points:", selected_pts8)
 
         if selected_pts8:
-            pt8     = selected_pts8[0]
-            pt_idx8 = pt8.get("point_index", 0)
-            if 0 <= pt_idx8 < len(ord_nmds):
-                st.markdown("---")
-                st.markdown("### 🃏 Selected Deck")
-                _render_nmds_decklist(pt_idx8, ord_nmds)
+            pt8 = selected_pts8[0]
+            cd  = pt8.get("customdata", [])
+            # customdata order matches hover_nmds: [Name, Date, current_era, ...]
+            if len(cd) >= 2:
+                _click_name = cd[0]
+                _click_date = cd[1]
+                _click_match = _match_amulet_row(_click_name, _click_date)
+                if not _click_match.empty:
+                    # Build a one-row ord_nmds-like frame so _render can use it
+                    _click_ord = pd.DataFrame([{
+                        "Name": _click_name,
+                        "Date": _click_date,
+                        "current_era": cd[2] if len(cd) > 2 else None,
+                    }])
+                    st.markdown("---")
+                    st.markdown("### 🃏 Selected Deck")
+                    _render_nmds_decklist(0, _click_ord)
+                else:
+                    st.info("Decklist not found in source data.")
 
         # ── Most Dissimilar Site per Era ──────────────────────────────────
         name_col = "Name" if "Name" in ord_nmds.columns else None
@@ -1645,16 +1652,24 @@ with tab9:
 
         # ── Click-to-decklist ─────────────────────────────────────────────
         selected_pts9 = (sel9 or {}).get("selection", {}).get("points", [])
-        # Filter to trace 0 only (site scatter)
-        selected_pts9 = [p for p in selected_pts9
-                         if p.get("curve_number", 0) == 0 or "curve_number" not in p]
         if selected_pts9:
-            pt9     = selected_pts9[0]
-            pt_idx9 = pt9.get("point_index", 0)
-            if 0 <= pt_idx9 < len(ord_nmds9):
-                st.markdown("---")
-                st.markdown("### 🃏 Selected Deck")
-                _render_nmds_decklist(pt_idx9, ord_nmds9)
+            pt9 = selected_pts9[0]
+            cd9 = pt9.get("customdata", [])
+            if len(cd9) >= 2:
+                _click_name9 = cd9[0]
+                _click_date9 = cd9[1]
+                _click_match9 = _match_amulet_row(_click_name9, _click_date9)
+                if not _click_match9.empty:
+                    _click_ord9 = pd.DataFrame([{
+                        "Name": _click_name9,
+                        "Date": _click_date9,
+                        "current_era": cd9[2] if len(cd9) > 2 else None,
+                    }])
+                    st.markdown("---")
+                    st.markdown("### 🃏 Selected Deck")
+                    _render_nmds_decklist(0, _click_ord9)
+                else:
+                    st.info("Decklist not found in source data.")
 
     else:
         st.info("Loading NMDS scores from GitHub… refresh if this persists.")

@@ -1520,8 +1520,7 @@ with tab7:
     )
 
     era_order_display = [e for e in ERA_ORDER if e in amulet_comb["current_era"].values]
-    # Maindeck only — exclude sb_ columns
-    card_cols_era = [c for c in amulet_int.columns if not c.startswith("sb_")]
+    card_cols_era = [c for c in amulet_int.columns]
 
     # Build era × card count matrix (raw) and era deck sizes
     era_card_raw = (
@@ -1540,17 +1539,23 @@ with tab7:
     # Normalize: mean copies per deck in each era
     era_card = era_card_raw.div(era_sizes, axis=0)
 
-    # Hard minimum: maindeck cards must have ≥30 total copies across all eras
+    col_s1, col_s2 = st.columns(2)
+    with col_s1:
+        min_appearances = st.slider(
+            "Minimum total raw appearances across all eras",
+            min_value=1, max_value=50, value=5, step=1,
+            key="era_specific_min"
+        )
+    with col_s2:
+        min_concentration = st.slider(
+            "Minimum concentration score (0–1)",
+            min_value=0.50, max_value=1.0, value=0.75, step=0.05,
+            key="era_specific_conc"
+        )
+
+    # Eligibility still based on raw counts so rare cards are filtered correctly
     card_totals_raw = era_card_raw.sum(axis=0)
-    eligible_cards_base = card_totals_raw[card_totals_raw >= 30].index.tolist()
-
-    min_concentration = st.slider(
-        "Minimum concentration score (0–1)",
-        min_value=0.50, max_value=1.0, value=0.75, step=0.05,
-        key="era_specific_conc"
-    )
-
-    eligible_cards = eligible_cards_base
+    eligible_cards = card_totals_raw[card_totals_raw >= min_appearances].index.tolist()
 
     rows = []
     for card in eligible_cards:

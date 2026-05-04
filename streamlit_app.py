@@ -852,13 +852,15 @@ amulet_filtered = amulet_int[numeric.columns]
 # TABS
 # ─────────────────────────────────────────
 
-tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "🃏 Deck Data",
     "📈 Median by Era",
     "🗺️ PCA – Era & Set",
     "🎴 PCA – Card Inclusion",
     "🃏 Card Similarity (PCA)",
     "🔍 Era-Specific Cards",
+    "🌐 NMDS – Era & Set",
+    "🎴 NMDS – Card Inclusion",
 ])
 
 # ── Tab 2: Deck Data ─────────────────────
@@ -1138,6 +1140,76 @@ def run_nmds_computation():
 
         except Exception as e:
             st.error(f"NMDS computation failed: {e}")
+
+# ── NMDS data resolution (GitHub → session_state → compute) ──────────────────
+GITHUB_NMDS_URL = (
+    "https://raw.githubusercontent.com/"
+    "TheDrakeHaven/amulet-challenge-hist/main/nmds_results.xlsx"
+)
+
+def _load_nmds_excel(source):
+    """Load Site_Scores + Card_WA_Scores from an Excel file-like or URL bytes."""
+    xls = pd.ExcelFile(source)
+    od  = pd.read_excel(xls, sheet_name="Site_Scores")
+    sp  = pd.read_excel(xls, sheet_name="Card_WA_Scores")
+    st_val = None
+    if "Metadata" in xls.sheet_names:
+        try:
+            meta = pd.read_excel(xls, sheet_name="Metadata")
+            if "stress" in meta.columns and len(meta) > 0:
+                v = meta["stress"].iloc[0]
+                if pd.notna(v):
+                    st_val = float(v)
+        except Exception:
+            pass
+    cents = {}
+    for ev in ["current_era", "current_set"]:
+        if ev in od.columns:
+            try:
+                cents[ev] = (
+                    od.groupby(ev)[["NMDS1", "NMDS2"]]
+                    .mean().reset_index().rename(columns={ev: "label"})
+                )
+            except Exception:
+                pass
+    return od, sp, st_val, cents
+
+def _resolve_nmds():
+    """
+    Return (ord_nmds, species_nmds, stress_nmds, env_centroids_nmds) from the
+    best available source: uploaded file → GitHub cache → computed.
+    Returns (None, None, None, {}) if nothing is available.
+    """
+    # 1. Already fetched from GitHub this session
+    gh = st.session_state.get("nmds_github")
+    if gh is not None:
+        return gh["ord"], gh["species"], gh["stress"], gh["centroids"]
+
+    # 2. Already computed this session
+    if "nmds_result" in st.session_state:
+        return (
+            st.session_state["nmds_result"],
+            st.session_state["nmds_species"],
+            st.session_state["nmds_stress"],
+            st.session_state["nmds_env_centroids"],
+        )
+
+    # 3. Try GitHub
+    try:
+        import requests as _req
+        resp = _req.get(GITHUB_NMDS_URL, timeout=15)
+        resp.raise_for_status()
+        from io import BytesIO as _BIO
+        od, sp, st_val, cents = _load_nmds_excel(_BIO(resp.content))
+        st.session_state["nmds_github"] = {
+            "ord": od, "species": sp, "stress": st_val, "centroids": cents
+        }
+        return od, sp, st_val, cents
+    except Exception:
+        pass
+
+    return None, None, None, {}
+
 # ── Run PCA on app start (fast — no NMDS here, tab 8 handles it lazily) ──
 if "cca_result" not in st.session_state:
     run_pca_computation()
@@ -1638,3 +1710,282 @@ with tab7:
             )
             fig_heat.update_layout(height=max(400, len(heat_cards) * 18))
             st.plotly_chart(fig_heat, width='stretch')
+
+
+# ── Tab 8: NMDS – Era & Set ───────────────
+with tab8:
+    st.subheader("NMDS – Era & Set")
+    st.markdown(
+        "Sites (decklists) in **non-metric MDS** space (Bray-Curtis dissimilarity). "
+        "Axes have no ecological units — only relative distances matter."
+    )
+
+    # File uploader so user can provide a fresh nmds_results.xlsx
+    uploaded_nmds = st.file_uploader(
+        "Upload nmds_results.xlsx (optional — overrides GitHub pre-computed file)",
+        type=["xlsx"], key="nmds_upload_tab8"
+    )
+    if uploaded_nmds is not None:
+        try:
+            od, sp, st_val, cents = _load_nmds_excel(uploaded_nmds)
+            st.session_state["nmds_github"] = {
+                "ord": od, "species": sp, "stress": st_val, "centroids": cents
+            }
+            st.success(f"✅ Loaded {len(od):,} site scores from uploaded file.")
+        except Exception as e:
+            st.error(f"Failed to load file: {e}")
+
+    ord_nmds, species_nmds, stress_nmds, env_cents_nmds = _resolve_nmds()
+
+    if ord_nmds is not None:
+        # Ensure current_era assigned from amulet_env if missing
+        if "current_era" not in ord_nmds.columns and "Date" in ord_nmds.columns:
+            ord_nmds = ord_nmds.copy()
+            ord_nmds["current_era"] = ord_nmds["Date"].apply(
+                lambda d: assign_ban_era(d, ban_events)
+            )
+            env_cents_nmds["current_era"] = (
+                ord_nmds.groupby("current_era")[["NMDS1", "NMDS2"]]
+                .mean().reset_index().rename(columns={"current_era": "label"})
+            )
+
+        stress_label = f"  |  stress = {stress_nmds:.4f}" if stress_nmds is not None else ""
+
+        col_n1, col_n2 = st.columns(2)
+        with col_n1:
+            color_by_nmds = st.selectbox(
+                "Color sites by:",
+                [c for c in ["current_era", "current_set"] if c in ord_nmds.columns],
+                key="nmds_color_tab8"
+            )
+        with col_n2:
+            show_centroids_nmds = st.checkbox(
+                "Show era centroids", value=True, key="nmds_centroids_tab8"
+            )
+
+        show_species_nmds = st.checkbox(
+            "Show top card vectors", value=False, key="nmds_species_tab8"
+        )
+
+        hover_nmds = [c for c in ["Name", "Date", "current_era", "current_set"]
+                      if c in ord_nmds.columns]
+
+        fig_n = px.scatter(
+            ord_nmds, x="NMDS1", y="NMDS2",
+            color=color_by_nmds,
+            hover_data=hover_nmds,
+            title=f"NMDS – sites colored by {color_by_nmds}{stress_label}",
+            template="plotly_white",
+            opacity=0.55,
+        )
+        fig_n.update_traces(marker=dict(size=6, line=dict(width=0)))
+        fig_n.update_xaxes(title_text="NMDS1 (no units)", showgrid=True,
+                           gridcolor="#eee", zeroline=False)
+        fig_n.update_yaxes(title_text="NMDS2 (no units)", showgrid=True,
+                           gridcolor="#eee", zeroline=False)
+        fig_n.update_layout(
+            plot_bgcolor="white", paper_bgcolor="white",
+            legend=dict(orientation="v", yanchor="top", y=1,
+                        xanchor="left", x=1.01, font=dict(size=11),
+                        itemsizing="constant"),
+            height=800,
+        )
+
+        if show_centroids_nmds and color_by_nmds in env_cents_nmds:
+            cents = env_cents_nmds[color_by_nmds]
+            fig_n.add_trace(go.Scatter(
+                x=cents["NMDS1"], y=cents["NMDS2"],
+                mode="markers",
+                marker=dict(size=18, symbol="diamond",
+                            color="black", line=dict(width=2, color="white")),
+                name="Centroids", showlegend=True,
+                hovertext=cents["label"], hoverinfo="text",
+            ))
+            for _, crow in cents.iterrows():
+                fig_n.add_annotation(
+                    x=crow["NMDS1"], y=crow["NMDS2"],
+                    text=f"<b>{crow['label']}</b>",
+                    showarrow=True, arrowhead=2, arrowsize=1,
+                    arrowwidth=1.5, arrowcolor="#555",
+                    ax=0, ay=-38,
+                    font=dict(size=9, color="#222"),
+                    bgcolor="rgba(255,255,255,0.85)",
+                    bordercolor="#aaa", borderwidth=1, borderpad=3,
+                )
+
+        if show_species_nmds:
+            top_n_n = st.slider("Top N card vectors", 5, 30, 10, key="nmds_top_n_tab8")
+            sp = species_nmds.copy()
+            sp["dist"] = np.sqrt(sp["NMDS1"]**2 + sp["NMDS2"]**2)
+            sp_top = sp.nlargest(top_n_n, "dist")
+            fig_n.add_trace(go.Scatter(
+                x=sp_top["NMDS1"], y=sp_top["NMDS2"],
+                mode="markers+text", text=sp_top["card"],
+                textposition="top right",
+                textfont=dict(size=10, color="crimson"),
+                marker=dict(size=10, symbol="triangle-up", color="crimson",
+                            line=dict(width=1, color="white")),
+                name="Card WA scores", showlegend=True,
+            ))
+
+        st.plotly_chart(fig_n, width='stretch')
+
+        # ── Most Dissimilar Site per Era ──────────────────────────────────
+        name_col = "Name" if "Name" in ord_nmds.columns else None
+        date_col = "Date" if "Date" in ord_nmds.columns else None
+
+        def nmds_site_label(idx):
+            parts = []
+            if name_col: parts.append(str(ord_nmds.loc[idx, name_col]))
+            if date_col: parts.append(f"({ord_nmds.loc[idx, date_col]})")
+            return " ".join(parts) if parts else f"Site {idx}"
+
+        if "current_era" in ord_nmds.columns:
+            nmds_rows, nmds_best_idx = [], {}
+            for era in ERA_ORDER:
+                era_idx = ord_nmds.index[ord_nmds["current_era"] == era].tolist()
+                if len(era_idx) < 2:
+                    continue
+                era_coords = ord_nmds.loc[era_idx, ["NMDS1", "NMDS2"]].values
+                best_mean_dist, best_idx = -1, None
+                for ii, idx in enumerate(era_idx):
+                    others = np.delete(era_coords, ii, axis=0)
+                    dists  = np.sqrt(
+                        (era_coords[ii, 0] - others[:, 0])**2 +
+                        (era_coords[ii, 1] - others[:, 1])**2
+                    )
+                    mean_dist = dists.mean()
+                    if mean_dist > best_mean_dist:
+                        best_mean_dist, best_idx = mean_dist, idx
+                nmds_rows.append({
+                    "Era":               era,
+                    "Outlier Deck":      nmds_site_label(best_idx),
+                    "Mean NMDS Distance": f"{best_mean_dist:.4f}",
+                    "Era N":             len(era_idx),
+                })
+                nmds_best_idx[era] = best_idx
+
+            nmds_dissim_df = pd.DataFrame(nmds_rows)
+
+            st.markdown("#### 🃏 Outlier Decklists By Era")
+            for row in nmds_dissim_df.itertuples():
+                era      = row.Era
+                best_idx = nmds_best_idx.get(era)
+                if best_idx is None:
+                    continue
+                label = f"{row._2}  —  {era}"
+                with st.expander(label):
+                    outlier_name = ord_nmds.loc[best_idx, "Name"] if name_col else None
+                    outlier_date = ord_nmds.loc[best_idx, "Date"] if date_col else None
+                    if outlier_name and outlier_date:
+                        match = amulet_comb[
+                            (amulet_comb["Name"] == outlier_name) &
+                            (amulet_comb["Date"].astype(str).str.contains(
+                                str(outlier_date)[:7], na=False))
+                        ]
+                    else:
+                        match = pd.DataFrame()
+
+                    if match.empty:
+                        st.info("Decklist not found in source data.")
+                    else:
+                        deck_row   = match.iloc[0]
+                        card_cols_deck = [c for c in amulet_int.columns if c in deck_row.index]
+                        decklist   = pd.Series({c: deck_row[c] for c in card_cols_deck}).astype(int)
+                        decklist   = decklist[decklist > 0].sort_values(ascending=False)
+
+                        era_rows2  = amulet_comb[amulet_comb["current_era"] == era]
+                        era_cards2 = era_rows2[[c for c in amulet_int.columns if c in era_rows2.columns]]
+                        median_deck2 = era_cards2.median().round(2)
+                        median_deck2 = median_deck2[median_deck2 > 0].sort_values(ascending=False)
+
+                        col_meta2, col_out2, col_med2 = st.columns([1, 1.5, 1.5])
+                        with col_meta2:
+                            st.markdown(f"**{outlier_name}** — {outlier_date}")
+                            st.markdown(f"Mean NMDS Distance: **{row._3}**")
+                            st.markdown(f"Era N: **{row._4}**")
+                        median_cards2 = set(median_deck2[median_deck2 > 0].index)
+                        era_id2 = re.sub(r"[^a-zA-Z0-9]+", "-", era).strip("-").lower() or "era"
+                        with col_out2:
+                            st.markdown("**Outlier Decklist** *(green = not in era median)*")
+                            deck_df2 = decklist.reset_index()
+                            deck_df2.columns = ["Card", "Copies"]
+                            deck_df2 = sort_by_type(deck_df2, "Card")
+                            render_decklist_html(deck_df2, "Card", "Copies",
+                                                 median_cards2, f"nmds-outlier-{era_id2}", 350)
+                        with col_med2:
+                            st.markdown(f"**Median Decklist ({era})**")
+                            med_df2 = median_deck2.reset_index()
+                            med_df2.columns = ["Card", "Median Copies"]
+                            med_df2 = sort_by_type(med_df2, "Card")
+                            render_decklist_html(med_df2, "Card", "Median Copies",
+                                                 None, f"nmds-median-{era_id2}", 350)
+    else:
+        st.info(
+            "No NMDS scores available. Commit `nmds_results.xlsx` to the GitHub repo "
+            "or upload one using the file uploader above."
+        )
+        if st.button("▶️ Run NMDS now", key="nmds_run_tab8"):
+            run_nmds_computation()
+            st.rerun()
+
+
+# ── Tab 9: NMDS – Card Inclusion ─────────
+with tab9:
+    st.subheader("NMDS – Card Inclusion")
+    st.markdown(
+        "Sites colored by the number of copies of a selected card. "
+        "Reveals where in Bray-Curtis space a card concentrates."
+    )
+
+    ord_nmds9, species_nmds9, _, _ = _resolve_nmds()
+
+    if ord_nmds9 is not None:
+        card_options9 = amulet_int.sum().sort_values(ascending=False).index.tolist()
+        selected_card9 = st.selectbox(
+            "Color sites by card count:",
+            card_options9,
+            key="nmds_card_select9"
+        )
+
+        plot9 = ord_nmds9.copy()
+        if selected_card9 in amulet_comb.columns:
+            merge_keys9 = [k for k in ["Name", "Date"]
+                           if k in plot9.columns and k in amulet_comb.columns]
+            if merge_keys9:
+                card_lookup9 = (
+                    amulet_comb[merge_keys9 + [selected_card9]]
+                    .drop_duplicates(subset=merge_keys9)
+                )
+                plot9 = plot9.drop(columns=[selected_card9], errors="ignore")
+                plot9 = plot9.merge(card_lookup9, on=merge_keys9, how="left")
+                plot9[selected_card9] = (
+                    pd.to_numeric(plot9[selected_card9], errors="coerce")
+                      .fillna(0).astype(int)
+                )
+
+        hover9 = [c for c in ["Name", "Date", "current_era", "current_set"]
+                  if c in plot9.columns]
+        if selected_card9 in plot9.columns and selected_card9 not in hover9:
+            hover9.append(selected_card9)
+
+        fig9 = px.scatter(
+            plot9, x="NMDS1", y="NMDS2",
+            color=selected_card9 if selected_card9 in plot9.columns else None,
+            color_continuous_scale="thermal",
+            hover_data=[c for c in hover9 if c in plot9.columns],
+            title=f"NMDS – sites colored by copies of {selected_card9}",
+            template="plotly_white",
+            opacity=0.8,
+        )
+        fig9.update_traces(marker=dict(size=8))
+        fig9.update_xaxes(title_text="NMDS1 (no units)", zeroline=False)
+        fig9.update_yaxes(title_text="NMDS2 (no units)", zeroline=False)
+        fig9.update_layout(height=800)
+        st.plotly_chart(fig9, width='stretch')
+
+    else:
+        st.info(
+            "No NMDS scores available. Visit the **NMDS – Era & Set** tab "
+            "to upload or compute NMDS results first."
+        )

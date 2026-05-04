@@ -859,7 +859,9 @@ tab2, tab3, tab7, tab8, tab9, tab10 = st.tabs([
 
 # ── Tab 2: Deck Data ─────────────────────
 with tab2:
-    subtab_data, subtab_totals = st.tabs(["📋 All Decks", "🔢 Maindeck Card Totals"])
+    subtab_data, subtab_totals, subtab_sb_totals = st.tabs([
+        "📋 All Decks", "🔢 Maindeck Card Totals", "🔢 Sideboard Card Totals"
+    ])
 
     with subtab_data:
         st.subheader("Amulet Deck – Main Sheet")

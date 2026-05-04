@@ -1288,15 +1288,30 @@ with tab7:
             st.plotly_chart(fig_heat, width='stretch')
 
 
+
+def _match_amulet_row(name_v, date_v):
+    """Match a row in amulet_comb by Name + Date, handling format differences."""
+    mask_name = amulet_comb["Name"] == name_v
+    try:
+        ts = pd.to_datetime(date_v, errors="coerce")
+        if pd.notna(ts):
+            mask_date = pd.to_datetime(
+                amulet_comb["Date"], errors="coerce"
+            ).dt.strftime("%Y-%m-%d") == ts.strftime("%Y-%m-%d")
+        else:
+            mask_date = amulet_comb["Date"].astype(str).str.contains(
+                str(date_v)[:7], na=False
+            )
+    except Exception:
+        mask_date = pd.Series(True, index=amulet_comb.index)
+    return amulet_comb[mask_name & mask_date]
+
 def _render_nmds_decklist(row_idx, source_ord, label_prefix=""):
     """Render a decklist for the given NMDS site row index."""
     name_v = source_ord.loc[row_idx, "Name"] if "Name" in source_ord.columns else None
     date_v = source_ord.loc[row_idx, "Date"] if "Date" in source_ord.columns else None
     if name_v and date_v:
-        match = amulet_comb[
-            (amulet_comb["Name"] == name_v) &
-            (amulet_comb["Date"].astype(str).str.contains(str(date_v)[:7], na=False))
-        ]
+        match = _match_amulet_row(name_v, date_v)
     else:
         match = pd.DataFrame()
     if match.empty:
@@ -1510,11 +1525,7 @@ with tab8:
                     outlier_name = ord_nmds.loc[best_idx, "Name"] if name_col else None
                     outlier_date = ord_nmds.loc[best_idx, "Date"] if date_col else None
                     if outlier_name and outlier_date:
-                        match = amulet_comb[
-                            (amulet_comb["Name"] == outlier_name) &
-                            (amulet_comb["Date"].astype(str).str.contains(
-                                str(outlier_date)[:7], na=False))
-                        ]
+                        match = _match_amulet_row(outlier_name, outlier_date)
                     else:
                         match = pd.DataFrame()
 

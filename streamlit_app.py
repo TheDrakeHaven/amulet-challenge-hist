@@ -1308,8 +1308,8 @@ def _match_amulet_row(name_v, date_v):
 
 def _render_nmds_decklist(row_idx, source_ord, label_prefix=""):
     """Render a decklist for the given NMDS site row index."""
-    name_v = source_ord.loc[row_idx, "Name"] if "Name" in source_ord.columns else None
-    date_v = source_ord.loc[row_idx, "Date"] if "Date" in source_ord.columns else None
+    name_v = source_ord.iloc[row_idx]["Name"] if "Name" in source_ord.columns else None
+    date_v = source_ord.iloc[row_idx]["Date"] if "Date" in source_ord.columns else None
     if name_v and date_v:
         match = _match_amulet_row(name_v, date_v)
     else:
@@ -1466,10 +1466,11 @@ with tab8:
 
         # ── Click-to-decklist ─────────────────────────────────────────────
         selected_pts8 = (sel8 or {}).get("selection", {}).get("points", [])
+        # Filter to trace 0 only (site scatter) — ignore centroid/species traces
+        selected_pts8 = [p for p in selected_pts8 if p.get("curve_number", 0) == 0]
         if selected_pts8:
-            pt8    = selected_pts8[0]
+            pt8     = selected_pts8[0]
             pt_idx8 = pt8.get("point_index", 0)
-            # point_index is within the trace — trace 0 is the site scatter
             if 0 <= pt_idx8 < len(ord_nmds):
                 st.markdown("---")
                 st.markdown("### 🃏 Selected Deck")
@@ -1587,20 +1588,22 @@ with tab9:
 
         plot9 = ord_nmds9.copy()
         if selected_card9 in amulet_comb.columns:
-            # Site_Scores Date format may differ from amulet_comb — merge on Name only
-            merge_keys9 = [k for k in ["Name"]
-                           if k in plot9.columns and k in amulet_comb.columns]
-            if merge_keys9:
-                # Cast merge keys to string on both sides to avoid dtype mismatch
-                for k in merge_keys9:
-                    plot9[k]             = plot9[k].astype(str)
+            if "Name" in plot9.columns and "Name" in amulet_comb.columns:
+                # Normalise both Date columns to YYYY-MM-DD string for merging
+                plot9["_date_key"] = pd.to_datetime(
+                    plot9["Date"], errors="coerce"
+                ).dt.strftime("%Y-%m-%d")
+                amulet_comb_tmp = amulet_comb.copy()
+                amulet_comb_tmp["_date_key"] = pd.to_datetime(
+                    amulet_comb_tmp["Date"], errors="coerce"
+                ).dt.strftime("%Y-%m-%d")
                 card_lookup9 = (
-                    amulet_comb[merge_keys9 + [selected_card9]]
-                    .assign(**{k: amulet_comb[k].astype(str) for k in merge_keys9})
-                    .drop_duplicates(subset=merge_keys9)
+                    amulet_comb_tmp[["Name", "_date_key", selected_card9]]
+                    .drop_duplicates(subset=["Name", "_date_key"])
                 )
                 plot9 = plot9.drop(columns=[selected_card9], errors="ignore")
-                plot9 = plot9.merge(card_lookup9, on=merge_keys9, how="left")
+                plot9 = plot9.merge(card_lookup9, on=["Name", "_date_key"], how="left")
+                plot9 = plot9.drop(columns=["_date_key"], errors="ignore")
                 plot9[selected_card9] = (
                     pd.to_numeric(plot9[selected_card9], errors="coerce")
                       .fillna(0).astype(int)
@@ -1632,6 +1635,8 @@ with tab9:
 
         # ── Click-to-decklist ─────────────────────────────────────────────
         selected_pts9 = (sel9 or {}).get("selection", {}).get("points", [])
+        # Filter to trace 0 only (site scatter)
+        selected_pts9 = [p for p in selected_pts9 if p.get("curve_number", 0) == 0]
         if selected_pts9:
             pt9     = selected_pts9[0]
             pt_idx9 = pt9.get("point_index", 0)

@@ -1712,6 +1712,57 @@ with tab7:
             st.plotly_chart(fig_heat, width='stretch')
 
 
+def _render_nmds_decklist(row_idx, source_ord, label_prefix=""):
+    """Render a decklist for the given NMDS site row index."""
+    name_v = source_ord.loc[row_idx, "Name"] if "Name" in source_ord.columns else None
+    date_v = source_ord.loc[row_idx, "Date"] if "Date" in source_ord.columns else None
+    if name_v and date_v:
+        match = amulet_comb[
+            (amulet_comb["Name"] == name_v) &
+            (amulet_comb["Date"].astype(str).str.contains(str(date_v)[:7], na=False))
+        ]
+    else:
+        match = pd.DataFrame()
+    if match.empty:
+        st.info("Decklist not found in source data.")
+        return
+    deck_row = match.iloc[0]
+    card_cols_d = [c for c in amulet_int.columns if c in deck_row.index]
+    decklist_s = pd.Series({c: deck_row[c] for c in card_cols_d}).astype(int)
+    decklist_s = decklist_s[decklist_s > 0].sort_values(ascending=False)
+
+    era_v = source_ord.loc[row_idx, "current_era"] if "current_era" in source_ord.columns else None
+    st.markdown(f"**{label_prefix}{name_v}** — {date_v}" +
+                (f"  |  *{era_v}*" if era_v else ""))
+
+    era_rows_d = amulet_comb[amulet_comb["current_era"] == era_v] if era_v else pd.DataFrame()
+    if not era_rows_d.empty:
+        era_cards_d = era_rows_d[[c for c in amulet_int.columns if c in era_rows_d.columns]]
+        median_d = era_cards_d.median().round(2)
+        median_d = median_d[median_d > 0].sort_values(ascending=False)
+        median_set_d = set(median_d[median_d > 0].index)
+    else:
+        median_d, median_set_d = pd.Series(dtype=float), set()
+
+    col_dl, col_med = st.columns(2)
+    era_id_d = re.sub(r"[^a-zA-Z0-9]+", "-", str(era_v or "")).strip("-").lower() or "era"
+    with col_dl:
+        st.markdown("**Decklist** *(green = not in era median)*")
+        dl_df = decklist_s.reset_index()
+        dl_df.columns = ["Card", "Copies"]
+        dl_df = sort_by_type(dl_df, "Card")
+        render_decklist_html(dl_df, "Card", "Copies",
+                             median_set_d, f"nmds-click-{era_id_d}", 400)
+    with col_med:
+        if not median_d.empty:
+            st.markdown(f"**Era Median** ({era_v})")
+            med_df_d = median_d.reset_index()
+            med_df_d.columns = ["Card", "Median Copies"]
+            med_df_d = sort_by_type(med_df_d, "Card")
+            render_decklist_html(med_df_d, "Card", "Median Copies",
+                                 None, f"nmds-clickmed-{era_id_d}", 400)
+
+
 # ── Tab 8: NMDS – Era & Set ───────────────
 with tab8:
     st.subheader("NMDS – Era & Set")
@@ -1813,7 +1864,20 @@ with tab8:
                 name="Card WA scores", showlegend=True,
             ))
 
-        st.plotly_chart(fig_n, width='stretch')
+        sel8 = st.plotly_chart(fig_n, width='stretch', on_select="rerun", key="nmds_plot8")
+
+        # ── Click-to-decklist ─────────────────────────────────────────────
+        selected_pts8 = (sel8 or {}).get("selection", {}).get("points", [])
+        if selected_pts8:
+            pt8    = selected_pts8[0]
+            pt_idx8 = pt8.get("point_index", 0)
+            # point_index is within the trace — trace 0 is the site scatter
+            if 0 <= pt_idx8 < len(ord_nmds):
+                st.markdown("---")
+                st.markdown("### 🃏 Selected Deck")
+
+
+                _render_nmds_decklist(pt_idx8, ord_nmds)
 
         # ── Most Dissimilar Site per Era ──────────────────────────────────
         name_col = "Name" if "Name" in ord_nmds.columns else None
@@ -1965,7 +2029,17 @@ with tab9:
         fig9.update_layout(
             plot_bgcolor="#1a1a2e", paper_bgcolor="#0d0d1a", height=800
         )
-        st.plotly_chart(fig9, width='stretch')
+        sel9 = st.plotly_chart(fig9, width='stretch', on_select="rerun", key="nmds_plot9")
+
+        # ── Click-to-decklist ─────────────────────────────────────────────
+        selected_pts9 = (sel9 or {}).get("selection", {}).get("points", [])
+        if selected_pts9:
+            pt9     = selected_pts9[0]
+            pt_idx9 = pt9.get("point_index", 0)
+            if 0 <= pt_idx9 < len(ord_nmds9):
+                st.markdown("---")
+                st.markdown("### 🃏 Selected Deck")
+                _render_nmds_decklist(pt_idx9, ord_nmds9)
 
     else:
         st.info("Loading NMDS scores from GitHub… refresh if this persists.")

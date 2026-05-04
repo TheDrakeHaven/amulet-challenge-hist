@@ -1090,12 +1090,11 @@ def _load_nmds_excel(source):
     xls = pd.ExcelFile(source)
     od  = pd.read_excel(xls, sheet_name="Site_Scores")
     sp  = pd.read_excel(xls, sheet_name="Card_WA_Scores")
-    # Normalise species df: ensure "card" column exists
+    # Normalise species df: ensure lowercase "card" column exists
+    sp.columns = [c if c not in ("Card",) else "card" for c in sp.columns]
     if "card" not in sp.columns:
-        # Try first unnamed column or index
         sp = sp.reset_index()
-        if sp.columns[0] in ("index", "Unnamed: 0", "level_0"):
-            sp = sp.rename(columns={sp.columns[0]: "card"})
+        sp = sp.rename(columns={sp.columns[0]: "card"})
     # Ensure NMDS1/NMDS2 columns exist
     for ax in ["NMDS1", "NMDS2"]:
         if ax not in sp.columns and ax.lower() in sp.columns:
@@ -1577,7 +1576,8 @@ with tab9:
 
         plot9 = ord_nmds9.copy()
         if selected_card9 in amulet_comb.columns:
-            merge_keys9 = [k for k in ["Name", "Date"]
+            # Site_Scores Date format may differ from amulet_comb — merge on Name only
+            merge_keys9 = [k for k in ["Name"]
                            if k in plot9.columns and k in amulet_comb.columns]
             if merge_keys9:
                 # Cast merge keys to string on both sides to avoid dtype mismatch

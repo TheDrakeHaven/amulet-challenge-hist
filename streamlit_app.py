@@ -1323,7 +1323,9 @@ def _render_nmds_decklist(row_idx, source_ord, label_prefix=""):
     decklist_s = decklist_s[decklist_s > 0].sort_values(ascending=False)
 
     era_v = source_ord.loc[row_idx, "current_era"] if "current_era" in source_ord.columns else None
-    st.markdown(f"**{label_prefix}{name_v}** — {date_v}" +
+    _date_display = pd.to_datetime(date_v, errors="coerce")
+    _date_display = _date_display.strftime("%m/%d/%Y") if pd.notna(_date_display) else str(date_v)[:10]
+    st.markdown(f"**{label_prefix}{name_v}** — {_date_display}" +
                 (f"  |  *{era_v}*" if era_v else ""))
 
     era_rows_d = amulet_comb[amulet_comb["current_era"] == era_v] if era_v else pd.DataFrame()
@@ -1485,7 +1487,9 @@ with tab8:
         def nmds_site_label(idx):
             parts = []
             if name_col: parts.append(str(ord_nmds.loc[idx, name_col]))
-            if date_col: parts.append(f"({ord_nmds.loc[idx, date_col]})")
+            if date_col:
+                _dl = pd.to_datetime(ord_nmds.loc[idx, date_col], errors="coerce")
+                parts.append(f"({_dl.strftime('%m/%d/%Y') if pd.notna(_dl) else str(ord_nmds.loc[idx, date_col])[:10]})")
             return " ".join(parts) if parts else f"Site {idx}"
 
         if "current_era" in ord_nmds.columns:
@@ -1545,7 +1549,9 @@ with tab8:
 
                         col_meta2, col_out2, col_med2 = st.columns([1, 1.5, 1.5])
                         with col_meta2:
-                            st.markdown(f"**{outlier_name}** — {outlier_date}")
+                            _od_disp = pd.to_datetime(outlier_date, errors="coerce")
+                            _od_disp = _od_disp.strftime("%m/%d/%Y") if pd.notna(_od_disp) else str(outlier_date)[:10]
+                            st.markdown(f"**{outlier_name}** — {_od_disp}")
                             st.markdown(f"Mean NMDS Distance: **{row._3}**")
                             st.markdown(f"Era N: **{row._4}**")
                         median_cards2 = set(median_deck2[median_deck2 > 0].index)

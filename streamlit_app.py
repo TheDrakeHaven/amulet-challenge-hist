@@ -859,6 +859,13 @@ tab2, tab3, tab7, tab8, tab9, tab10 = st.tabs([
 
 # ── Tab 2: Deck Data ─────────────────────
 with tab2:
+    _type_colors = {
+        "Land":     "#2ca02c",
+        "Creature": "#1f77b4",
+        "Spell":    "#ff7f0e",
+        "Unknown":  "#7f7f7f",
+    }
+
     subtab_data, subtab_totals, subtab_sb_totals = st.tabs([
         "📋 All Decks", "🔢 Maindeck Card Totals", "🔢 Sideboard Card Totals"
     ])
@@ -895,8 +902,8 @@ with tab2:
             amulet_int[mb_cols]
             .sum()
             .astype(int)
-            .reset_index()
-            .rename(columns={"index": "Card", 0: "Total Copies"})
+            .rename_axis("Card")
+            .reset_index(name="Total Copies")
         )
         mb_totals["Card Type"] = mb_totals["Card"].apply(get_card_type)
         mb_totals = mb_totals[mb_totals["Total Copies"] > 0].sort_values(
@@ -926,18 +933,12 @@ with tab2:
         # ── Bar chart ─────────────────────────────────────────────────────
         top_n = st.slider("Show top N cards in chart", 10, 60, 30, key="mb_totals_n")
         chart_data = display_totals.head(top_n)
-        type_colors = {
-            "Land":     "#2ca02c",
-            "Creature": "#1f77b4",
-            "Spell":    "#ff7f0e",
-            "Unknown":  "#7f7f7f",
-        }
         fig_bar = px.bar(
             chart_data,
             x="Card",
             y="Total Copies",
             color="Card Type",
-            color_discrete_map=type_colors,
+            color_discrete_map=_type_colors,
             title=f"Top {top_n} Maindeck Cards by Total Copies",
             template="plotly_white",
         )
@@ -951,6 +952,75 @@ with tab2:
         # ── Full table ────────────────────────────────────────────────────
         st.dataframe(
             display_totals,
+            width='stretch',
+            hide_index=True,
+        )
+
+    with subtab_sb_totals:
+        st.subheader("Total Sideboard Card Copies")
+        st.markdown(
+            "Total copies of each sideboard card across all decklists, "
+            "broken down by card type. Maindeck cards excluded."
+        )
+
+        # Sideboard columns only (sb_ prefix), strip prefix for display
+        sb_cols = [c for c in amulet_int.columns if c.startswith("sb_")]
+        sb_totals = (
+            amulet_int[sb_cols]
+            .sum()
+            .astype(int)
+            .rename_axis("Card")
+            .reset_index(name="Total Copies")
+        )
+        # Strip sb_ prefix for display
+        sb_totals["Card"] = sb_totals["Card"].str.replace("^sb_", "", regex=True)
+        sb_totals["Card Type"] = sb_totals["Card"].apply(get_card_type)
+        sb_totals = sb_totals[sb_totals["Total Copies"] > 0].sort_values(
+            "Total Copies", ascending=False
+        ).reset_index(drop=True)
+
+        # ── Summary metrics ───────────────────────────────────────────────
+        s1, s2, s3, s4 = st.columns(4)
+        s1.metric("Unique Cards", len(sb_totals))
+        s2.metric("Total Copies", f"{sb_totals['Total Copies'].sum():,}")
+        s3.metric("Avg per Deck",
+                  f"{sb_totals['Total Copies'].sum() / max(len(amulet_df), 1):.1f}")
+        s4.metric("Decklists", len(amulet_df))
+
+        # ── Type filter ───────────────────────────────────────────────────
+        sb_type_filter = st.multiselect(
+            "Filter by card type:",
+            options=["Creature", "Spell", "Land", "Unknown"],
+            default=[],
+            key="sb_totals_type_filter",
+        )
+        display_sb_totals = (
+            sb_totals[sb_totals["Card Type"].isin(sb_type_filter)]
+            if sb_type_filter else sb_totals
+        )
+
+        # ── Bar chart ─────────────────────────────────────────────────────
+        top_n_sb = st.slider("Show top N cards in chart", 10, 60, 30, key="sb_totals_n")
+        chart_sb = display_sb_totals.head(top_n_sb)
+        fig_sb_bar = px.bar(
+            chart_sb,
+            x="Card",
+            y="Total Copies",
+            color="Card Type",
+            color_discrete_map=_type_colors,
+            title=f"Top {top_n_sb} Sideboard Cards by Total Copies",
+            template="plotly_white",
+        )
+        fig_sb_bar.update_layout(
+            xaxis_tickangle=-45,
+            height=500,
+            legend_title_text="Card Type",
+        )
+        st.plotly_chart(fig_sb_bar, width='stretch')
+
+        # ── Full table ────────────────────────────────────────────────────
+        st.dataframe(
+            display_sb_totals,
             width='stretch',
             hide_index=True,
         )

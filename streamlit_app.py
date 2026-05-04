@@ -1396,6 +1396,13 @@ with tab8:
             "Show top card vectors", value=False, key="nmds_species_tab8"
         )
 
+        # Format Date for display (remove HH:MM:SS)
+        if "Date" in ord_nmds.columns:
+            ord_nmds = ord_nmds.copy()
+            ord_nmds["Date"] = pd.to_datetime(
+                ord_nmds["Date"], errors="coerce"
+            ).dt.strftime("%m/%d/%Y")
+
         hover_nmds = [c for c in ["Name", "Date", "current_era", "current_set"]
                       if c in ord_nmds.columns]
 

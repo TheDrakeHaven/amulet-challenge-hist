@@ -162,6 +162,17 @@ ban_events = pd.DataFrame({
 # ─────────────────────────────────────────
 
 
+def assign_ban_era(d, events_df):
+    """findInterval equivalent: return the era label for date d."""
+    ts = pd.to_datetime(d, errors="coerce")
+    if pd.isna(ts):
+        return events_df.iloc[0]["event"]
+    idx = (events_df["date"] <= ts).sum()
+    if idx >= len(events_df):
+        idx = len(events_df) - 1
+    return events_df.iloc[idx]["event"]
+
+
 def assign_current_set(d):
     """Return the most recent set released on or before date d."""
     ts = pd.to_datetime(d, errors="coerce")
@@ -800,7 +811,7 @@ with st.spinner("Processing main deck sheet…"):
 
     # Meta columns — flexible, works with or without Place/Event_Type
     _all_meta = ["row_number", "Name", "Place", "Event", "current_era", "Event_Type", "Date",
-                 "Maindeck_Total", "Sideboard_Total"]
+                 "NMDS1", "NMDS2", "Maindeck_Total", "Sideboard_Total"]
     meta_cols = [c for c in _all_meta if c in amulet_df.columns]
     card_cols  = [c for c in amulet_df.columns if c not in meta_cols]
 
@@ -811,12 +822,18 @@ with st.spinner("Processing main deck sheet…"):
     if "Date" in amulet_df.columns:
         amulet_df["Date"] = pd.to_datetime(amulet_df["Date"], errors="coerce").dt.strftime("%m-%d-%Y")
 
-    _env_candidates = ["row_number", "Name", "Place", "Event", "current_era", "Event_Type", "Date"]
+    _env_candidates = ["row_number", "Name", "Place", "Event", "current_era", "Event_Type", "Date",
+                       "NMDS1", "NMDS2"]
     env_cols   = [c for c in _env_candidates if c in amulet_df.columns]
     amulet_env = amulet_df[env_cols].copy()
     amulet_int = amulet_df[[c for c in amulet_df.columns if c not in meta_cols]].copy()
 
     amulet_env["current_set"] = amulet_env["Date"].apply(assign_current_set)
+    # Derive current_era from Date if not present in CSV (backwards compatibility)
+    if "current_era" not in amulet_env.columns:
+        amulet_env["current_era"] = amulet_env["Date"].apply(
+            lambda d: assign_ban_era(d, ban_events)
+        )
 
     amulet_comb = pd.concat(
         [amulet_env.drop(columns=["row_number"], errors="ignore").reset_index(drop=True),

@@ -850,6 +850,26 @@ st.caption(
 )
 
 
+ERA_ORDER = [
+        "Pre-Splinter Twin/Summer Bloom Ban",
+        "Pre-MH1 Release",
+        "Pre-Lattice/Oko Ban",
+        "Pre-Astrolabe Ban",
+        "Pre-Field/Uro Ban",
+        "Pre-MH2 Release",
+        "Pre-Lurrus Ban",
+        "Pre-Yorion Ban",
+        "Pre-Preordain Unban",
+        "Pre-Fury/Bean Ban",
+        "Pre-Outburst Ban",
+        "Pre-MH3",
+        "Pre-Nadu/Grief Ban",
+        "Pre-GSZ Unban/Ring Ban",
+        "Pre-Breach Ban",
+        "Current"
+]
+
+
 # ─────────────────────────────────────────
 # TABS
 # ─────────────────────────────────────────
@@ -1136,25 +1156,6 @@ with tab4:
 # ─────────────────────────────────────────
 # PCA COMPUTATION
 # ─────────────────────────────────────────
-
-ERA_ORDER = [
-        "Pre-Splinter Twin/Summer Bloom Ban",
-        "Pre-MH1 Release",
-        "Pre-Lattice/Oko Ban",
-        "Pre-Astrolabe Ban",
-        "Pre-Field/Uro Ban",
-        "Pre-MH2 Release",
-        "Pre-Lurrus Ban",
-        "Pre-Yorion Ban",
-        "Pre-Preordain Unban",
-        "Pre-Fury/Bean Ban",
-        "Pre-Outburst Ban",
-        "Pre-MH3",
-        "Pre-Nadu/Grief Ban",
-        "Pre-GSZ Unban/Ring Ban",
-        "Pre-Breach Ban",
-        "Current"
-]
 
 
 def run_nmds_computation():
@@ -2105,4 +2106,4 @@ with tab10:
 
     else:
         st.info("NMDS site scores not found in data. Check that merged_amulet.csv contains NMDS1 and NMDS2 columns.")
-    
+        

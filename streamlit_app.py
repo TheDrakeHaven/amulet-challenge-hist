@@ -1116,9 +1116,9 @@ with tab4:
     md_cols = [c for c in all_card_cols if not c.startswith("sb_")]
     sb_cols_t4 = [c for c in all_card_cols if c.startswith("sb_")]
 
-    def scale_to_target(mean_series, target):
-        """Scale mean counts proportionally to sum to target, rounding intelligently."""
-        s = mean_series[mean_series > 0]
+    def scale_to_target(mode_series, target):
+        """Scale mode counts proportionally to sum to target, rounding intelligently."""
+        s = mode_series[mode_series > 0]
         if s.sum() == 0:
             return pd.Series(dtype=float)
         scaled = s / s.sum() * target
@@ -1130,11 +1130,11 @@ with tab4:
             floored[card] += 1
         return floored[floored > 0].sort_values(ascending=False)
 
-    md_mean_t4 = era_rows_t4[md_cols].mean()
-    sb_mean_t4 = era_rows_t4[sb_cols_t4].mean()
+    md_mode_t4 = era_rows_t4[md_cols].mode().iloc[0]
+    sb_mode_t4 = era_rows_t4[sb_cols_t4].mode().iloc[0]
 
-    md_scaled = scale_to_target(md_mean_t4, 60)
-    sb_scaled = scale_to_target(sb_mean_t4, 15)
+    md_scaled = scale_to_target(md_mode_t4, 60)
+    sb_scaled = scale_to_target(sb_mode_t4, 15)
 
     col_t4a, col_t4b = st.columns(2)
 
@@ -2106,4 +2106,3 @@ with tab10:
 
     else:
         st.info("NMDS site scores not found in data. Check that merged_amulet.csv contains NMDS1 and NMDS2 columns.")
-        

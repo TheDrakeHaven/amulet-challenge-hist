@@ -1147,9 +1147,9 @@ GITHUB_NMDS_URL = (
 )
 
 def _load_nmds_excel(source):
-    """Load Site_Scores + Card_WA_Scores from an Excel file-like or URL bytes."""
+    """Load Card_WA_Scores and stress from an Excel file-like or URL bytes.
+    Site scores are now read directly from the main CSV (amulet_comb)."""
     xls = pd.ExcelFile(source)
-    od  = pd.read_excel(xls, sheet_name="Site_Scores")
     sp  = pd.read_excel(xls, sheet_name="Card_WA_Scores")
     # Normalise species df: ensure lowercase "card" column exists
     sp.columns = [c if c not in ("Card",) else "card" for c in sp.columns]
@@ -1170,6 +1170,15 @@ def _load_nmds_excel(source):
                     st_val = float(v)
         except Exception:
             pass
+    return sp, st_val
+
+def _build_ord_from_comb():
+    """Build site scores and centroids from amulet_comb (which now carries NMDS1/NMDS2)."""
+    if "NMDS1" not in amulet_comb.columns or "NMDS2" not in amulet_comb.columns:
+        return None, {}
+    od = amulet_comb[["Name", "Event", "Date", "NMDS1", "NMDS2",
+                       "current_era", "current_set"]].copy()
+    od = od.dropna(subset=["NMDS1", "NMDS2"])
     cents = {}
     for ev in ["current_era", "current_set"]:
         if ev in od.columns:
@@ -1180,43 +1189,40 @@ def _load_nmds_excel(source):
                 )
             except Exception:
                 pass
-    return od, sp, st_val, cents
+    return od, cents
 
 def _resolve_nmds():
     """
-    Return (ord_nmds, species_nmds, stress_nmds, env_centroids_nmds) from the
-    best available source: uploaded file → GitHub cache → computed.
-    Returns (None, None, None, {}) if nothing is available.
+    Return (ord_nmds, species_nmds, stress_nmds, env_centroids_nmds).
+    Site scores come from amulet_comb; species scores and stress come from GitHub Excel.
     """
-    # 1. Already fetched from GitHub this session
+    # Site scores always come from amulet_comb
+    od, cents = _build_ord_from_comb()
+
+    # 1. Already fetched species/stress from GitHub this session
     gh = st.session_state.get("nmds_github")
     if gh is not None:
-        return gh["ord"], gh["species"], gh["stress"], gh["centroids"]
+        return od, gh["species"], gh["stress"], cents
 
     # 2. Already computed this session
     if "nmds_result" in st.session_state:
-        return (
-            st.session_state["nmds_result"],
-            st.session_state["nmds_species"],
-            st.session_state["nmds_stress"],
-            st.session_state["nmds_env_centroids"],
-        )
+        return od, st.session_state["nmds_species"], st.session_state["nmds_stress"], cents
 
-    # 3. Try GitHub
+    # 3. Try GitHub for species scores + stress
     try:
         import requests as _req
         resp = _req.get(GITHUB_NMDS_URL, timeout=15)
         resp.raise_for_status()
         from io import BytesIO as _BIO
-        od, sp, st_val, cents = _load_nmds_excel(_BIO(resp.content))
+        sp, st_val = _load_nmds_excel(_BIO(resp.content))
         st.session_state["nmds_github"] = {
-            "ord": od, "species": sp, "stress": st_val, "centroids": cents
+            "species": sp, "stress": st_val
         }
         return od, sp, st_val, cents
     except Exception:
         pass
 
-    return None, None, None, {}
+    return od, None, None, cents
 
 # ── Run PCA on app start (fast — no NMDS here, tab 8 handles it lazily) ──
 # ── Tab 7: Era-Specific Cards ─────────────
@@ -1428,26 +1434,6 @@ with tab8:
     ord_nmds, species_nmds, stress_nmds, env_cents_nmds = _resolve_nmds()
 
     if ord_nmds is not None:
-        # If current_era/current_set aren't in the NMDS data (e.g. loaded from GitHub Excel),
-        # merge them in from amulet_comb using Name + normalised Date as the key.
-        missing_env = [c for c in ["current_era", "current_set"] if c not in ord_nmds.columns]
-        if missing_env and "Name" in ord_nmds.columns and "Date" in ord_nmds.columns:
-            ord_nmds = ord_nmds.copy()
-            ord_nmds["_dk"] = pd.to_datetime(ord_nmds["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
-            env_lookup8 = amulet_comb[["Name", "Date"] + [c for c in missing_env if c in amulet_comb.columns]].copy()
-            env_lookup8["_dk"] = pd.to_datetime(env_lookup8["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
-            env_lookup8 = env_lookup8.drop(columns=["Date"]).drop_duplicates(subset=["Name", "_dk"])
-            ord_nmds = ord_nmds.merge(env_lookup8, on=["Name", "_dk"], how="left").drop(columns=["_dk"])
-            for ev in missing_env:
-                if ev in ord_nmds.columns:
-                    try:
-                        env_cents_nmds[ev] = (
-                            ord_nmds.groupby(ev)[["NMDS1", "NMDS2"]]
-                            .mean().reset_index().rename(columns={ev: "label"})
-                        )
-                    except Exception:
-                        pass
-
         stress_label = f"  |  stress = {stress_nmds:.4f}" if stress_nmds is not None else ""
 
         col_n1, col_n2 = st.columns(2)
@@ -1659,7 +1645,7 @@ with tab8:
                             render_decklist_html(med_df2, "Card", "Median Copies",
                                                  None, f"nmds-median-{era_id2}", 350)
     else:
-        st.info("Loading NMDS scores from GitHub… refresh if this persists.")
+        st.info("NMDS site scores not found in data. Check that merged_amulet.csv contains NMDS1 and NMDS2 columns.")
 
 
 # ── Tab 9: NMDS – Card Inclusion ─────────
@@ -1673,16 +1659,6 @@ with tab9:
     ord_nmds9, species_nmds9, _, _ = _resolve_nmds()
 
     if ord_nmds9 is not None:
-        # If current_era isn't in the NMDS data (e.g. loaded from GitHub Excel),
-        # merge it in from amulet_comb using Name + normalised Date as the key.
-        if "current_era" not in ord_nmds9.columns and "Name" in ord_nmds9.columns and "Date" in ord_nmds9.columns:
-            ord_nmds9 = ord_nmds9.copy()
-            ord_nmds9["_dk"] = pd.to_datetime(ord_nmds9["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
-            era_lookup9 = amulet_comb[["Name", "Date", "current_era"]].copy()
-            era_lookup9["_dk"] = pd.to_datetime(era_lookup9["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
-            era_lookup9 = era_lookup9[["Name", "_dk", "current_era"]].drop_duplicates(subset=["Name", "_dk"])
-            ord_nmds9 = ord_nmds9.merge(era_lookup9, on=["Name", "_dk"], how="left").drop(columns=["_dk"])
-
         card_options9 = amulet_int.sum().sort_values(ascending=False).index.tolist()
 
         col9a, col9b = st.columns([1, 2])
@@ -1785,7 +1761,7 @@ with tab9:
                     st.info("Decklist not found in source data.")
 
     else:
-        st.info("Loading NMDS scores from GitHub… refresh if this persists.")
+        st.info("NMDS site scores not found in data. Check that merged_amulet.csv contains NMDS1 and NMDS2 columns.")
 
 
 # ── Tab 10: NMDS – Card Similarity ────────
@@ -1894,4 +1870,4 @@ with tab10:
         st.plotly_chart(fig10, width='stretch')
 
     else:
-        st.info("Loading NMDS scores from GitHub… refresh if this persists.")
+        st.info("NMDS site scores not found in data. Check that merged_amulet.csv contains NMDS1 and NMDS2 columns.")

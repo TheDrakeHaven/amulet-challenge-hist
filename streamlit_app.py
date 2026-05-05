@@ -854,9 +854,10 @@ st.caption(
 # TABS
 # ─────────────────────────────────────────
 
-tab2, tab3, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+tab2, tab3, tab4, tab6, tab7, tab8, tab9, tab10 = st.tabs([
     "🃏 Deck Data",
     "📈 Median by Era",
+    "📋 Era Decklists",
     "🛡️ Era-Specific Sideboard",
     "🔍 Era-Specific Cards",
     "🌐 NMDS – Era & Set",
@@ -1075,6 +1076,62 @@ with tab3:
     )
     fig_heat.update_layout(height=750)
     st.plotly_chart(fig_heat, width='stretch')
+
+# ── Tab 4: Era Decklists ──────────────────
+with tab4:
+    st.subheader("Expected Era Decklist")
+    st.markdown(
+        "Mean card counts scaled to a 60-card maindeck and 15-card sideboard for each era. "
+        "Cards are rounded to the nearest whole number, then adjusted to hit exactly 60/15."
+    )
+
+    era_list_t4 = [e for e in ERA_ORDER if e in amulet_comb["current_era"].values]
+    selected_era_t4 = st.selectbox("Select era:", era_list_t4,
+                                    index=len(era_list_t4) - 1, key="era_deck_select")
+
+    era_rows_t4 = amulet_comb[amulet_comb["current_era"] == selected_era_t4]
+
+    # Separate maindeck and sideboard columns
+    all_card_cols = [c for c in amulet_int.columns]
+    md_cols = [c for c in all_card_cols if not c.startswith("sb_")]
+    sb_cols_t4 = [c for c in all_card_cols if c.startswith("sb_")]
+
+    def scale_to_target(mean_series, target):
+        """Scale mean counts proportionally to sum to target, rounding intelligently."""
+        s = mean_series[mean_series > 0]
+        if s.sum() == 0:
+            return pd.Series(dtype=float)
+        scaled = s / s.sum() * target
+        floored = scaled.apply(lambda x: int(x))
+        remainder = target - floored.sum()
+        # Distribute remainder to cards with largest fractional parts
+        fractions = (scaled - floored).sort_values(ascending=False)
+        for card in fractions.index[:int(remainder)]:
+            floored[card] += 1
+        return floored[floored > 0].sort_values(ascending=False)
+
+    md_mean_t4 = era_rows_t4[md_cols].mean()
+    sb_mean_t4 = era_rows_t4[sb_cols_t4].mean()
+
+    md_scaled = scale_to_target(md_mean_t4, 60)
+    sb_scaled = scale_to_target(sb_mean_t4, 15)
+
+    col_t4a, col_t4b = st.columns(2)
+
+    with col_t4a:
+        st.markdown(f"**Maindeck** ({int(md_scaled.sum())} cards, {len(era_rows_t4)} decklists)")
+        md_df = md_scaled.reset_index()
+        md_df.columns = ["Card", "Copies"]
+        md_df = sort_by_type(md_df, "Card")
+        render_decklist_html(md_df, "Card", "Copies", None, f"era-md-{selected_era_t4[:10]}", 600)
+
+    with col_t4b:
+        st.markdown(f"**Sideboard** ({int(sb_scaled.sum())} cards)")
+        sb_df = sb_scaled.reset_index()
+        sb_df.columns = ["Card", "Copies"]
+        sb_df = sort_by_type(sb_df, "Card")
+        render_decklist_html(sb_df, "Card", "Copies", None, f"era-sb-{selected_era_t4[:10]}", 600)
+
 
 # ─────────────────────────────────────────
 # PCA COMPUTATION
@@ -2048,3 +2105,4 @@ with tab10:
 
     else:
         st.info("NMDS site scores not found in data. Check that merged_amulet.csv contains NMDS1 and NMDS2 columns.")
+    

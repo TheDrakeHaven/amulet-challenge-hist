@@ -1675,6 +1675,13 @@ with tab9:
     ord_nmds9, species_nmds9, _, _ = _resolve_nmds()
 
     if ord_nmds9 is not None:
+        # Ensure current_era is present (same guard as tab8)
+        if "current_era" not in ord_nmds9.columns and "Date" in ord_nmds9.columns:
+            ord_nmds9 = ord_nmds9.copy()
+            ord_nmds9["current_era"] = ord_nmds9["Date"].apply(
+                lambda d: assign_ban_era(d, ban_events)
+            )
+
         card_options9 = amulet_int.sum().sort_values(ascending=False).index.tolist()
 
         col9a, col9b = st.columns([1, 2])
@@ -1685,12 +1692,12 @@ with tab9:
                 key="nmds_card_select9"
             )
         with col9b:
-            # Build era options from the NMDS ordination data (preserves chronological order)
+            era_order9 = ban_events["event"].tolist()
             if "current_era" in ord_nmds9.columns:
-                era_order9 = ban_events["event"].tolist()
-                available_eras9 = [e for e in era_order9 if e in ord_nmds9["current_era"].unique()]
+                present_eras9 = set(ord_nmds9["current_era"].dropna().unique())
             else:
-                available_eras9 = []
+                present_eras9 = set()
+            available_eras9 = [e for e in era_order9 if e in present_eras9]
             selected_eras9 = st.multiselect(
                 "Filter by era:",
                 options=available_eras9,

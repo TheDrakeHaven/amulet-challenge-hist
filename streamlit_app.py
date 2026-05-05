@@ -1332,7 +1332,7 @@ with tab6:
             {e: i for i, e in enumerate(era_order_sb)}
         )
         sb_result_df = (
-            sb_result_df.sort_values(["_era_order", "% Decks w/Card", "Concentration"], ascending=[True, False, False])
+            sb_result_df.sort_values(["_era_order", "% Decks w/ Card", "Concentration"], ascending=[True, False, False])
             .drop(columns=["_era_order"])
             .reset_index(drop=True)
         )
@@ -1474,7 +1474,7 @@ with tab7:
             {e: i for i, e in enumerate(era_order_display)}
         )
         result_df = (
-            result_df.sort_values(["_era_order", "% Decks w/Card", "Concentration"], ascending=[True, False, False])
+            result_df.sort_values(["_era_order", "% Decks w/ Card", "Concentration"], ascending=[True, False, False])
             .drop(columns=["_era_order"])
             .reset_index(drop=True)
         )

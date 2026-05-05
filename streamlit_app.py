@@ -1299,7 +1299,7 @@ with tab6:
         if raw_total_sb == 0:
             continue
         concentration = raw_dominant_sb / raw_total_sb
-        if concentration >= min_concentration_sb:
+        if concentration >= min_concentration_sb and dominant_rate >= 0.1:
             display_name = card[3:] if card.startswith("sb_") else card
             sb_rows.append({
                 "Card":                  display_name,
@@ -1428,7 +1428,7 @@ with tab7:
         if raw_total == 0:
             continue
         concentration = raw_dominant / raw_total
-        if concentration >= min_concentration:
+        if concentration >= min_concentration and dominant_rate >= 0.1:
             rows.append({
                 "Card":                  card,
                 "Card Type":             get_card_type(card),

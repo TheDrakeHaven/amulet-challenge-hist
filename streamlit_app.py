@@ -1173,14 +1173,16 @@ with tab4:
         md_df = md_scaled.reset_index()
         md_df.columns = ["Card", "Copies"]
         md_df = sort_by_type(md_df, "Card")
-        render_decklist_html(md_df, "Card", "Copies", None, f"era-md-{selected_era_t4[:10]}", 600)
+        era_slug_t4 = re.sub(r"[^a-zA-Z0-9\-]", "-", selected_era_t4[:20])
+        render_decklist_html(md_df, "Card", "Copies", None, f"era-md-{era_slug_t4}", 600)
 
     with col_t4b:
         st.markdown(f"**Predicted Sideboard**")
         sb_df = sb_scaled.reset_index()
         sb_df.columns = ["Card", "Copies"]
         sb_df = sort_by_type(sb_df, "Card")
-        render_decklist_html(sb_df, "Card", "Copies", None, f"era-sb-{selected_era_t4[:10]}", 600)
+        era_slug_t4 = re.sub(r"[^a-zA-Z0-9\-]", "-", selected_era_t4[:20])
+        render_decklist_html(sb_df, "Card", "Copies", None, f"era-sb-{era_slug_t4}", 600)
 
 
 # ─────────────────────────────────────────

@@ -854,9 +854,10 @@ st.caption(
 # TABS
 # ─────────────────────────────────────────
 
-tab2, tab3, tab7, tab8, tab9, tab10 = st.tabs([
+tab2, tab3, tab6, tab7, tab8, tab9, tab10 = st.tabs([
     "🃏 Deck Data",
     "📈 Median by Era",
+    "🛡️ Era-Specific Sideboard",
     "🔍 Era-Specific Cards",
     "🌐 NMDS – Era & Set",
     "🎴 NMDS – Card Inclusion",
@@ -1242,6 +1243,129 @@ def _resolve_nmds():
     return od, None, None, cents
 
 # ── Run PCA on app start (fast — no NMDS here, tab 8 handles it lazily) ──
+# ── Tab 6: Era-Specific Sideboard ────────
+with tab6:
+    st.subheader("Era-Specific Sideboard Cards")
+    st.markdown(
+        "Sideboard cards that appear predominantly in one ban era. "
+        "Concentration score = share of a card's total sideboard appearances that fall within a single era. "
+        "Use the slider to control the minimum number of appearances required."
+    )
+
+    era_order_sb = [e for e in ERA_ORDER if e in amulet_comb["current_era"].values]
+    sb_cols = [c for c in amulet_int.columns if c.startswith("sb_")]
+
+    # Build era × sb card count matrix and era deck sizes
+    era_sb_raw = (
+        amulet_comb.groupby("current_era")[sb_cols]
+        .sum()
+        .reindex(era_order_sb)
+        .fillna(0)
+    )
+    era_sizes_sb = (
+        amulet_comb.groupby("current_era")
+        .size()
+        .reindex(era_order_sb)
+        .fillna(1)
+    )
+
+    # Normalize: mean copies per deck in each era
+    era_sb = era_sb_raw.div(era_sizes_sb, axis=0)
+
+    col_sb1, col_sb2 = st.columns(2)
+    with col_sb1:
+        min_appearances_sb = st.slider(
+            "Minimum total raw appearances across all eras",
+            min_value=1, max_value=50, value=5, step=1,
+            key="era_sb_min"
+        )
+    with col_sb2:
+        min_concentration_sb = st.slider(
+            "Minimum concentration score (0–1)",
+            min_value=0.50, max_value=1.0, value=0.75, step=0.05,
+            key="era_sb_conc"
+        )
+
+    sb_totals_raw = era_sb_raw.sum(axis=0)
+    eligible_sb = sb_totals_raw[sb_totals_raw >= min_appearances_sb].index.tolist()
+
+    sb_rows = []
+    for card in eligible_sb:
+        col_data = era_sb[card]
+        total = col_data.sum()
+        if total == 0:
+            continue
+        dominant_era = col_data.idxmax()
+        dominant_rate = col_data.max()
+        concentration = dominant_rate / total
+        if concentration >= min_concentration_sb:
+            display_name = card[3:] if card.startswith("sb_") else card
+            sb_rows.append({
+                "Card":                  display_name,
+                "Dominant Era":          dominant_era,
+                "Era Size (decks)":      int(era_sizes_sb[dominant_era]),
+                "Rate in Era":           round(dominant_rate, 3),
+                "Raw Era Appearances":   int(era_sb_raw.loc[dominant_era, card]),
+                "Total Raw Appearances": int(sb_totals_raw[card]),
+                "Concentration":         round(concentration, 3),
+            })
+
+    if not sb_rows:
+        st.info("No sideboard cards meet the current filters. Try lowering the thresholds.")
+    else:
+        sb_result_df = (
+            pd.DataFrame(sb_rows)
+            .sort_values(["Dominant Era", "Concentration"], ascending=[True, False])
+            .reset_index(drop=True)
+        )
+
+        # ── Summary chart ──────────────────────────────────────────────────
+        sb_era_counts = sb_result_df["Dominant Era"].value_counts().reindex(era_order_sb).dropna()
+        fig_sb_bar = px.bar(
+            sb_era_counts.reset_index(),
+            x="Dominant Era",
+            y="count",
+            title="Number of Era-Specific Sideboard Cards per Era",
+            labels={"count": "# Cards", "Dominant Era": "Era"},
+            color="Dominant Era",
+            template="plotly_white",
+        )
+        fig_sb_bar.update_layout(showlegend=False, height=350)
+        st.plotly_chart(fig_sb_bar, width='stretch')
+
+        # ── Filter by era ──────────────────────────────────────────────────
+        sb_era_filter = st.multiselect(
+            "Filter by era (leave blank for all):",
+            options=era_order_sb,
+            default=[],
+            key="era_sb_filter"
+        )
+        if sb_era_filter:
+            sb_result_df = sb_result_df[sb_result_df["Dominant Era"].isin(sb_era_filter)]
+
+        st.dataframe(sb_result_df, width='stretch', hide_index=True)
+
+        # ── Heatmap ────────────────────────────────────────────────────────
+        st.markdown("**Heatmap of Era-Specific Sideboard Cards** *(color = mean copies per deck)*")
+        sb_heat_cards_display = sb_result_df["Card"].tolist()
+        sb_heat_cards_cols = ["sb_" + c for c in sb_heat_cards_display]
+        sb_heat_cards_cols = [c for c in sb_heat_cards_cols if c in era_sb.columns]
+        if sb_heat_cards_cols:
+            sb_heat = era_sb[sb_heat_cards_cols].copy()
+            sb_heat.columns = [c[3:] for c in sb_heat.columns]  # strip sb_ for display
+            sb_heat = sb_heat.T
+            sb_heat.index.name = "Card"
+            fig_sb_heat = px.imshow(
+                sb_heat,
+                aspect="auto",
+                color_continuous_scale="Blues",
+                labels={"x": "Era", "y": "Card", "color": "Copies/Deck"},
+                title="Era-Specific Sideboard Cards — Mean Copies per Deck by Era",
+            )
+            fig_sb_heat.update_layout(height=max(400, len(sb_heat_cards_cols) * 18))
+            st.plotly_chart(fig_sb_heat, width='stretch')
+
+
 # ── Tab 7: Era-Specific Cards ─────────────
 with tab7:
     st.subheader("Era-Specific Cards")

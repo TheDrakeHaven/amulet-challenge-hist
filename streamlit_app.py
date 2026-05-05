@@ -1292,12 +1292,13 @@ with tab6:
     sb_rows = []
     for card in eligible_sb:
         col_data = era_sb[card]
-        total = col_data.sum()
-        if total == 0:
-            continue
         dominant_era = col_data.idxmax()
         dominant_rate = col_data.max()
-        concentration = dominant_rate / total
+        raw_dominant_sb = era_sb_raw.loc[dominant_era, card]
+        raw_total_sb = sb_totals_raw[card]
+        if raw_total_sb == 0:
+            continue
+        concentration = raw_dominant_sb / raw_total_sb
         if concentration >= min_concentration_sb:
             display_name = card[3:] if card.startswith("sb_") else card
             sb_rows.append({
@@ -1305,8 +1306,8 @@ with tab6:
                 "Dominant Era":          dominant_era,
                 "Era Size (decks)":      int(era_sizes_sb[dominant_era]),
                 "Rate in Era":           round(dominant_rate, 3),
-                "Raw Era Appearances":   int(era_sb_raw.loc[dominant_era, card]),
-                "Total Raw Appearances": int(sb_totals_raw[card]),
+                "Raw Era Appearances":   int(raw_dominant_sb),
+                "Total Raw Appearances": int(raw_total_sb),
                 "Concentration":         round(concentration, 3),
             })
 
@@ -1420,12 +1421,13 @@ with tab7:
     rows = []
     for card in eligible_cards:
         col_data = era_card[card]          # normalized (per-deck rate)
-        total = col_data.sum()
-        if total == 0:
-            continue
         dominant_era = col_data.idxmax()
         dominant_rate = col_data.max()
-        concentration = dominant_rate / total
+        raw_dominant = era_card_raw.loc[dominant_era, card]
+        raw_total = card_totals_raw[card]
+        if raw_total == 0:
+            continue
+        concentration = raw_dominant / raw_total
         if concentration >= min_concentration:
             rows.append({
                 "Card":                  card,
@@ -1433,8 +1435,8 @@ with tab7:
                 "Dominant Era":          dominant_era,
                 "Era Size (decks)":      int(era_sizes[dominant_era]),
                 "Rate in Era":           round(dominant_rate, 3),
-                "Raw Era Appearances":   int(era_card_raw.loc[dominant_era, card]),
-                "Total Raw Appearances": int(card_totals_raw[card]),
+                "Raw Era Appearances":   int(raw_dominant),
+                "Total Raw Appearances": int(raw_total),
                 "Concentration":         round(concentration, 3),
             })
 

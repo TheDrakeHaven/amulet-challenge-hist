@@ -1313,9 +1313,13 @@ with tab6:
     if not sb_rows:
         st.info("No sideboard cards meet the current filters. Try lowering the thresholds.")
     else:
+        sb_result_df = pd.DataFrame(sb_rows)
+        sb_result_df["_era_order"] = sb_result_df["Dominant Era"].map(
+            {e: i for i, e in enumerate(era_order_sb)}
+        )
         sb_result_df = (
-            pd.DataFrame(sb_rows)
-            .sort_values(["Dominant Era", "Concentration"], ascending=[True, False])
+            sb_result_df.sort_values(["_era_order", "Concentration"], ascending=[True, False])
+            .drop(columns=["_era_order"])
             .reset_index(drop=True)
         )
 
@@ -1437,9 +1441,13 @@ with tab7:
     if not rows:
         st.info("No cards meet the current filters. Try lowering the thresholds.")
     else:
+        result_df = pd.DataFrame(rows)
+        result_df["_era_order"] = result_df["Dominant Era"].map(
+            {e: i for i, e in enumerate(era_order_display)}
+        )
         result_df = (
-            pd.DataFrame(rows)
-            .sort_values(["Dominant Era", "Concentration"], ascending=[True, False])
+            result_df.sort_values(["_era_order", "Concentration"], ascending=[True, False])
+            .drop(columns=["_era_order"])
             .reset_index(drop=True)
         )
 

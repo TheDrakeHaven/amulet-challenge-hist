@@ -1102,7 +1102,7 @@ with tab4:
     st.subheader("Expected Era Decklist")
     st.markdown(
         "Predicted 60-card maindeck and 15-card sideboard for each era, "
-        "derived by scaling the era median card counts proportionally to the target deck size. "
+        "derived using mode card counts as the base, with remaining slots filled by mean counts for non-mode cards. "
         "Cards with the largest fractional remainders receive the extra copies."
     )
 
@@ -1117,25 +1117,54 @@ with tab4:
     md_cols = [c for c in all_card_cols if not c.startswith("sb_")]
     sb_cols_t4 = [c for c in all_card_cols if c.startswith("sb_")]
 
-    def scale_to_target(mean_series, target):
-        """Scale mean counts proportionally to target, distributing remainders by largest fraction."""
-        s = mean_series[mean_series > 0]
-        if s.sum() == 0:
-            return pd.Series(dtype=float)
-        scaled = s / s.sum() * target
-        floored = scaled.apply(lambda x: int(x))
-        remainder = target - floored.sum()
-        fractions = (scaled - floored).sort_values(ascending=False)
-        for card in fractions.index[:int(remainder)]:
-            floored[card] += 1
-        return floored[floored > 0].sort_values(ascending=False)
+    def predict_decklist(era_rows, cols, target):
+        """
+        Build a predicted decklist of exactly `target` cards.
+        1. Start with the mode for each card (most common non-zero count).
+        2. If mode sum < target, fill remaining slots using mean counts
+           for cards not already in the mode deck, scaled to the remainder.
+        3. If mode sum > target, scale down proportionally.
+        """
+        mode_vals = era_rows[cols].mode().iloc[0]
+        mode_vals = mode_vals[mode_vals > 0]
 
-    # Use era median as the basis for the predicted decklist
-    md_centroid = era_rows_t4[md_cols].median()
-    sb_centroid = era_rows_t4[sb_cols_t4].median()
+        mode_sum = int(mode_vals.sum())
 
-    md_scaled = scale_to_target(md_centroid, 60)
-    sb_scaled = scale_to_target(sb_centroid, 15)
+        if mode_sum == target:
+            return mode_vals.sort_values(ascending=False).apply(int)
+
+        elif mode_sum > target:
+            # Scale down proportionally from mode
+            scaled = mode_vals / mode_vals.sum() * target
+            floored = scaled.apply(lambda x: int(x))
+            remainder = target - floored.sum()
+            fractions = (scaled - floored).sort_values(ascending=False)
+            for card in fractions.index[:int(remainder)]:
+                floored[card] += 1
+            return floored[floored > 0].sort_values(ascending=False)
+
+        else:
+            # Start with mode deck, fill remainder using mean of non-mode cards
+            remainder = target - mode_sum
+            mean_vals = era_rows[cols].mean()
+            # Exclude cards already in mode deck
+            fill_cards = mean_vals.drop(index=mode_vals.index, errors="ignore")
+            fill_cards = fill_cards[fill_cards > 0]
+            if fill_cards.sum() > 0 and remainder > 0:
+                scaled_fill = fill_cards / fill_cards.sum() * remainder
+                floored_fill = scaled_fill.apply(lambda x: int(x))
+                rem2 = remainder - floored_fill.sum()
+                fractions2 = (scaled_fill - floored_fill).sort_values(ascending=False)
+                for card in fractions2.index[:int(rem2)]:
+                    floored_fill[card] += 1
+                floored_fill = floored_fill[floored_fill > 0]
+            else:
+                floored_fill = pd.Series(dtype=float)
+            combined = pd.concat([mode_vals.apply(int), floored_fill.apply(int)])
+            return combined[combined > 0].sort_values(ascending=False)
+
+    md_scaled = predict_decklist(era_rows_t4, md_cols, 60)
+    sb_scaled = predict_decklist(era_rows_t4, sb_cols_t4, 15)
 
     col_t4a, col_t4b = st.columns(2)
 

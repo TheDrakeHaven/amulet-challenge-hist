@@ -1663,29 +1663,35 @@ with tab9:
             era_lookup9 = era_lookup9[["Name", "_dk", "current_era"]].drop_duplicates(subset=["Name", "_dk"])
             ord_nmds9 = ord_nmds9.merge(era_lookup9, on=["Name", "_dk"], how="left").drop(columns=["_dk"])
 
-        card_options9 = amulet_int.sum().sort_values(ascending=False).index.tolist()
+        # Era filter first so card options can be scoped to selected eras
+        era_order9 = ban_events["event"].tolist()
+        if "current_era" in ord_nmds9.columns:
+            present_eras9 = set(ord_nmds9["current_era"].dropna().unique())
+        else:
+            present_eras9 = set()
+        available_eras9 = [e for e in era_order9 if e in present_eras9]
+        selected_eras9 = st.multiselect(
+            "Filter by era:",
+            options=available_eras9,
+            default=available_eras9,
+            key="nmds_era_filter9",
+            help="Select one or more ban eras to show. Defaults to all eras.",
+        )
 
-        col9a, col9b = st.columns([1, 2])
-        with col9a:
-            selected_card9 = st.selectbox(
-                "Color sites by card count:",
-                card_options9,
-                key="nmds_card_select9"
-            )
-        with col9b:
-            era_order9 = ban_events["event"].tolist()
-            if "current_era" in ord_nmds9.columns:
-                present_eras9 = set(ord_nmds9["current_era"].dropna().unique())
-            else:
-                present_eras9 = set()
-            available_eras9 = [e for e in era_order9 if e in present_eras9]
-            selected_eras9 = st.multiselect(
-                "Filter by era:",
-                options=available_eras9,
-                default=available_eras9,
-                key="nmds_era_filter9",
-                help="Select one or more ban eras to show. Defaults to all eras.",
-            )
+        # Card options scoped to only the rows from the selected eras
+        if selected_eras9 and "current_era" in amulet_comb.columns:
+            era_comb9 = amulet_comb[amulet_comb["current_era"].isin(selected_eras9)]
+        else:
+            era_comb9 = amulet_comb
+        card_cols9 = [c for c in amulet_int.columns if c in era_comb9.columns]
+        card_options9 = era_comb9[card_cols9].sum().sort_values(ascending=False)
+        card_options9 = card_options9[card_options9 > 0].index.tolist()
+
+        selected_card9 = st.selectbox(
+            "Color sites by card count:",
+            card_options9,
+            key="nmds_card_select9"
+        )
 
         plot9 = ord_nmds9.copy()
         # Apply era filter

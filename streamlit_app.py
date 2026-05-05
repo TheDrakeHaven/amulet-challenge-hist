@@ -1289,6 +1289,14 @@ with tab6:
     sb_totals_raw = era_sb_raw.sum(axis=0)
     eligible_sb = sb_totals_raw[sb_totals_raw >= min_appearances_sb].index.tolist()
 
+    # % of decks in each era that contained the sideboard card
+    era_sb_presence = (
+        amulet_comb.groupby("current_era")[sb_cols]
+        .apply(lambda df: (df > 0).sum())
+        .reindex(era_order_sb)
+        .fillna(0)
+    )
+
     sb_rows = []
     for card in eligible_sb:
         col_data = era_sb[card]
@@ -1299,12 +1307,15 @@ with tab6:
         if raw_total_sb == 0:
             continue
         concentration = raw_dominant_sb / raw_total_sb
+        era_size_sb = int(era_sizes_sb[dominant_era])
+        pct_decks_sb = round(era_sb_presence.loc[dominant_era, card] / era_size_sb * 100, 1) if era_size_sb > 0 else 0.0
         if concentration >= min_concentration_sb and dominant_rate >= 0.1:
             display_name = card[3:] if card.startswith("sb_") else card
             sb_rows.append({
                 "Card":                  display_name,
                 "Dominant Era":          dominant_era,
-                "Era Size (decks)":      int(era_sizes_sb[dominant_era]),
+                "Era Size (decks)":      era_size_sb,
+                "% Decks w/ Card":       pct_decks_sb,
                 "Rate in Era":           round(dominant_rate, 3),
                 "Raw Era Appearances":   int(raw_dominant_sb),
                 "Total Raw Appearances": int(raw_total_sb),
@@ -1418,6 +1429,14 @@ with tab7:
     card_totals_raw = era_card_raw.sum(axis=0)
     eligible_cards = card_totals_raw[card_totals_raw >= min_appearances].index.tolist()
 
+    # % of decks in each era that contained the card (presence = at least 1 copy)
+    era_card_presence = (
+        amulet_comb.groupby("current_era")[card_cols_era]
+        .apply(lambda df: (df > 0).sum())
+        .reindex(era_order_display)
+        .fillna(0)
+    )
+
     rows = []
     for card in eligible_cards:
         col_data = era_card[card]          # normalized (per-deck rate)
@@ -1428,12 +1447,15 @@ with tab7:
         if raw_total == 0:
             continue
         concentration = raw_dominant / raw_total
+        era_size = int(era_sizes[dominant_era])
+        pct_decks = round(era_card_presence.loc[dominant_era, card] / era_size * 100, 1) if era_size > 0 else 0.0
         if concentration >= min_concentration and dominant_rate >= 0.1:
             rows.append({
                 "Card":                  card,
                 "Card Type":             get_card_type(card),
                 "Dominant Era":          dominant_era,
-                "Era Size (decks)":      int(era_sizes[dominant_era]),
+                "Era Size (decks)":      era_size,
+                "% Decks w/ Card":       pct_decks,
                 "Rate in Era":           round(dominant_rate, 3),
                 "Raw Era Appearances":   int(raw_dominant),
                 "Total Raw Appearances": int(raw_total),

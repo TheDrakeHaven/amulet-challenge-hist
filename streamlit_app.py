@@ -1428,6 +1428,26 @@ with tab8:
     ord_nmds, species_nmds, stress_nmds, env_cents_nmds = _resolve_nmds()
 
     if ord_nmds is not None:
+        # If current_era/current_set aren't in the NMDS data (e.g. loaded from GitHub Excel),
+        # merge them in from amulet_comb using Name + normalised Date as the key.
+        missing_env = [c for c in ["current_era", "current_set"] if c not in ord_nmds.columns]
+        if missing_env and "Name" in ord_nmds.columns and "Date" in ord_nmds.columns:
+            ord_nmds = ord_nmds.copy()
+            ord_nmds["_dk"] = pd.to_datetime(ord_nmds["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
+            env_lookup8 = amulet_comb[["Name", "Date"] + [c for c in missing_env if c in amulet_comb.columns]].copy()
+            env_lookup8["_dk"] = pd.to_datetime(env_lookup8["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
+            env_lookup8 = env_lookup8.drop(columns=["Date"]).drop_duplicates(subset=["Name", "_dk"])
+            ord_nmds = ord_nmds.merge(env_lookup8, on=["Name", "_dk"], how="left").drop(columns=["_dk"])
+            for ev in missing_env:
+                if ev in ord_nmds.columns:
+                    try:
+                        env_cents_nmds[ev] = (
+                            ord_nmds.groupby(ev)[["NMDS1", "NMDS2"]]
+                            .mean().reset_index().rename(columns={ev: "label"})
+                        )
+                    except Exception:
+                        pass
+
         stress_label = f"  |  stress = {stress_nmds:.4f}" if stress_nmds is not None else ""
 
         col_n1, col_n2 = st.columns(2)

@@ -1703,6 +1703,12 @@ with tab9:
                       .fillna(0).astype(int)
                 )
 
+        if "Date" in plot9.columns:
+            plot9 = plot9.copy()
+            plot9["Date"] = pd.to_datetime(
+                plot9["Date"], errors="coerce"
+            ).dt.strftime("%m-%d-%Y").fillna(plot9["Date"].astype(str))
+
         hover9 = [c for c in ["Name", "Date", "current_era", "current_set"]
                   if c in plot9.columns]
         if selected_card9 in plot9.columns and selected_card9 not in hover9:

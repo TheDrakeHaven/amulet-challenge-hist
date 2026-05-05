@@ -1290,9 +1290,11 @@ with tab6:
     eligible_sb = sb_totals_raw[sb_totals_raw >= min_appearances_sb].index.tolist()
 
     # % of decks in each era that contained the sideboard card
+    _sb_presence_bool = amulet_comb[sb_cols].gt(0)
+    _sb_presence_bool["current_era"] = amulet_comb["current_era"].values
     era_sb_presence = (
-        amulet_comb.groupby("current_era")[sb_cols]
-        .apply(lambda df: (df > 0).sum())
+        _sb_presence_bool.groupby("current_era")[sb_cols]
+        .sum()
         .reindex(era_order_sb)
         .fillna(0)
     )
@@ -1330,7 +1332,7 @@ with tab6:
             {e: i for i, e in enumerate(era_order_sb)}
         )
         sb_result_df = (
-            sb_result_df.sort_values(["_era_order", "Concentration"], ascending=[True, False])
+            sb_result_df.sort_values(["_era_order", "% Decks w/Card", "Concentration"], ascending=[True, False, False])
             .drop(columns=["_era_order"])
             .reset_index(drop=True)
         )
@@ -1430,9 +1432,11 @@ with tab7:
     eligible_cards = card_totals_raw[card_totals_raw >= min_appearances].index.tolist()
 
     # % of decks in each era that contained the card (presence = at least 1 copy)
+    _presence_bool = amulet_comb[card_cols_era].gt(0)
+    _presence_bool["current_era"] = amulet_comb["current_era"].values
     era_card_presence = (
-        amulet_comb.groupby("current_era")[card_cols_era]
-        .apply(lambda df: (df > 0).sum())
+        _presence_bool.groupby("current_era")[card_cols_era]
+        .sum()
         .reindex(era_order_display)
         .fillna(0)
     )
@@ -1470,7 +1474,7 @@ with tab7:
             {e: i for i, e in enumerate(era_order_display)}
         )
         result_df = (
-            result_df.sort_values(["_era_order", "Concentration"], ascending=[True, False])
+            result_df.sort_values(["_era_order", "% Decks w/Card", "Concentration"], ascending=[True, False, False])
             .drop(columns=["_era_order"])
             .reset_index(drop=True)
         )

@@ -1676,13 +1676,33 @@ with tab9:
 
     if ord_nmds9 is not None:
         card_options9 = amulet_int.sum().sort_values(ascending=False).index.tolist()
-        selected_card9 = st.selectbox(
-            "Color sites by card count:",
-            card_options9,
-            key="nmds_card_select9"
-        )
+
+        col9a, col9b = st.columns([1, 2])
+        with col9a:
+            selected_card9 = st.selectbox(
+                "Color sites by card count:",
+                card_options9,
+                key="nmds_card_select9"
+            )
+        with col9b:
+            # Build era options from the NMDS ordination data (preserves chronological order)
+            if "current_era" in ord_nmds9.columns:
+                era_order9 = ban_events["event"].tolist()
+                available_eras9 = [e for e in era_order9 if e in ord_nmds9["current_era"].unique()]
+            else:
+                available_eras9 = []
+            selected_eras9 = st.multiselect(
+                "Filter by era:",
+                options=available_eras9,
+                default=available_eras9,
+                key="nmds_era_filter9",
+                help="Select one or more ban eras to show. Defaults to all eras.",
+            )
 
         plot9 = ord_nmds9.copy()
+        # Apply era filter
+        if selected_eras9 and "current_era" in plot9.columns:
+            plot9 = plot9[plot9["current_era"].isin(selected_eras9)]
         if selected_card9 in amulet_comb.columns:
             if "Name" in plot9.columns and "Name" in amulet_comb.columns:
                 # Normalise both Date columns to YYYY-MM-DD string for merging

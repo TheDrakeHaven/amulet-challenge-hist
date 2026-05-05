@@ -1276,7 +1276,7 @@ with tab6:
     with col_sb1:
         min_appearances_sb = st.slider(
             "Minimum total raw appearances across all eras",
-            min_value=1, max_value=50, value=5, step=1,
+            min_value=1, max_value=50, value=10, step=1,
             key="era_sb_min"
         )
     with col_sb2:
@@ -1403,7 +1403,7 @@ with tab7:
     with col_s1:
         min_appearances = st.slider(
             "Minimum total raw appearances across all eras",
-            min_value=1, max_value=50, value=5, step=1,
+            min_value=1, max_value=50, value=10, step=1,
             key="era_specific_min"
         )
     with col_s2:

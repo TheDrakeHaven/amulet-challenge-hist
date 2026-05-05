@@ -1653,6 +1653,16 @@ with tab9:
     ord_nmds9, species_nmds9, _, _ = _resolve_nmds()
 
     if ord_nmds9 is not None:
+        # If current_era isn't in the NMDS data (e.g. loaded from GitHub Excel),
+        # merge it in from amulet_comb using Name + normalised Date as the key.
+        if "current_era" not in ord_nmds9.columns and "Name" in ord_nmds9.columns and "Date" in ord_nmds9.columns:
+            ord_nmds9 = ord_nmds9.copy()
+            ord_nmds9["_dk"] = pd.to_datetime(ord_nmds9["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
+            era_lookup9 = amulet_comb[["Name", "Date", "current_era"]].copy()
+            era_lookup9["_dk"] = pd.to_datetime(era_lookup9["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
+            era_lookup9 = era_lookup9[["Name", "_dk", "current_era"]].drop_duplicates(subset=["Name", "_dk"])
+            ord_nmds9 = ord_nmds9.merge(era_lookup9, on=["Name", "_dk"], how="left").drop(columns=["_dk"])
+
         card_options9 = amulet_int.sum().sort_values(ascending=False).index.tolist()
 
         col9a, col9b = st.columns([1, 2])

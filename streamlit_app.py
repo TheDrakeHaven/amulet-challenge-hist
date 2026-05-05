@@ -1547,28 +1547,28 @@ def _render_nmds_decklist(row_idx, source_ord, label_prefix=""):
     era_rows_d = amulet_comb[amulet_comb["current_era"] == era_v] if era_v else pd.DataFrame()
     if not era_rows_d.empty:
         era_cards_d = era_rows_d[[c for c in amulet_int.columns if c in era_rows_d.columns]]
-        median_d = era_cards_d.median().round(2)
-        median_d = median_d[median_d > 0].sort_values(ascending=False)
-        median_set_d = set(median_d[median_d > 0].index)
+        mode_d = era_cards_d.mode().iloc[0]
+        mode_d = mode_d[mode_d > 0].sort_values(ascending=False)
+        mode_set_d = set(mode_d[mode_d > 0].index)
     else:
-        median_d, median_set_d = pd.Series(dtype=float), set()
+        mode_d, mode_set_d = pd.Series(dtype=float), set()
 
     col_dl, col_med = st.columns(2)
     era_id_d = re.sub(r"[^a-zA-Z0-9]+", "-", str(era_v or "")).strip("-").lower() or "era"
     with col_dl:
-        st.markdown("**Decklist** *(green = not in era median)*")
+        st.markdown("**Decklist** *(green = not in era mode)*")
         dl_df = decklist_s.reset_index()
         dl_df.columns = ["Card", "Copies"]
         dl_df = sort_by_type(dl_df, "Card")
         render_decklist_html(dl_df, "Card", "Copies",
-                             median_set_d, f"nmds-click-{era_id_d}", 400)
+                             mode_set_d, f"nmds-click-{era_id_d}", 400)
     with col_med:
-        if not median_d.empty:
-            st.markdown(f"**Era Median** ({era_v})")
-            med_df_d = median_d.reset_index()
-            med_df_d.columns = ["Card", "Median Copies"]
+        if not mode_d.empty:
+            st.markdown(f"**Era Mode** ({era_v})")
+            med_df_d = mode_d.reset_index()
+            med_df_d.columns = ["Card", "Mode Copies"]
             med_df_d = sort_by_type(med_df_d, "Card")
-            render_decklist_html(med_df_d, "Card", "Median Copies",
+            render_decklist_html(med_df_d, "Card", "Mode Copies",
                                  None, f"nmds-clickmed-{era_id_d}", 400)
 
 
@@ -1767,8 +1767,8 @@ with tab8:
 
                         era_rows2  = amulet_comb[amulet_comb["current_era"] == era]
                         era_cards2 = era_rows2[[c for c in amulet_int.columns if c in era_rows2.columns]]
-                        median_deck2 = era_cards2.median().round(2)
-                        median_deck2 = median_deck2[median_deck2 > 0].sort_values(ascending=False)
+                        mode_deck2 = era_cards2.mode().iloc[0]
+                        mode_deck2 = mode_deck2[mode_deck2 > 0].sort_values(ascending=False)
 
                         col_meta2, col_out2, col_med2 = st.columns([1, 1.5, 1.5])
                         with col_meta2:
@@ -1777,21 +1777,21 @@ with tab8:
                             st.markdown(f"**{outlier_name}** — {_od_disp}")
                             st.markdown(f"Mean NMDS Distance: **{row._3}**")
                             st.markdown(f"Era N: **{row._4}**")
-                        median_cards2 = set(median_deck2[median_deck2 > 0].index)
+                        mode_cards2 = set(mode_deck2[mode_deck2 > 0].index)
                         era_id2 = re.sub(r"[^a-zA-Z0-9]+", "-", era).strip("-").lower() or "era"
                         with col_out2:
-                            st.markdown("**Outlier Decklist** *(green = not in era median)*")
+                            st.markdown("**Outlier Decklist** *(green = not in era mode)*")
                             deck_df2 = decklist.reset_index()
                             deck_df2.columns = ["Card", "Copies"]
                             deck_df2 = sort_by_type(deck_df2, "Card")
                             render_decklist_html(deck_df2, "Card", "Copies",
-                                                 median_cards2, f"nmds-outlier-{era_id2}", 350)
+                                                 mode_cards2, f"nmds-outlier-{era_id2}", 350)
                         with col_med2:
-                            st.markdown(f"**Median Decklist ({era})**")
-                            med_df2 = median_deck2.reset_index()
-                            med_df2.columns = ["Card", "Median Copies"]
+                            st.markdown(f"**Mode Decklist ({era})**")
+                            med_df2 = mode_deck2.reset_index()
+                            med_df2.columns = ["Card", "Mode Copies"]
                             med_df2 = sort_by_type(med_df2, "Card")
-                            render_decklist_html(med_df2, "Card", "Median Copies",
+                            render_decklist_html(med_df2, "Card", "Mode Copies",
                                                  None, f"nmds-median-{era_id2}", 350)
     else:
         st.info("NMDS site scores not found in data. Check that merged_amulet.csv contains NMDS1 and NMDS2 columns.")

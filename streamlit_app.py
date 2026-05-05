@@ -173,16 +173,6 @@ def assign_current_set(d):
     return valid.iloc[-1]["set"]
 
 
-def assign_ban_era(d, events_df):
-    """findInterval equivalent: return the era label for date d."""
-    ts = pd.to_datetime(d, errors="coerce")
-    if pd.isna(ts):
-        return events_df.iloc[0]["event"]
-    idx = (events_df["date"] <= ts).sum()
-    if idx >= len(events_df):
-        idx = len(events_df) - 1
-    return events_df.iloc[idx]["event"]
-
 
 # ─────────────────────────────────────────
 # CARD TYPE REFERENCE LISTS
@@ -809,7 +799,7 @@ with st.spinner("Processing main deck sheet…"):
     amulet_df = amulet_df.drop(columns=["Maindeck_Total", "Sideboard_Total"], errors="ignore")
 
     # Meta columns — flexible, works with or without Place/Event_Type
-    _all_meta = ["row_number", "Name", "Place", "Event", "Event_Type", "Date",
+    _all_meta = ["row_number", "Name", "Place", "Event", "current_era", "Event_Type", "Date",
                  "Maindeck_Total", "Sideboard_Total"]
     meta_cols = [c for c in _all_meta if c in amulet_df.columns]
     card_cols  = [c for c in amulet_df.columns if c not in meta_cols]
@@ -821,13 +811,12 @@ with st.spinner("Processing main deck sheet…"):
     if "Date" in amulet_df.columns:
         amulet_df["Date"] = pd.to_datetime(amulet_df["Date"], errors="coerce").dt.strftime("%m-%d-%Y")
 
-    _env_candidates = ["row_number", "Name", "Place", "Event", "Event_Type", "Date"]
+    _env_candidates = ["row_number", "Name", "Place", "Event", "current_era", "Event_Type", "Date"]
     env_cols   = [c for c in _env_candidates if c in amulet_df.columns]
     amulet_env = amulet_df[env_cols].copy()
     amulet_int = amulet_df[[c for c in amulet_df.columns if c not in meta_cols]].copy()
 
     amulet_env["current_set"] = amulet_env["Date"].apply(assign_current_set)
-    amulet_env["current_era"] = amulet_env["Date"].apply(lambda d: assign_ban_era(d, ban_events))
 
     amulet_comb = pd.concat(
         [amulet_env.drop(columns=["row_number"], errors="ignore").reset_index(drop=True),
@@ -1439,17 +1428,6 @@ with tab8:
     ord_nmds, species_nmds, stress_nmds, env_cents_nmds = _resolve_nmds()
 
     if ord_nmds is not None:
-        # Ensure current_era assigned from amulet_env if missing
-        if "current_era" not in ord_nmds.columns and "Date" in ord_nmds.columns:
-            ord_nmds = ord_nmds.copy()
-            ord_nmds["current_era"] = ord_nmds["Date"].apply(
-                lambda d: assign_ban_era(d, ban_events)
-            )
-            env_cents_nmds["current_era"] = (
-                ord_nmds.groupby("current_era")[["NMDS1", "NMDS2"]]
-                .mean().reset_index().rename(columns={"current_era": "label"})
-            )
-
         stress_label = f"  |  stress = {stress_nmds:.4f}" if stress_nmds is not None else ""
 
         col_n1, col_n2 = st.columns(2)
@@ -1675,13 +1653,6 @@ with tab9:
     ord_nmds9, species_nmds9, _, _ = _resolve_nmds()
 
     if ord_nmds9 is not None:
-        # Ensure current_era is present (same guard as tab8)
-        if "current_era" not in ord_nmds9.columns and "Date" in ord_nmds9.columns:
-            ord_nmds9 = ord_nmds9.copy()
-            ord_nmds9["current_era"] = ord_nmds9["Date"].apply(
-                lambda d: assign_ban_era(d, ban_events)
-            )
-
         card_options9 = amulet_int.sum().sort_values(ascending=False).index.tolist()
 
         col9a, col9b = st.columns([1, 2])

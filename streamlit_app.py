@@ -1187,7 +1187,7 @@ with tab4:
         return pd.Series(result).sort_values(ascending=False)
 
     md_scaled = predict_decklist(era_rows_t4, md_cols, 60, min_inclusion=0.5)
-    sb_scaled = predict_decklist(era_rows_t4, sb_cols_t4, 15, min_inclusion=0.5)
+    sb_scaled = predict_decklist(era_rows_t4, sb_cols_t4, 15, min_inclusion=0.3)
 
     # Compute % of decks in era that included each card
     n_era = len(era_rows_t4)

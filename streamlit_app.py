@@ -705,6 +705,7 @@ def render_decklist_html(
     highlight_set=None,
     table_id="deck",
     max_height=350,
+    extra_col=None,
 ):
     """Render a decklist as an HTML table whose rows show the card image on hover.
 
@@ -718,6 +719,8 @@ def render_decklist_html(
         "unique to outlier" background (matches the previous st.dataframe styling).
     table_id : str
         Unique id used to scope CSS so multiple tables on the same page don't collide.
+    extra_col : str or None
+        Optional name of an additional column in deck_df to display as a third column.
     """
     rows_html = []
     for _, r in deck_df.iterrows():
@@ -736,6 +739,10 @@ def render_decklist_html(
             f'<img class="deck-card-preview" src="{img_url}" loading="lazy" alt="" />'
             f'</td>'
             f'<td class="deck-copies-cell">{copies}</td>'
+            *(
+                [f'<td class="deck-copies-cell">{r[extra_col]}</td>']
+                if extra_col and extra_col in r.index else []
+            ),
             f'</tr>'
         )
 
@@ -785,7 +792,7 @@ def render_decklist_html(
         <div class="deck-scroll">
             <table class="deck-table">
                 <thead>
-                    <tr><th>{card_col}</th><th>{copies_col}</th></tr>
+                    <tr><th>{card_col}</th><th>{copies_col}</th>{f'<th>{extra_col}</th>' if extra_col else ''}</tr>
                 </thead>
                 <tbody>{''.join(rows_html)}</tbody>
             </table>
@@ -1166,23 +1173,29 @@ with tab4:
     md_scaled = predict_decklist(era_rows_t4, md_cols, 60)
     sb_scaled = predict_decklist(era_rows_t4, sb_cols_t4, 15)
 
+    # Compute % of decks in era that included each card
+    n_era = len(era_rows_t4)
+    md_pct = ((era_rows_t4[md_cols] > 0).sum() / n_era * 100).round(1)
+    sb_pct = ((era_rows_t4[sb_cols_t4] > 0).sum() / n_era * 100).round(1)
+
     col_t4a, col_t4b = st.columns(2)
+    era_slug_t4 = re.sub(r"[^a-zA-Z0-9\-]", "-", selected_era_t4[:20])
 
     with col_t4a:
-        st.markdown(f"**Predicted Maindeck** ({len(era_rows_t4)} decklists in era)")
+        st.markdown(f"**Predicted Maindeck** ({n_era} decklists in era)")
         md_df = md_scaled.reset_index()
         md_df.columns = ["Card", "Copies"]
+        md_df["% Included"] = md_df["Card"].map(md_pct).apply(lambda x: f"{x}%")
         md_df = sort_by_type(md_df, "Card")
-        era_slug_t4 = re.sub(r"[^a-zA-Z0-9\-]", "-", selected_era_t4[:20])
-        render_decklist_html(md_df, "Card", "Copies", None, f"era-md-{era_slug_t4}", 600)
+        render_decklist_html(md_df, "Card", "Copies", None, f"era-md-{era_slug_t4}", 600, extra_col="% Included")
 
     with col_t4b:
         st.markdown(f"**Predicted Sideboard**")
         sb_df = sb_scaled.reset_index()
         sb_df.columns = ["Card", "Copies"]
+        sb_df["% Included"] = sb_df["Card"].map(sb_pct).apply(lambda x: f"{x}%")
         sb_df = sort_by_type(sb_df, "Card")
-        era_slug_t4 = re.sub(r"[^a-zA-Z0-9\-]", "-", selected_era_t4[:20])
-        render_decklist_html(sb_df, "Card", "Copies", None, f"era-sb-{era_slug_t4}", 600)
+        render_decklist_html(sb_df, "Card", "Copies", None, f"era-sb-{era_slug_t4}", 600, extra_col="% Included")
 
 
 # ─────────────────────────────────────────

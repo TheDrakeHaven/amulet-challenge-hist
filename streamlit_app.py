@@ -1155,21 +1155,24 @@ with tab4:
             result[card] = copies
             slots_remaining -= copies
 
-        # If slots still remain, fill by finding the next most common copy count
-        # for each included card (that isn't already at 4), ranked by inclusion %
+        # If slots still remain, fill by upgrading cards whose current mode count
+        # is least common first (rarest modes get bumped), capped at 4 copies.
         if slots_remaining > 0 and result:
-            included_by_pct = [c for c in candidates.index if c in result]
-            # Keep cycling until slots are filled or all cards are capped at 4
             changed = True
             while slots_remaining > 0 and changed:
                 changed = False
-                for card in included_by_pct:
+                # Sort included cards by how common their current count is (rarest first)
+                def count_frequency(card):
+                    return (era_rows[card] == result[card]).sum()
+                eligible = [c for c in result if result[c] < 4]
+                if not eligible:
+                    break
+                eligible_sorted = sorted(eligible, key=count_frequency)
+                for card in eligible_sorted:
                     if slots_remaining <= 0:
                         break
                     current = result[card]
-                    if current >= 4:
-                        continue
-                    # Find the next most common count above current for this card
+                    # Find the next most common count strictly above current
                     card_counts = era_rows[card]
                     higher_counts = card_counts[card_counts > current]
                     if higher_counts.empty:
@@ -1184,7 +1187,7 @@ with tab4:
         return pd.Series(result).sort_values(ascending=False)
 
     md_scaled = predict_decklist(era_rows_t4, md_cols, 60, min_inclusion=0.5)
-    sb_scaled = predict_decklist(era_rows_t4, sb_cols_t4, 15)
+    sb_scaled = predict_decklist(era_rows_t4, sb_cols_t4, 15, min_inclusion=0.5)
 
     # Compute % of decks in era that included each card
     n_era = len(era_rows_t4)

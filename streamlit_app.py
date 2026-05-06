@@ -733,16 +733,14 @@ def render_decklist_html(
         img_url = _scryfall_image_url(card)
         is_unique = highlight_set is not None and card not in highlight_set
         row_class = "deck-row deck-row-unique" if is_unique else "deck-row"
+        extra_td = f'<td class="deck-copies-cell">{r[extra_col]}</td>' if extra_col and extra_col in r.index else ""
         rows_html.append(
             f'<tr class="{row_class}">'
             f'<td class="deck-card-cell">{display_card}'
             f'<img class="deck-card-preview" src="{img_url}" loading="lazy" alt="" />'
             f'</td>'
             f'<td class="deck-copies-cell">{copies}</td>'
-            *(
-                [f'<td class="deck-copies-cell">{r[extra_col]}</td>']
-                if extra_col and extra_col in r.index else []
-            ),
+            f'{extra_td}'
             f'</tr>'
         )
 

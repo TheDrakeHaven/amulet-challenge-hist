@@ -1122,14 +1122,13 @@ with tab4:
     md_cols = [c for c in all_card_cols if not c.startswith("sb_")]
     sb_cols_t4 = [c for c in all_card_cols if c.startswith("sb_")]
 
-    def predict_decklist(era_rows, cols, target):
+    def predict_decklist(era_rows, cols, target, min_inclusion=0.0):
         """
         Build a predicted decklist of exactly `target` cards.
-        1. Rank cards by inclusion % (how often they appear in era decks).
-        2. Assign each card its mode count (most common non-zero copies).
-        3. Add cards in descending inclusion % order until total reaches target.
-           - If a card's mode would overshoot, cap it at the remaining slots.
-           - Cards with 0% inclusion are excluded entirely.
+        1. Include only cards meeting min_inclusion threshold, ranked by inclusion %.
+        2. Assign each card its mode count.
+        3. If slots remain after including all qualifying cards, distribute extras
+           by incrementing mode counts of already-included cards (highest inclusion first).
         """
         n = len(era_rows)
         if n == 0:
@@ -1138,11 +1137,11 @@ with tab4:
         # Inclusion % for each card
         inclusion_pct = (era_rows[cols] > 0).sum() / n
 
-        # Mode copies (among decks that include the card, i.e. > 0)
+        # Mode copies for each card
         mode_vals = era_rows[cols].mode().iloc[0]
 
-        # Only consider cards that appear in at least one deck
-        candidates = inclusion_pct[inclusion_pct > 0].sort_values(ascending=False)
+        # Only cards meeting the inclusion threshold, ranked highest first
+        candidates = inclusion_pct[inclusion_pct >= min_inclusion].sort_values(ascending=False)
 
         result = {}
         slots_remaining = target
@@ -1156,9 +1155,20 @@ with tab4:
             result[card] = copies
             slots_remaining -= copies
 
+        # If slots still remain, distribute extras among included cards
+        # by incrementing their copy counts (highest inclusion first)
+        if slots_remaining > 0 and result:
+            included_by_pct = [c for c in candidates.index if c in result]
+            i = 0
+            while slots_remaining > 0:
+                card = included_by_pct[i % len(included_by_pct)]
+                result[card] += 1
+                slots_remaining -= 1
+                i += 1
+
         return pd.Series(result).sort_values(ascending=False)
 
-    md_scaled = predict_decklist(era_rows_t4, md_cols, 60)
+    md_scaled = predict_decklist(era_rows_t4, md_cols, 60, min_inclusion=0.5)
     sb_scaled = predict_decklist(era_rows_t4, sb_cols_t4, 15)
 
     # Compute % of decks in era that included each card

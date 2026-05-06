@@ -1155,16 +1155,31 @@ with tab4:
             result[card] = copies
             slots_remaining -= copies
 
-        # If slots still remain, distribute extras among included cards
-        # by incrementing their copy counts (highest inclusion first)
+        # If slots still remain, fill by finding the next most common copy count
+        # for each included card (that isn't already at 4), ranked by inclusion %
         if slots_remaining > 0 and result:
             included_by_pct = [c for c in candidates.index if c in result]
-            i = 0
-            while slots_remaining > 0:
-                card = included_by_pct[i % len(included_by_pct)]
-                result[card] += 1
-                slots_remaining -= 1
-                i += 1
+            # Keep cycling until slots are filled or all cards are capped at 4
+            changed = True
+            while slots_remaining > 0 and changed:
+                changed = False
+                for card in included_by_pct:
+                    if slots_remaining <= 0:
+                        break
+                    current = result[card]
+                    if current >= 4:
+                        continue
+                    # Find the next most common count above current for this card
+                    card_counts = era_rows[card]
+                    higher_counts = card_counts[card_counts > current]
+                    if higher_counts.empty:
+                        continue
+                    next_count = int(higher_counts.mode().iloc[0])
+                    next_count = min(next_count, current + slots_remaining, 4)
+                    if next_count > current:
+                        slots_remaining -= (next_count - current)
+                        result[card] = next_count
+                        changed = True
 
         return pd.Series(result).sort_values(ascending=False)
 

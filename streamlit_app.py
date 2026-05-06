@@ -117,7 +117,7 @@ ban_events = pd.DataFrame({
         "Pre-Lattice/Oko Ban",
 
         # 2020–2026
-        "Pre-Astrolabe Ban",
+        "Pre-OuaT Ban",
         "Pre-Field/Uro Ban",
         "Pre-MH2 Release",
         "Pre-Lurrus Ban",
@@ -140,7 +140,7 @@ ban_events = pd.DataFrame({
         "2020-01-13",  # Mox Opal + Oko + Lattice ban
 
         # 2020–2026
-        "2020-07-13",
+        "2020-03-09",
         "2021-02-15",
         "2021-06-03",
         "2022-03-07",
@@ -859,7 +859,7 @@ ERA_ORDER = [
         "Pre-Splinter Twin/Summer Bloom Ban",
         "Pre-MH1 Release",
         "Pre-Lattice/Oko Ban",
-        "Pre-Astrolabe Ban",
+        "Pre-OuaT Ban",
         "Pre-Field/Uro Ban",
         "Pre-MH2 Release",
         "Pre-Lurrus Ban",
@@ -1077,7 +1077,7 @@ with tab3:
         "Pre-Splinter Twin/Summer Bloom Ban",
         "Pre-MH1 Release",
         "Pre-Lattice/Oko Ban",
-        "Pre-Astrolabe Ban",
+        "Pre-OuaT Ban",
         "Pre-Field/Uro Ban",
         "Pre-MH2 Release",
         "Pre-Lurrus Ban",

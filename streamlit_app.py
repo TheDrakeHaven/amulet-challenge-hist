@@ -111,6 +111,7 @@ ban_events = pd.DataFrame({
     "event": [
         # 2013–2015
         "Pre-Splinter Twin/Summer Bloom Ban",
+        "Pre-KCI Ban",
 
         # 2016–2019
         "Pre-MH1 Release",
@@ -134,6 +135,7 @@ ban_events = pd.DataFrame({
     "date": pd.to_datetime([
         # 2013–2015 (covers all pre-Twin data back to 2013)
         "2016-01-18",  # Splinter Twin + Summer Bloom ban
+        "2019-01-21",
 
         # 2017–2019
         "2019-06-14",  # MH1 release
@@ -857,6 +859,7 @@ st.caption(
 
 ERA_ORDER = [
         "Pre-Splinter Twin/Summer Bloom Ban",
+        "Pre-KCI Ban",
         "Pre-MH1 Release",
         "Pre-Lattice/Oko Ban",
         "Pre-OuaT Ban",

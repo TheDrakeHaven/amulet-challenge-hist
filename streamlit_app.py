@@ -1078,6 +1078,7 @@ with tab3:
     heat_data = mean_deck.set_index("current_era")[num_cols]
     era_order = [
         "Pre-Splinter Twin/Summer Bloom Ban",
+        "Pre-KCI Ban",
         "Pre-MH1 Release",
         "Pre-Lattice/Oko Ban",
         "Pre-OuaT Ban",

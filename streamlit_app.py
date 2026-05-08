@@ -809,8 +809,8 @@ with st.spinner("Processing main deck sheet…"):
     amulet_df = amulet_df.drop(columns=["Maindeck_Total", "Sideboard_Total"], errors="ignore")
 
     # Meta columns — flexible, works with or without Place/Event_Type
-    _all_meta = ["row_number", "Name", "Place", "Event", "Event_Type", "Date",
-                 "Maindeck_Total", "Sideboard_Total"]
+    _all_meta = ["row_number", "Name", "Place", "Event", "Event_Type", "current_era",
+                 "Date", "NMDS1", "NMDS2", "Maindeck_Total", "Sideboard_Total"]
     meta_cols = [c for c in _all_meta if c in amulet_df.columns]
     card_cols  = [c for c in amulet_df.columns if c not in meta_cols]
 
@@ -831,9 +831,12 @@ with st.spinner("Processing main deck sheet…"):
 
     amulet_comb = pd.concat(
         [amulet_env.drop(columns=["row_number"], errors="ignore").reset_index(drop=True),
-         amulet_int.reset_index(drop=True)],
+         amulet_int.drop(columns=["current_era", "current_set", "NMDS1", "NMDS2"],
+                         errors="ignore").reset_index(drop=True)],
         axis=1
     )
+    # Drop any remaining duplicate columns
+    amulet_comb = amulet_comb.loc[:, ~amulet_comb.columns.duplicated()]
 
 _date_min = pd.to_datetime(amulet_env["Date"], errors="coerce").min()
 _date_max = pd.to_datetime(amulet_env["Date"], errors="coerce").max()

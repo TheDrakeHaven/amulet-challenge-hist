@@ -111,13 +111,14 @@ ban_events = pd.DataFrame({
     "event": [
         # 2013–2015
         "Pre-Splinter Twin/Summer Bloom Ban",
+        "Pre-KCI Ban",
 
         # 2016–2019
         "Pre-MH1 Release",
         "Pre-Lattice/Oko Ban",
 
         # 2020–2026
-        "Pre-Astrolabe Ban",
+        "Pre-OuaT Ban",
         "Pre-Field/Uro Ban",
         "Pre-MH2 Release",
         "Pre-Lurrus Ban",
@@ -134,13 +135,14 @@ ban_events = pd.DataFrame({
     "date": pd.to_datetime([
         # 2013–2015 (covers all pre-Twin data back to 2013)
         "2016-01-18",  # Splinter Twin + Summer Bloom ban
+        "2019-01-21",
 
         # 2017–2019
         "2019-06-14",  # MH1 release
         "2020-01-13",  # Mox Opal + Oko + Lattice ban
 
         # 2020–2026
-        "2020-07-13",
+        "2020-03-09",
         "2021-02-15",
         "2021-06-03",
         "2022-03-07",
@@ -162,6 +164,17 @@ ban_events = pd.DataFrame({
 # ─────────────────────────────────────────
 
 
+def assign_ban_era(d, events_df):
+    """findInterval equivalent: return the era label for date d."""
+    ts = pd.to_datetime(d, errors="coerce")
+    if pd.isna(ts):
+        return events_df.iloc[0]["event"]
+    idx = (events_df["date"] <= ts).sum()
+    if idx >= len(events_df):
+        idx = len(events_df) - 1
+    return events_df.iloc[idx]["event"]
+
+
 def assign_current_set(d):
     """Return the most recent set released on or before date d."""
     ts = pd.to_datetime(d, errors="coerce")
@@ -172,16 +185,6 @@ def assign_current_set(d):
         return "Unknown"
     return valid.iloc[-1]["set"]
 
-
-def assign_ban_era(d, events_df):
-    """findInterval equivalent: return the era label for date d."""
-    ts = pd.to_datetime(d, errors="coerce")
-    if pd.isna(ts):
-        return events_df.iloc[0]["event"]
-    idx = (events_df["date"] <= ts).sum()
-    if idx >= len(events_df):
-        idx = len(events_df) - 1
-    return events_df.iloc[idx]["event"]
 
 
 # ─────────────────────────────────────────
@@ -704,6 +707,7 @@ def render_decklist_html(
     highlight_set=None,
     table_id="deck",
     max_height=350,
+    extra_col=None,
 ):
     """Render a decklist as an HTML table whose rows show the card image on hover.
 
@@ -717,6 +721,8 @@ def render_decklist_html(
         "unique to outlier" background (matches the previous st.dataframe styling).
     table_id : str
         Unique id used to scope CSS so multiple tables on the same page don't collide.
+    extra_col : str or None
+        Optional name of an additional column in deck_df to display as a third column.
     """
     rows_html = []
     for _, r in deck_df.iterrows():
@@ -729,12 +735,14 @@ def render_decklist_html(
         img_url = _scryfall_image_url(card)
         is_unique = highlight_set is not None and card not in highlight_set
         row_class = "deck-row deck-row-unique" if is_unique else "deck-row"
+        extra_td = f'<td class="deck-copies-cell">{r[extra_col]}</td>' if extra_col and extra_col in r.index else ""
         rows_html.append(
             f'<tr class="{row_class}">'
             f'<td class="deck-card-cell">{display_card}'
             f'<img class="deck-card-preview" src="{img_url}" loading="lazy" alt="" />'
             f'</td>'
             f'<td class="deck-copies-cell">{copies}</td>'
+            f'{extra_td}'
             f'</tr>'
         )
 
@@ -784,7 +792,7 @@ def render_decklist_html(
         <div class="deck-scroll">
             <table class="deck-table">
                 <thead>
-                    <tr><th>{card_col}</th><th>{copies_col}</th></tr>
+                    <tr><th>{card_col}</th><th>{copies_col}</th>{f'<th>{extra_col}</th>' if extra_col else ''}</tr>
                 </thead>
                 <tbody>{''.join(rows_html)}</tbody>
             </table>
@@ -809,8 +817,8 @@ with st.spinner("Processing main deck sheet…"):
     amulet_df = amulet_df.drop(columns=["Maindeck_Total", "Sideboard_Total"], errors="ignore")
 
     # Meta columns — flexible, works with or without Place/Event_Type
-    _all_meta = ["row_number", "Name", "Place", "Event", "Event_Type", "current_era",
-                 "Date", "NMDS1", "NMDS2", "Maindeck_Total", "Sideboard_Total"]
+    _all_meta = ["row_number", "Name", "Place", "Event", "current_era", "Event_Type", "Date",
+                 "NMDS1", "NMDS2", "Maindeck_Total", "Sideboard_Total"]
     meta_cols = [c for c in _all_meta if c in amulet_df.columns]
     card_cols  = [c for c in amulet_df.columns if c not in meta_cols]
 
@@ -821,22 +829,24 @@ with st.spinner("Processing main deck sheet…"):
     if "Date" in amulet_df.columns:
         amulet_df["Date"] = pd.to_datetime(amulet_df["Date"], errors="coerce").dt.strftime("%m-%d-%Y")
 
-    _env_candidates = ["row_number", "Name", "Place", "Event", "Event_Type", "Date"]
+    _env_candidates = ["row_number", "Name", "Place", "Event", "current_era", "Event_Type", "Date",
+                       "NMDS1", "NMDS2"]
     env_cols   = [c for c in _env_candidates if c in amulet_df.columns]
     amulet_env = amulet_df[env_cols].copy()
     amulet_int = amulet_df[[c for c in amulet_df.columns if c not in meta_cols]].copy()
 
     amulet_env["current_set"] = amulet_env["Date"].apply(assign_current_set)
-    amulet_env["current_era"] = amulet_env["Date"].apply(lambda d: assign_ban_era(d, ban_events))
+    # Derive current_era from Date if not present in CSV (backwards compatibility)
+    if "current_era" not in amulet_env.columns:
+        amulet_env["current_era"] = amulet_env["Date"].apply(
+            lambda d: assign_ban_era(d, ban_events)
+        )
 
     amulet_comb = pd.concat(
         [amulet_env.drop(columns=["row_number"], errors="ignore").reset_index(drop=True),
-         amulet_int.drop(columns=["current_era", "current_set", "NMDS1", "NMDS2"],
-                         errors="ignore").reset_index(drop=True)],
+         amulet_int.reset_index(drop=True)],
         axis=1
     )
-    # Drop any remaining duplicate columns
-    amulet_comb = amulet_comb.loc[:, ~amulet_comb.columns.duplicated()]
 
 _date_min = pd.to_datetime(amulet_env["Date"], errors="coerce").min()
 _date_max = pd.to_datetime(amulet_env["Date"], errors="coerce").max()
@@ -847,13 +857,36 @@ st.caption(
 )
 
 
+ERA_ORDER = [
+        "Pre-Splinter Twin/Summer Bloom Ban",
+        "Pre-KCI Ban",
+        "Pre-MH1 Release",
+        "Pre-Lattice/Oko Ban",
+        "Pre-OuaT Ban",
+        "Pre-Field/Uro Ban",
+        "Pre-MH2 Release",
+        "Pre-Lurrus Ban",
+        "Pre-Yorion Ban",
+        "Pre-LotR Release",
+        "Pre-Fury/Bean Ban",
+        "Pre-Outburst Ban",
+        "Pre-MH3",
+        "Pre-Nadu/Grief Ban",
+        "Pre-GSZ Unban/Ring Ban",
+        "Pre-Breach Ban",
+        "Current"
+]
+
+
 # ─────────────────────────────────────────
 # TABS
 # ─────────────────────────────────────────
 
-tab2, tab3, tab7, tab8, tab9, tab10 = st.tabs([
+tab2, tab3, tab4, tab6, tab7, tab8, tab9, tab10 = st.tabs([
     "🃏 Deck Data",
     "📈 Median by Era",
+    "📋 Era Decklists",
+    "🛡️ Era-Specific Sideboard",
     "🔍 Era-Specific Cards",
     "🌐 NMDS – Era & Set",
     "🎴 NMDS – Card Inclusion",
@@ -1045,9 +1078,10 @@ with tab3:
     heat_data = mean_deck.set_index("current_era")[num_cols]
     era_order = [
         "Pre-Splinter Twin/Summer Bloom Ban",
+        "Pre-KCI Ban",
         "Pre-MH1 Release",
         "Pre-Lattice/Oko Ban",
-        "Pre-Astrolabe Ban",
+        "Pre-OuaT Ban",
         "Pre-Field/Uro Ban",
         "Pre-MH2 Release",
         "Pre-Lurrus Ban",
@@ -1072,28 +1106,121 @@ with tab3:
     fig_heat.update_layout(height=750)
     st.plotly_chart(fig_heat, width='stretch')
 
+# ── Tab 4: Era Decklists ──────────────────
+with tab4:
+    st.subheader("Expected Era Decklist")
+    st.markdown(
+        "Predicted 60-card maindeck and 15-card sideboard for each era, "
+        "derived using mode card counts as the base, with remaining slots filled by mean counts for non-mode cards. "
+        "Cards with the largest fractional remainders receive the extra copies."
+    )
+
+    era_list_t4 = [e for e in ERA_ORDER if e in amulet_comb["current_era"].values]
+    selected_era_t4 = st.selectbox("Select era:", era_list_t4,
+                                    index=len(era_list_t4) - 1, key="era_deck_select")
+
+    era_rows_t4 = amulet_comb[amulet_comb["current_era"] == selected_era_t4]
+
+    # Separate maindeck and sideboard columns
+    all_card_cols = [c for c in amulet_int.columns]
+    md_cols = [c for c in all_card_cols if not c.startswith("sb_")]
+    sb_cols_t4 = [c for c in all_card_cols if c.startswith("sb_")]
+
+    def predict_decklist(era_rows, cols, target, min_inclusion=0.0):
+        """
+        Build a predicted decklist of exactly `target` cards.
+        1. Include only cards meeting min_inclusion threshold, ranked by inclusion %.
+        2. Assign each card its mode count.
+        3. If slots remain after including all qualifying cards, distribute extras
+           by incrementing mode counts of already-included cards (highest inclusion first).
+        """
+        n = len(era_rows)
+        if n == 0:
+            return pd.Series(dtype=float)
+
+        # Inclusion % for each card
+        inclusion_pct = (era_rows[cols] > 0).sum() / n
+
+        # Mode copies for each card
+        mode_vals = era_rows[cols].mode().iloc[0]
+
+        # Only cards meeting the inclusion threshold, ranked highest first
+        candidates = inclusion_pct[inclusion_pct >= min_inclusion].sort_values(ascending=False)
+
+        result = {}
+        slots_remaining = target
+        for card in candidates.index:
+            if slots_remaining <= 0:
+                break
+            copies = int(mode_vals.get(card, 1))
+            if copies <= 0:
+                copies = 1
+            copies = min(copies, slots_remaining)
+            result[card] = copies
+            slots_remaining -= copies
+
+        # If slots still remain, fill by upgrading cards whose current mode count
+        # is least common first (rarest modes get bumped), capped at 4 copies.
+        if slots_remaining > 0 and result:
+            changed = True
+            while slots_remaining > 0 and changed:
+                changed = False
+                # Sort included cards by how common their current count is (rarest first)
+                def count_frequency(card):
+                    return (era_rows[card] == result[card]).sum()
+                eligible = [c for c in result if result[c] < 4]
+                if not eligible:
+                    break
+                eligible_sorted = sorted(eligible, key=count_frequency)
+                for card in eligible_sorted:
+                    if slots_remaining <= 0:
+                        break
+                    current = result[card]
+                    # Find the next most common count strictly above current
+                    card_counts = era_rows[card]
+                    higher_counts = card_counts[card_counts > current]
+                    if higher_counts.empty:
+                        continue
+                    next_count = int(higher_counts.mode().iloc[0])
+                    next_count = min(next_count, current + slots_remaining, 4)
+                    if next_count > current:
+                        slots_remaining -= (next_count - current)
+                        result[card] = next_count
+                        changed = True
+
+        return pd.Series(result).sort_values(ascending=False)
+
+    md_scaled = predict_decklist(era_rows_t4, md_cols, 60, min_inclusion=0.51)
+    sb_scaled = predict_decklist(era_rows_t4, sb_cols_t4, 15, min_inclusion=0.3)
+
+    # Compute % of decks in era that included each card
+    n_era = len(era_rows_t4)
+    md_pct = ((era_rows_t4[md_cols] > 0).sum() / n_era * 100).round(1)
+    sb_pct = ((era_rows_t4[sb_cols_t4] > 0).sum() / n_era * 100).round(1)
+
+    col_t4a, col_t4b = st.columns(2)
+    era_slug_t4 = re.sub(r"[^a-zA-Z0-9\-]", "-", selected_era_t4[:20])
+
+    with col_t4a:
+        st.markdown(f"**Predicted Maindeck** ({n_era} decklists in era)")
+        md_df = md_scaled.reset_index()
+        md_df.columns = ["Card", "Copies"]
+        md_df["% Included"] = md_df["Card"].map(md_pct).apply(lambda x: f"{x}%")
+        md_df = sort_by_type(md_df, "Card")
+        render_decklist_html(md_df, "Card", "Copies", None, f"era-md-{era_slug_t4}", 600, extra_col="% Included")
+
+    with col_t4b:
+        st.markdown(f"**Predicted Sideboard**")
+        sb_df = sb_scaled.reset_index()
+        sb_df.columns = ["Card", "Copies"]
+        sb_df["% Included"] = sb_df["Card"].map(sb_pct).apply(lambda x: f"{x}%")
+        sb_df = sort_by_type(sb_df, "Card")
+        render_decklist_html(sb_df, "Card", "Copies", None, f"era-sb-{era_slug_t4}", 600, extra_col="% Included")
+
+
 # ─────────────────────────────────────────
 # PCA COMPUTATION
 # ─────────────────────────────────────────
-
-ERA_ORDER = [
-        "Pre-Splinter Twin/Summer Bloom Ban",
-        "Pre-MH1 Release",
-        "Pre-Lattice/Oko Ban",
-        "Pre-Astrolabe Ban",
-        "Pre-Field/Uro Ban",
-        "Pre-MH2 Release",
-        "Pre-Lurrus Ban",
-        "Pre-Yorion Ban",
-        "Pre-LotR Release",
-        "Pre-Fury/Bean Ban",
-        "Pre-Outburst Ban",
-        "Pre-MH3",
-        "Pre-Nadu/Grief Ban",
-        "Pre-GSZ Unban/Ring Ban",
-        "Pre-Breach Ban",
-        "Current"
-]
 
 
 def run_nmds_computation():
@@ -1161,9 +1288,9 @@ GITHUB_NMDS_URL = (
 )
 
 def _load_nmds_excel(source):
-    """Load Site_Scores + Card_WA_Scores from an Excel file-like or URL bytes."""
+    """Load Card_WA_Scores and stress from an Excel file-like or URL bytes.
+    Site scores are now read directly from the main CSV (amulet_comb)."""
     xls = pd.ExcelFile(source)
-    od  = pd.read_excel(xls, sheet_name="Site_Scores")
     sp  = pd.read_excel(xls, sheet_name="Card_WA_Scores")
     # Normalise species df: ensure lowercase "card" column exists
     sp.columns = [c if c not in ("Card",) else "card" for c in sp.columns]
@@ -1184,6 +1311,15 @@ def _load_nmds_excel(source):
                     st_val = float(v)
         except Exception:
             pass
+    return sp, st_val
+
+def _build_ord_from_comb():
+    """Build site scores and centroids from amulet_comb (which now carries NMDS1/NMDS2)."""
+    if "NMDS1" not in amulet_comb.columns or "NMDS2" not in amulet_comb.columns:
+        return None, {}
+    od = amulet_comb[["Name", "Event", "Date", "NMDS1", "NMDS2",
+                       "current_era", "current_set"]].copy()
+    od = od.dropna(subset=["NMDS1", "NMDS2"])
     cents = {}
     for ev in ["current_era", "current_set"]:
         if ev in od.columns:
@@ -1194,45 +1330,183 @@ def _load_nmds_excel(source):
                 )
             except Exception:
                 pass
-    return od, sp, st_val, cents
+    return od, cents
 
 def _resolve_nmds():
     """
-    Return (ord_nmds, species_nmds, stress_nmds, env_centroids_nmds) from the
-    best available source: uploaded file → GitHub cache → computed.
-    Returns (None, None, None, {}) if nothing is available.
+    Return (ord_nmds, species_nmds, stress_nmds, env_centroids_nmds).
+    Site scores come from amulet_comb; species scores and stress come from GitHub Excel.
     """
-    # 1. Already fetched from GitHub this session
+    # Site scores always come from amulet_comb
+    od, cents = _build_ord_from_comb()
+
+    # 1. Already fetched species/stress from GitHub this session
     gh = st.session_state.get("nmds_github")
     if gh is not None:
-        return gh["ord"], gh["species"], gh["stress"], gh["centroids"]
+        return od, gh["species"], gh["stress"], cents
 
     # 2. Already computed this session
     if "nmds_result" in st.session_state:
-        return (
-            st.session_state["nmds_result"],
-            st.session_state["nmds_species"],
-            st.session_state["nmds_stress"],
-            st.session_state["nmds_env_centroids"],
-        )
+        return od, st.session_state["nmds_species"], st.session_state["nmds_stress"], cents
 
-    # 3. Try GitHub
+    # 3. Try GitHub for species scores + stress
     try:
         import requests as _req
         resp = _req.get(GITHUB_NMDS_URL, timeout=15)
         resp.raise_for_status()
         from io import BytesIO as _BIO
-        od, sp, st_val, cents = _load_nmds_excel(_BIO(resp.content))
+        sp, st_val = _load_nmds_excel(_BIO(resp.content))
         st.session_state["nmds_github"] = {
-            "ord": od, "species": sp, "stress": st_val, "centroids": cents
+            "species": sp, "stress": st_val
         }
         return od, sp, st_val, cents
     except Exception:
         pass
 
-    return None, None, None, {}
+    return od, None, None, cents
 
 # ── Run PCA on app start (fast — no NMDS here, tab 8 handles it lazily) ──
+# ── Tab 6: Era-Specific Sideboard ────────
+with tab6:
+    st.subheader("Era-Specific Sideboard Cards")
+    st.markdown(
+        "Sideboard cards that appear predominantly in one ban era. "
+        "Concentration score = share of a card's total sideboard appearances that fall within a single era. "
+        "Use the slider to control the minimum number of appearances required."
+    )
+
+    era_order_sb = [e for e in ERA_ORDER if e in amulet_comb["current_era"].values]
+    sb_cols = [c for c in amulet_int.columns if c.startswith("sb_")]
+
+    # Build era × sb card count matrix and era deck sizes
+    era_sb_raw = (
+        amulet_comb.groupby("current_era")[sb_cols]
+        .sum()
+        .reindex(era_order_sb)
+        .fillna(0)
+    )
+    era_sizes_sb = (
+        amulet_comb.groupby("current_era")
+        .size()
+        .reindex(era_order_sb)
+        .fillna(1)
+    )
+
+    # Normalize: mean copies per deck in each era
+    era_sb = era_sb_raw.div(era_sizes_sb, axis=0)
+
+    col_sb1, col_sb2 = st.columns(2)
+    with col_sb1:
+        min_appearances_sb = st.slider(
+            "Minimum total raw appearances across all eras",
+            min_value=1, max_value=50, value=10, step=1,
+            key="era_sb_min"
+        )
+    with col_sb2:
+        min_concentration_sb = st.slider(
+            "Minimum concentration score (0–1)",
+            min_value=0.50, max_value=1.0, value=0.75, step=0.05,
+            key="era_sb_conc"
+        )
+
+    sb_totals_raw = era_sb_raw.sum(axis=0)
+    eligible_sb = sb_totals_raw[sb_totals_raw >= min_appearances_sb].index.tolist()
+
+    # % of decks in each era that contained the sideboard card
+    _sb_presence_bool = amulet_comb[sb_cols].gt(0)
+    _sb_presence_bool["current_era"] = amulet_comb["current_era"].values
+    era_sb_presence = (
+        _sb_presence_bool.groupby("current_era")[sb_cols]
+        .sum()
+        .reindex(era_order_sb)
+        .fillna(0)
+    )
+
+    sb_rows = []
+    for card in eligible_sb:
+        col_data = era_sb[card]
+        dominant_era = col_data.idxmax()
+        dominant_rate = col_data.max()
+        raw_dominant_sb = era_sb_raw.loc[dominant_era, card]
+        raw_total_sb = sb_totals_raw[card]
+        if raw_total_sb == 0:
+            continue
+        concentration = raw_dominant_sb / raw_total_sb
+        era_size_sb = int(era_sizes_sb[dominant_era])
+        pct_decks_sb = round(era_sb_presence.loc[dominant_era, card] / era_size_sb * 100, 1) if era_size_sb > 0 else 0.0
+        if concentration >= min_concentration_sb and dominant_rate >= 0.1:
+            display_name = card[3:] if card.startswith("sb_") else card
+            sb_rows.append({
+                "Card":                  display_name,
+                "Dominant Era":          dominant_era,
+                "Era Size (decks)":      era_size_sb,
+                "% Decks w/ Card":       pct_decks_sb,
+                "Rate in Era":           round(dominant_rate, 3),
+                "Raw Era Appearances":   int(raw_dominant_sb),
+                "Total Raw Appearances": int(raw_total_sb),
+                "Concentration":         round(concentration, 3),
+            })
+
+    if not sb_rows:
+        st.info("No sideboard cards meet the current filters. Try lowering the thresholds.")
+    else:
+        sb_result_df = pd.DataFrame(sb_rows)
+        sb_result_df["_era_order"] = sb_result_df["Dominant Era"].map(
+            {e: i for i, e in enumerate(era_order_sb)}
+        )
+        sb_result_df = (
+            sb_result_df.sort_values(["_era_order", "% Decks w/ Card", "Concentration"], ascending=[True, False, False])
+            .drop(columns=["_era_order"])
+            .reset_index(drop=True)
+        )
+
+        # ── Summary chart ──────────────────────────────────────────────────
+        sb_era_counts = sb_result_df["Dominant Era"].value_counts().reindex(era_order_sb).dropna()
+        fig_sb_bar = px.bar(
+            sb_era_counts.reset_index(),
+            x="Dominant Era",
+            y="count",
+            title="Number of Era-Specific Sideboard Cards per Era",
+            labels={"count": "# Cards", "Dominant Era": "Era"},
+            color="Dominant Era",
+            template="plotly_white",
+        )
+        fig_sb_bar.update_layout(showlegend=False, height=350)
+        st.plotly_chart(fig_sb_bar, width='stretch')
+
+        # ── Filter by era ──────────────────────────────────────────────────
+        sb_era_filter = st.multiselect(
+            "Filter by era (leave blank for all):",
+            options=era_order_sb,
+            default=[],
+            key="era_sb_filter"
+        )
+        if sb_era_filter:
+            sb_result_df = sb_result_df[sb_result_df["Dominant Era"].isin(sb_era_filter)]
+
+        st.dataframe(sb_result_df, width='stretch', hide_index=True)
+
+        # ── Heatmap ────────────────────────────────────────────────────────
+        st.markdown("**Heatmap of Era-Specific Sideboard Cards** *(color = mean copies per deck)*")
+        sb_heat_cards_display = sb_result_df["Card"].tolist()
+        sb_heat_cards_cols = ["sb_" + c for c in sb_heat_cards_display]
+        sb_heat_cards_cols = [c for c in sb_heat_cards_cols if c in era_sb.columns]
+        if sb_heat_cards_cols:
+            sb_heat = era_sb[sb_heat_cards_cols].copy()
+            sb_heat.columns = [c[3:] for c in sb_heat.columns]  # strip sb_ for display
+            sb_heat = sb_heat.T
+            sb_heat.index.name = "Card"
+            fig_sb_heat = px.imshow(
+                sb_heat,
+                aspect="auto",
+                color_continuous_scale="Blues",
+                labels={"x": "Era", "y": "Card", "color": "Copies/Deck"},
+                title="Era-Specific Sideboard Cards — Mean Copies per Deck by Era",
+            )
+            fig_sb_heat.update_layout(height=max(400, len(sb_heat_cards_cols) * 18))
+            st.plotly_chart(fig_sb_heat, width='stretch')
+
+
 # ── Tab 7: Era-Specific Cards ─────────────
 with tab7:
     st.subheader("Era-Specific Cards")
@@ -1243,7 +1517,7 @@ with tab7:
     )
 
     era_order_display = [e for e in ERA_ORDER if e in amulet_comb["current_era"].values]
-    card_cols_era = [c for c in amulet_int.columns]
+    card_cols_era = [c for c in amulet_int.columns if not c.startswith("sb_")]
 
     # Build era × card count matrix (raw) and era deck sizes
     era_card_raw = (
@@ -1266,7 +1540,7 @@ with tab7:
     with col_s1:
         min_appearances = st.slider(
             "Minimum total raw appearances across all eras",
-            min_value=1, max_value=50, value=5, step=1,
+            min_value=1, max_value=50, value=10, step=1,
             key="era_specific_min"
         )
     with col_s2:
@@ -1280,33 +1554,51 @@ with tab7:
     card_totals_raw = era_card_raw.sum(axis=0)
     eligible_cards = card_totals_raw[card_totals_raw >= min_appearances].index.tolist()
 
+    # % of decks in each era that contained the card (presence = at least 1 copy)
+    _presence_bool = amulet_comb[card_cols_era].gt(0)
+    _presence_bool["current_era"] = amulet_comb["current_era"].values
+    era_card_presence = (
+        _presence_bool.groupby("current_era")[card_cols_era]
+        .sum()
+        .reindex(era_order_display)
+        .fillna(0)
+    )
+
     rows = []
     for card in eligible_cards:
         col_data = era_card[card]          # normalized (per-deck rate)
-        total = col_data.sum()
-        if total == 0:
-            continue
         dominant_era = col_data.idxmax()
         dominant_rate = col_data.max()
-        concentration = dominant_rate / total
-        if concentration >= min_concentration:
+        raw_dominant = era_card_raw.loc[dominant_era, card]
+        raw_total = card_totals_raw[card]
+        if raw_total == 0:
+            continue
+        concentration = raw_dominant / raw_total
+        era_size = int(era_sizes[dominant_era])
+        pct_decks = round(era_card_presence.loc[dominant_era, card] / era_size * 100, 1) if era_size > 0 else 0.0
+        if concentration >= min_concentration and dominant_rate >= 0.1:
             rows.append({
                 "Card":                  card,
                 "Card Type":             get_card_type(card),
                 "Dominant Era":          dominant_era,
-                "Era Size (decks)":      int(era_sizes[dominant_era]),
+                "Era Size (decks)":      era_size,
+                "% Decks w/ Card":       pct_decks,
                 "Rate in Era":           round(dominant_rate, 3),
-                "Raw Era Appearances":   int(era_card_raw.loc[dominant_era, card]),
-                "Total Raw Appearances": int(card_totals_raw[card]),
+                "Raw Era Appearances":   int(raw_dominant),
+                "Total Raw Appearances": int(raw_total),
                 "Concentration":         round(concentration, 3),
             })
 
     if not rows:
         st.info("No cards meet the current filters. Try lowering the thresholds.")
     else:
+        result_df = pd.DataFrame(rows)
+        result_df["_era_order"] = result_df["Dominant Era"].map(
+            {e: i for i, e in enumerate(era_order_display)}
+        )
         result_df = (
-            pd.DataFrame(rows)
-            .sort_values(["Dominant Era", "Concentration"], ascending=[True, False])
+            result_df.sort_values(["_era_order", "% Decks w/ Card", "Concentration"], ascending=[True, False, False])
+            .drop(columns=["_era_order"])
             .reset_index(drop=True)
         )
 
@@ -1406,28 +1698,28 @@ def _render_nmds_decklist(row_idx, source_ord, label_prefix=""):
     era_rows_d = amulet_comb[amulet_comb["current_era"] == era_v] if era_v else pd.DataFrame()
     if not era_rows_d.empty:
         era_cards_d = era_rows_d[[c for c in amulet_int.columns if c in era_rows_d.columns]]
-        median_d = era_cards_d.median().round(2)
-        median_d = median_d[median_d > 0].sort_values(ascending=False)
-        median_set_d = set(median_d[median_d > 0].index)
+        mean_d = era_cards_d.mean().round(2)
+        mean_d = mean_d[mean_d >= 0.2].sort_values(ascending=False)
+        mean_set_d = set(mean_d.index)
     else:
-        median_d, median_set_d = pd.Series(dtype=float), set()
+        mean_d, mean_set_d = pd.Series(dtype=float), set()
 
     col_dl, col_med = st.columns(2)
     era_id_d = re.sub(r"[^a-zA-Z0-9]+", "-", str(era_v or "")).strip("-").lower() or "era"
     with col_dl:
-        st.markdown("**Decklist** *(green = not in era median)*")
+        st.markdown("**Decklist** *(green = not in era mean)*")
         dl_df = decklist_s.reset_index()
         dl_df.columns = ["Card", "Copies"]
         dl_df = sort_by_type(dl_df, "Card")
         render_decklist_html(dl_df, "Card", "Copies",
-                             median_set_d, f"nmds-click-{era_id_d}", 400)
+                             mean_set_d, f"nmds-click-{era_id_d}", 400)
     with col_med:
-        if not median_d.empty:
-            st.markdown(f"**Era Median** ({era_v})")
-            med_df_d = median_d.reset_index()
-            med_df_d.columns = ["Card", "Median Copies"]
+        if not mean_d.empty:
+            st.markdown(f"**Era Mean** ({era_v})")
+            med_df_d = mean_d.reset_index()
+            med_df_d.columns = ["Card", "Mean Copies"]
             med_df_d = sort_by_type(med_df_d, "Card")
-            render_decklist_html(med_df_d, "Card", "Median Copies",
+            render_decklist_html(med_df_d, "Card", "Mean Copies",
                                  None, f"nmds-clickmed-{era_id_d}", 400)
 
 
@@ -1442,17 +1734,6 @@ with tab8:
     ord_nmds, species_nmds, stress_nmds, env_cents_nmds = _resolve_nmds()
 
     if ord_nmds is not None:
-        # Ensure current_era assigned from amulet_env if missing
-        if "current_era" not in ord_nmds.columns and "Date" in ord_nmds.columns:
-            ord_nmds = ord_nmds.copy()
-            ord_nmds["current_era"] = ord_nmds["Date"].apply(
-                lambda d: assign_ban_era(d, ban_events)
-            )
-            env_cents_nmds["current_era"] = (
-                ord_nmds.groupby("current_era")[["NMDS1", "NMDS2"]]
-                .mean().reset_index().rename(columns={"current_era": "label"})
-            )
-
         stress_label = f"  |  stress = {stress_nmds:.4f}" if stress_nmds is not None else ""
 
         col_n1, col_n2 = st.columns(2)
@@ -1637,8 +1918,8 @@ with tab8:
 
                         era_rows2  = amulet_comb[amulet_comb["current_era"] == era]
                         era_cards2 = era_rows2[[c for c in amulet_int.columns if c in era_rows2.columns]]
-                        median_deck2 = era_cards2.median().round(2)
-                        median_deck2 = median_deck2[median_deck2 > 0].sort_values(ascending=False)
+                        mean_deck2 = era_cards2.mean().round(2)
+                        mean_deck2 = mean_deck2[mean_deck2 >= 0.2].sort_values(ascending=False)
 
                         col_meta2, col_out2, col_med2 = st.columns([1, 1.5, 1.5])
                         with col_meta2:
@@ -1647,24 +1928,24 @@ with tab8:
                             st.markdown(f"**{outlier_name}** — {_od_disp}")
                             st.markdown(f"Mean NMDS Distance: **{row._3}**")
                             st.markdown(f"Era N: **{row._4}**")
-                        median_cards2 = set(median_deck2[median_deck2 > 0].index)
+                        mean_cards2 = set(mean_deck2.index)
                         era_id2 = re.sub(r"[^a-zA-Z0-9]+", "-", era).strip("-").lower() or "era"
                         with col_out2:
-                            st.markdown("**Outlier Decklist** *(green = not in era median)*")
+                            st.markdown("**Outlier Decklist** *(green = not in era mean)*")
                             deck_df2 = decklist.reset_index()
                             deck_df2.columns = ["Card", "Copies"]
                             deck_df2 = sort_by_type(deck_df2, "Card")
                             render_decklist_html(deck_df2, "Card", "Copies",
-                                                 median_cards2, f"nmds-outlier-{era_id2}", 350)
+                                                 mean_cards2, f"nmds-outlier-{era_id2}", 350)
                         with col_med2:
-                            st.markdown(f"**Median Decklist ({era})**")
-                            med_df2 = median_deck2.reset_index()
-                            med_df2.columns = ["Card", "Median Copies"]
+                            st.markdown(f"**Mean Decklist ({era})**")
+                            med_df2 = mean_deck2.reset_index()
+                            med_df2.columns = ["Card", "Mean Copies"]
                             med_df2 = sort_by_type(med_df2, "Card")
-                            render_decklist_html(med_df2, "Card", "Median Copies",
+                            render_decklist_html(med_df2, "Card", "Mean Copies",
                                                  None, f"nmds-median-{era_id2}", 350)
     else:
-        st.info("Loading NMDS scores from GitHub… refresh if this persists.")
+        st.info("NMDS site scores not found in data. Check that merged_amulet.csv contains NMDS1 and NMDS2 columns.")
 
 
 # ── Tab 9: NMDS – Card Inclusion ─────────
@@ -1679,13 +1960,33 @@ with tab9:
 
     if ord_nmds9 is not None:
         card_options9 = amulet_int.sum().sort_values(ascending=False).index.tolist()
-        selected_card9 = st.selectbox(
-            "Color sites by card count:",
-            card_options9,
-            key="nmds_card_select9"
-        )
+
+        col9a, col9b = st.columns([1, 2])
+        with col9a:
+            selected_card9 = st.selectbox(
+                "Color sites by card count:",
+                card_options9,
+                key="nmds_card_select9"
+            )
+        with col9b:
+            era_order9 = ban_events["event"].tolist()
+            if "current_era" in ord_nmds9.columns:
+                present_eras9 = set(ord_nmds9["current_era"].dropna().unique())
+            else:
+                present_eras9 = set()
+            available_eras9 = [e for e in era_order9 if e in present_eras9]
+            selected_eras9 = st.multiselect(
+                "Filter by era:",
+                options=available_eras9,
+                default=available_eras9,
+                key="nmds_era_filter9",
+                help="Select one or more ban eras to show. Defaults to all eras.",
+            )
 
         plot9 = ord_nmds9.copy()
+        # Apply era filter
+        if selected_eras9 and "current_era" in plot9.columns:
+            plot9 = plot9[plot9["current_era"].isin(selected_eras9)]
         if selected_card9 in amulet_comb.columns:
             if "Name" in plot9.columns and "Name" in amulet_comb.columns:
                 # Normalise both Date columns to YYYY-MM-DD string for merging
@@ -1707,6 +2008,12 @@ with tab9:
                     pd.to_numeric(plot9[selected_card9], errors="coerce")
                       .fillna(0).astype(int)
                 )
+
+        if "Date" in plot9.columns:
+            plot9 = plot9.copy()
+            plot9["Date"] = pd.to_datetime(
+                plot9["Date"], errors="coerce"
+            ).dt.strftime("%m-%d-%Y").fillna(plot9["Date"].astype(str))
 
         hover9 = [c for c in ["Name", "Date", "current_era", "current_set"]
                   if c in plot9.columns]
@@ -1754,7 +2061,7 @@ with tab9:
                     st.info("Decklist not found in source data.")
 
     else:
-        st.info("Loading NMDS scores from GitHub… refresh if this persists.")
+        st.info("NMDS site scores not found in data. Check that merged_amulet.csv contains NMDS1 and NMDS2 columns.")
 
 
 # ── Tab 10: NMDS – Card Similarity ────────
@@ -1863,4 +2170,4 @@ with tab10:
         st.plotly_chart(fig10, width='stretch')
 
     else:
-        st.info("Loading NMDS scores from GitHub… refresh if this persists.")
+        st.info("NMDS site scores not found in data. Check that merged_amulet.csv contains NMDS1 and NMDS2 columns.")

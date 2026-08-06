@@ -60,7 +60,7 @@ modern_sets = pd.DataFrame({
         "DFT","TDM","FIN","EOE","SPM","TLA",
 
         # 2026
-        "ECL","TMT","SOS"
+        "ECL","TMT","SOS","MSH"
     ],
     "release_date": pd.to_datetime([
         # 2013
@@ -103,7 +103,7 @@ modern_sets = pd.DataFrame({
         "2025-02-14","2025-04-11","2025-06-13","2025-08-01","2025-09-26","2025-11-21",
 
         # 2026
-        "2026-01-23","2026-03-06","2026-04-24"
+        "2026-01-23","2026-03-06","2026-04-24","2026-06-26"
     ])
 }).sort_values("release_date").reset_index(drop=True)
 

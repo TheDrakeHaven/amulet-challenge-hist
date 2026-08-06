@@ -130,6 +130,7 @@ ban_events = pd.DataFrame({
         "Pre-Nadu/Grief Ban",
         "Pre-GSZ Unban/Ring Ban",
         "Pre-Breach Ban",
+        "Pre-Phlage/Lotus Ban",
         "Current"
     ],
     "date": pd.to_datetime([
@@ -154,7 +155,8 @@ ban_events = pd.DataFrame({
         "2024-08-26",
         "2024-12-16",
         "2025-03-31",
-        "2026-04-30"
+        "2026-05-19",  # Phlage + Lotus Field ban
+        "2099-12-31"   # "Current" sentinel — must stay last/ascending
     ])
 })
 
@@ -874,6 +876,7 @@ ERA_ORDER = [
         "Pre-Nadu/Grief Ban",
         "Pre-GSZ Unban/Ring Ban",
         "Pre-Breach Ban",
+        "Pre-Phlage/Lotus Ban",
         "Current"
 ]
 
@@ -1093,6 +1096,7 @@ with tab3:
         "Pre-Nadu/Grief Ban",
         "Pre-GSZ Unban/Ring Ban",
         "Pre-Breach Ban",
+        "Pre-Phlage/Lotus Ban",
         "Current"
     ]
     heat_data = heat_data.reindex([e for e in era_order if e in heat_data.index])

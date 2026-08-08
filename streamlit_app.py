@@ -21,7 +21,7 @@ st.title("🪬 Amulet Challenge Analysis")
 modern_sets = pd.DataFrame({
     "set": [
         # 2013
-        "THS","BNG",
+        "M14","THS","BNG",
 
         # 2014
         "JOU","M15","KTK","FRF",
@@ -64,7 +64,7 @@ modern_sets = pd.DataFrame({
     ],
     "release_date": pd.to_datetime([
         # 2013
-        "2013-09-27","2014-02-07",
+        "2013-07-19","2013-09-27","2014-02-07",
 
         # 2014
         "2014-05-02","2014-07-18","2014-09-26","2015-01-23",

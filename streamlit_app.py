@@ -1114,9 +1114,13 @@ with tab3:
 with tab4:
     st.subheader("Expected Era Decklist")
     st.markdown(
-        "Predicted 60-card maindeck and 15-card sideboard for each era, "
-        "derived using mode card counts as the base, with remaining slots filled by mean counts for non-mode cards. "
-        "Cards with the largest fractional remainders receive the extra copies."
+        "Predicted 60-card maindeck and 15-card sideboard for each era. "
+        "Card inclusion is measured across the whole 75 — a flex card that some "
+        "players maindeck and others sideboard (e.g. Ghost Quarter) is assigned "
+        "only to its majority zone rather than being double-counted in both. "
+        "Copy counts use the mode among decks that actually play the card. "
+        "Below the prediction, the **most representative real deck** (era medoid) "
+        "shows the actual decklist closest to every other deck in the era."
     )
 
     era_list_t4 = [e for e in ERA_ORDER if e in amulet_comb["current_era"].values]
@@ -1130,59 +1134,34 @@ with tab4:
     md_cols = [c for c in all_card_cols if not c.startswith("sb_")]
     sb_cols_t4 = [c for c in all_card_cols if c.startswith("sb_")]
 
-    def predict_decklist(era_rows, cols, target, min_inclusion=0.0):
-        """
-        Build a predicted decklist of exactly `target` cards.
-        1. Include only cards meeting min_inclusion threshold, ranked by inclusion %.
-        2. Assign each card its mode count.
-        3. If slots remain after including all qualifying cards, distribute extras
-           by incrementing mode counts of already-included cards (highest inclusion first).
-        """
-        n = len(era_rows)
-        if n == 0:
-            return pd.Series(dtype=float)
-
-        # Inclusion % for each card
-        inclusion_pct = (era_rows[cols] > 0).sum() / n
-
-        # Mode copies for each card
-        mode_vals = era_rows[cols].mode().iloc[0]
-
-        # Only cards meeting the inclusion threshold, ranked highest first
-        candidates = inclusion_pct[inclusion_pct >= min_inclusion].sort_values(ascending=False)
-
+    def _fill_slots(era_rows, candidates, target):
+        """Greedy-fill `target` slots from {col: (rank_inclusion, copies)},
+        highest inclusion first, then bump counts toward the next most common
+        higher count (rarest current counts first), capped at 4 copies."""
         result = {}
         slots_remaining = target
-        for card in candidates.index:
+        for card, (_incl, copies) in sorted(candidates.items(),
+                                            key=lambda kv: -kv[1][0]):
             if slots_remaining <= 0:
                 break
-            copies = int(mode_vals.get(card, 1))
-            if copies <= 0:
-                copies = 1
-            copies = min(copies, slots_remaining)
+            copies = max(1, min(int(copies), slots_remaining))
             result[card] = copies
             slots_remaining -= copies
 
-        # If slots still remain, fill by upgrading cards whose current mode count
-        # is least common first (rarest modes get bumped), capped at 4 copies.
         if slots_remaining > 0 and result:
             changed = True
             while slots_remaining > 0 and changed:
                 changed = False
-                # Sort included cards by how common their current count is (rarest first)
                 def count_frequency(card):
                     return (era_rows[card] == result[card]).sum()
                 eligible = [c for c in result if result[c] < 4]
                 if not eligible:
                     break
-                eligible_sorted = sorted(eligible, key=count_frequency)
-                for card in eligible_sorted:
+                for card in sorted(eligible, key=count_frequency):
                     if slots_remaining <= 0:
                         break
                     current = result[card]
-                    # Find the next most common count strictly above current
-                    card_counts = era_rows[card]
-                    higher_counts = card_counts[card_counts > current]
+                    higher_counts = era_rows[card][era_rows[card] > current]
                     if higher_counts.empty:
                         continue
                     next_count = int(higher_counts.mode().iloc[0])
@@ -1194,8 +1173,65 @@ with tab4:
 
         return pd.Series(result).sort_values(ascending=False)
 
-    md_scaled = predict_decklist(era_rows_t4, md_cols, 60, min_inclusion=0.51)
-    sb_scaled = predict_decklist(era_rows_t4, sb_cols_t4, 15, min_inclusion=0.3)
+    def predict_decklists_joint(era_rows, md_cols, sb_cols,
+                                md_target=60, sb_target=15,
+                                md_min=0.51, sb_min=0.30):
+        """
+        Predict maindeck and sideboard TOGETHER so flex cards aren't
+        double-counted across zones.
+
+        For each card, inclusion is measured over the whole 75: the share of
+        decks playing it in EITHER zone. A card is then assigned only to its
+        majority zone — it may appear in both zones only when the majority of
+        the decks that play it run copies in both zones simultaneously
+        (e.g. 2 Boseiju main + 1 side), which marginal per-zone inclusion
+        cannot distinguish from a main-or-side flex slot (e.g. Ghost Quarter).
+        Copy counts are the mode among decks that play the card in that zone.
+        """
+        n = len(era_rows)
+        if n == 0:
+            return pd.Series(dtype=float), pd.Series(dtype=float)
+
+        md_set, sb_set = set(md_cols), set(sb_cols)
+        bases = {c for c in md_cols} | {c[3:] for c in sb_cols}
+
+        def cond_mode(col, mask):
+            vals = era_rows.loc[mask, col]
+            vals = vals[vals > 0]
+            return int(vals.mode().iloc[0]) if not vals.empty else 1
+
+        md_cand, sb_cand = {}, {}
+        for base in bases:
+            mc = base if base in md_set else None
+            sc = ("sb_" + base) if ("sb_" + base) in sb_set else None
+            m_in = (era_rows[mc] > 0) if mc else pd.Series(False, index=era_rows.index)
+            s_in = (era_rows[sc] > 0) if sc else pd.Series(False, index=era_rows.index)
+            n_m, n_s = int(m_in.sum()), int(s_in.sum())
+            n_both = int((m_in & s_in).sum())
+            n_any = n_m + n_s - n_both
+            if n_any == 0:
+                continue
+
+            if mc and sc and n_both / n_any > 0.5:
+                # Genuinely played in both zones at once — allow both,
+                # each judged on its own zone inclusion.
+                if n_m / n >= md_min:
+                    md_cand[mc] = (n_m / n, cond_mode(mc, m_in))
+                if n_s / n >= sb_min:
+                    sb_cand[sc] = (n_s / n, cond_mode(sc, s_in))
+            elif n_m >= n_s and mc:
+                # Majority-maindeck flex card: full 75-wide inclusion,
+                # maindeck slot only.
+                if n_any / n >= md_min:
+                    md_cand[mc] = (n_any / n, cond_mode(mc, m_in))
+            elif sc:
+                if n_any / n >= sb_min:
+                    sb_cand[sc] = (n_any / n, cond_mode(sc, s_in))
+
+        return (_fill_slots(era_rows, md_cand, md_target),
+                _fill_slots(era_rows, sb_cand, sb_target))
+
+    md_scaled, sb_scaled = predict_decklists_joint(era_rows_t4, md_cols, sb_cols_t4)
 
     # Compute % of decks in era that included each card
     n_era = len(era_rows_t4)
@@ -1220,6 +1256,57 @@ with tab4:
         sb_df["% Included"] = sb_df["Card"].map(sb_pct).apply(lambda x: f"{x}%")
         sb_df = sort_by_type(sb_df, "Card")
         render_decklist_html(sb_df, "Card", "Copies", None, f"era-sb-{era_slug_t4}", 600, extra_col="% Included")
+
+    # ── Most Representative Deck (era medoid in NMDS space) ──────────────
+    @st.cache_data(show_spinner=False)
+    def _era_medoid(era):
+        """Index + mean distance of the era's medoid deck: the deck with the
+        smallest mean NMDS distance to every other deck in the era (the exact
+        mirror of the per-era outlier logic in the NMDS tab)."""
+        rows = amulet_comb[amulet_comb["current_era"] == era]
+        if "NMDS1" not in rows.columns or "NMDS2" not in rows.columns:
+            return None, None
+        rows = rows.dropna(subset=["NMDS1", "NMDS2"])
+        if len(rows) < 2:
+            return None, None
+        pts = rows[["NMDS1", "NMDS2"]].astype(float).values
+        dmat = cdist(pts, pts)
+        mean_d = dmat.sum(axis=1) / (len(pts) - 1)
+        best_pos = int(mean_d.argmin())
+        return rows.index[best_pos], float(mean_d[best_pos])
+
+    st.markdown("---")
+    st.markdown("#### 🎯 Most Representative Deck (Era Medoid)")
+
+    medoid_idx, medoid_dist = _era_medoid(selected_era_t4)
+    if medoid_idx is None:
+        st.info("Medoid unavailable — era needs at least 2 decks with NMDS scores.")
+    else:
+        deck_row_m = amulet_comb.loc[medoid_idx]
+        deck_cards_m = pd.Series(
+            {c: deck_row_m[c] for c in amulet_int.columns if c in deck_row_m.index}
+        ).astype(int)
+        deck_cards_m = deck_cards_m[deck_cards_m > 0].sort_values(ascending=False)
+
+        col_m1, col_m2 = st.columns([1, 2])
+        with col_m1:
+            _md_date = pd.to_datetime(deck_row_m.get("Date"), errors="coerce")
+            _md_date = _md_date.strftime("%m/%d/%Y") if pd.notna(_md_date) else str(deck_row_m.get("Date"))
+            st.markdown(f"**{deck_row_m.get('Name', '?')}** — {_md_date}")
+            st.markdown(f"*{deck_row_m.get('Event', '')}*")
+            st.markdown(f"Mean NMDS distance: **{medoid_dist:.4f}**")
+            st.markdown(f"Era N: **{n_era}**")
+            st.caption(
+                "The real decklist closest (mean Bray-Curtis-embedded NMDS "
+                "distance) to all other decks of the era — the era's centre "
+                "of gravity, guaranteed to be an actually-registered 75."
+            )
+        with col_m2:
+            med_df = deck_cards_m.reset_index()
+            med_df.columns = ["Card", "Copies"]
+            med_df = sort_by_type(med_df, "Card")
+            render_decklist_html(med_df, "Card", "Copies", None,
+                                 f"era-medoid-{era_slug_t4}", 500)
 
 
 # ─────────────────────────────────────────

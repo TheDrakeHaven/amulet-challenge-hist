@@ -920,7 +920,7 @@ with tab2:
             st.dataframe(means.rename("Mean").reset_index().rename(columns={"index": "Card"}),
                          width='stretch')
         with col2:
-            st.markdown("**Top 8 Count**")
+            st.markdown("**Decklist Count**")
             name_counts = (
                 amulet_df["Name"]
                 .value_counts(dropna=False)

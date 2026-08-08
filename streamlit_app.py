@@ -1383,11 +1383,19 @@ def _load_nmds_excel(source):
     Site scores are now read directly from the main CSV (amulet_comb)."""
     xls = pd.ExcelFile(source)
     sp  = pd.read_excel(xls, sheet_name="Card_WA_Scores")
-    # Normalise species df: ensure lowercase "card" column exists
-    sp.columns = [c if c not in ("Card",) else "card" for c in sp.columns]
+    # Normalise species df: ensure lowercase "card" column exists.
+    # Accept common header variants (Card, Cards, Species, Name, or the
+    # unnamed rownames column R's write.csv produces).
+    sp.columns = ["card" if str(c).strip().lower() in
+                  ("card", "cards", "species", "name", "unnamed: 0", "...1")
+                  else c for c in sp.columns]
     if "card" not in sp.columns:
-        sp = sp.reset_index()
-        sp = sp.rename(columns={sp.columns[0]: "card"})
+        # Last resort: assume the first non-NMDS column holds card names
+        non_nmds = [c for c in sp.columns if not str(c).upper().startswith("NMDS")]
+        if non_nmds:
+            sp = sp.rename(columns={non_nmds[0]: "card"})
+        else:
+            sp = sp.reset_index().rename(columns={"index": "card"})
     # Ensure NMDS1/NMDS2 columns exist
     for ax in ["NMDS1", "NMDS2"]:
         if ax not in sp.columns and ax.lower() in sp.columns:

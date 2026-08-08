@@ -2181,71 +2181,34 @@ with tab10:
             wa = wa.reset_index()
             wa = wa.rename(columns={wa.columns[0]: "card"})
 
-        # ── Filters ──────────────────────────────────────────────────────
-        fc1, fc2 = st.columns(2)
-        with fc1:
-            sb_filter10 = st.radio(
-                "Show cards:",
-                options=["Maindeck only", "Sideboard (SB) only", "All"],
-                horizontal=True,
-                key="nmds_sim_sb",
-            )
-        with fc2:
-            color_mode10 = st.radio(
-                "Color by:",
-                options=["Card type", "Maindeck / Sideboard"],
-                horizontal=True,
-                key="nmds_sim_color",
-            )
+        # NMDS is computed on maindeck cards only — show cards with ≥30
+        # maindeck copies, colored by card type.
+        card_totals_mb10 = amulet_comb[
+            [c for c in amulet_int.columns if not c.startswith("sb_")]
+        ].sum(axis=0)
 
-        # ── Copy filter: only show cards with ≥30 maindeck copies ────────
-        if "card" in wa.columns:
-            card_totals_mb10 = amulet_comb[
-                [c for c in amulet_int.columns if not c.startswith("sb_")]
-            ].sum(axis=0)
-
-        def is_sb(name):
-            return str(name).startswith("sb_") or "(SB)" in str(name)
-
-        if sb_filter10 == "Maindeck only":
-            # Maindeck cards with ≥30 copies
-            wa = wa[wa["card"].apply(lambda c: not is_sb(c))]
-            if "card" in wa.columns:
-                wa = wa[wa["card"].apply(
-                    lambda c: card_totals_mb10.get(c, 0) >= 30
-                )]
-        elif sb_filter10 == "Sideboard (SB) only":
-            wa = wa[wa["card"].apply(is_sb)]
-        # "All" keeps everything
-
-        wa = wa.copy()
+        wa = wa[wa["card"].apply(
+            lambda c: card_totals_mb10.get(c, 0) >= 30
+        )].copy()
         wa["card_type"] = wa["card"].apply(get_card_type)
-        wa["deck_slot"] = wa["card"].apply(
-            lambda s: "Sideboard" if is_sb(s) else "Maindeck"
-        )
 
-        if color_mode10 == "Card type":
-            color_map10 = {
-                "Land":     "#2ca02c",
-                "Creature": "#1f77b4",
-                "Spell":    "#ff7f0e",
-                "Unknown":  "#7f7f7f",
-            }
-            wa["_color"] = wa["card_type"]
-        else:
-            color_map10 = {"Maindeck": "#00d4ff", "Sideboard": "#d62728"}
-            wa["_color"] = wa["deck_slot"]
+        color_map10 = {
+            "Land":     "#2ca02c",
+            "Creature": "#1f77b4",
+            "Spell":    "#ff7f0e",
+            "Unknown":  "#7f7f7f",
+        }
 
         fig10 = px.scatter(
             wa,
             x="NMDS1", y="NMDS2",
             text="card",
             hover_name="card",
-            hover_data={"card_type": True, "deck_slot": True,
-                        "NMDS1": False, "NMDS2": False, "_color": False},
-            color="_color",
+            hover_data={"card_type": True,
+                        "NMDS1": False, "NMDS2": False},
+            color="card_type",
             color_discrete_map=color_map10,
-            category_orders={"_color": list(color_map10.keys())},
+            category_orders={"card_type": list(color_map10.keys())},
             template="plotly_dark",
         )
         fig10.update_traces(
@@ -2262,7 +2225,7 @@ with tab10:
             title="Card WA Scores in NMDS Space",
             plot_bgcolor="#1a1a2e",
             paper_bgcolor="#0d0d1a",
-            legend_title_text="Card Type" if color_mode10 == "Card type" else "Deck Slot",
+            legend_title_text="Card Type",
             legend=dict(font=dict(size=11), itemsizing="constant"),
             height=1000,
         )

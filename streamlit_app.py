@@ -1878,8 +1878,10 @@ with tab8:
         hover_nmds = [c for c in ["Name", "Date", "current_era", "current_set"]
                       if c in ord_nmds.columns]
 
-        # Colorblind-friendly: sample the CVD-safe Viridis scale in
-        # chronological order, so color also encodes time.
+        # Colorblind-friendly: CVD-safe Viridis samples, INTERLEAVED so
+        # chronologically adjacent eras get maximally different colors
+        # (a straight gradient made neighbors like Pre-Breach / Pre-Phlage /
+        # Current nearly identical). Marker shapes cycle as a second channel.
         if color_by_nmds == "current_era":
             _cats = [e for e in ERA_ORDER if e in ord_nmds["current_era"].values]
         else:
@@ -1887,14 +1889,25 @@ with tab8:
             _present = set(ord_nmds[color_by_nmds].dropna().unique())
             _cats = [s for s in _set_order if s in _present] + \
                     sorted(_present - set(_set_order))
+        _n = len(_cats)
         _samples = px.colors.sample_colorscale(
-            "Viridis", [i / max(len(_cats) - 1, 1) for i in range(len(_cats))])
-        cvd_map = dict(zip(_cats, _samples))
+            "Viridis", [i / max(_n - 1, 1) for i in range(_n)])
+        # Stride through the scale with a step coprime to n so every
+        # consecutive category jumps ~40% of the colorscale.
+        from math import gcd
+        _stride = max(1, round(_n * 0.4))
+        while _n > 1 and gcd(_stride, _n) != 1:
+            _stride += 1
+        cvd_map = {cat: _samples[(i * _stride) % _n]
+                   for i, cat in enumerate(_cats)}
 
         fig_n = px.scatter(
             ord_nmds, x="NMDS1", y="NMDS2",
             color=color_by_nmds,
             color_discrete_map=cvd_map,
+            symbol=color_by_nmds,
+            symbol_sequence=["circle", "diamond", "square", "x",
+                             "triangle-up", "cross", "star", "triangle-down"],
             category_orders={color_by_nmds: _cats},
             hover_data=hover_nmds,
             title=f"NMDS – sites colored by {color_by_nmds}{stress_label}",

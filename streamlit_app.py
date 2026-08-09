@@ -1903,11 +1903,11 @@ with tab8:
         )
         fig_n.update_traces(marker=dict(size=6, line=dict(width=0)))
         fig_n.update_xaxes(title_text="NMDS1 (no units)", showgrid=True,
-                           gridcolor="#333", zeroline=False)
+                           gridcolor="#666", zeroline=False)
         fig_n.update_yaxes(title_text="NMDS2 (no units)", showgrid=True,
-                           gridcolor="#333", zeroline=False)
+                           gridcolor="#666", zeroline=False)
         fig_n.update_layout(
-            plot_bgcolor="#1a1a2e", paper_bgcolor="#0d0d1a",
+            plot_bgcolor="#4a4a4a", paper_bgcolor="#333333",
             legend=dict(orientation="v", yanchor="top", y=1,
                         xanchor="left", x=1.01, font=dict(size=11),
                         itemsizing="constant"),
@@ -2162,11 +2162,11 @@ with tab9:
         )
         fig9.update_traces(marker=dict(size=8))
         fig9.update_xaxes(title_text="NMDS1 (no units)", showgrid=True,
-                          gridcolor="#333", zeroline=False)
+                          gridcolor="#666", zeroline=False)
         fig9.update_yaxes(title_text="NMDS2 (no units)", showgrid=True,
-                          gridcolor="#333", zeroline=False)
+                          gridcolor="#666", zeroline=False)
         fig9.update_layout(
-            plot_bgcolor="#1a1a2e", paper_bgcolor="#0d0d1a", height=800
+            plot_bgcolor="#4a4a4a", paper_bgcolor="#333333", height=800
         )
         sel9 = st.plotly_chart(fig9, width='stretch', on_select="rerun", key="nmds_plot9")
 
@@ -2251,13 +2251,13 @@ with tab10:
             marker=dict(size=7, line=dict(width=0)),
         )
         fig10.update_xaxes(title_text="NMDS1 (no units)", showgrid=True,
-                           gridcolor="#333", zeroline=False)
+                           gridcolor="#666", zeroline=False)
         fig10.update_yaxes(title_text="NMDS2 (no units)", showgrid=True,
-                           gridcolor="#333", zeroline=False)
+                           gridcolor="#666", zeroline=False)
         fig10.update_layout(
             title="Card WA Scores in NMDS Space",
-            plot_bgcolor="#1a1a2e",
-            paper_bgcolor="#0d0d1a",
+            plot_bgcolor="#4a4a4a",
+            paper_bgcolor="#333333",
             legend_title_text="Card Type",
             legend=dict(font=dict(size=11), itemsizing="constant"),
             height=1000,

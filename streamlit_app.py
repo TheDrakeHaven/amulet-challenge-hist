@@ -443,6 +443,8 @@ creatures = [
  
 spells = [
     "Abrade",
+    "Ephemerate",
+    "Zuran Orb",
     "Abrupt Decay",
     "Abundant Harvest",
     "Adventurous Impulse",
@@ -1155,7 +1157,7 @@ with tab4:
     st.subheader("Expected Era Decklist")
     st.markdown(
         "Predicted 60-card maindeck and 15-card sideboard for each era. "
-        "Card inclusion is measured across the whole 75 — a flex card that some "
+        "Card inclusion is measured across the whole 75. This is so that"
         "players maindeck and others sideboard (e.g. Ghost Quarter) is assigned "
         "only to its majority zone rather than being double-counted in both. "
         "Copy counts use the mode among decks that actually play the card. "
@@ -1867,7 +1869,7 @@ with tab8:
     st.subheader("NMDS – Era & Set")
     st.markdown(
         "Sites (decklists) in **non-metric MDS** space (Bray-Curtis dissimilarity). "
-        "Axes have no ecological units — only relative distances matter."
+        "Axes have no ecological units; only relative distances matter."
     )
 
     ord_nmds, species_nmds, stress_nmds, env_cents_nmds = _resolve_nmds()

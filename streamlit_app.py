@@ -947,7 +947,7 @@ with tab2:
             )
             st.dataframe(name_counts, width='stretch')
 
-        # ── Histogram: decklists per era ──────────────────────────────────
+        # ── Histogram: decklists per era + decks/month rate ───────────────
         st.markdown("**Decklist Count by Era**")
         _era_hist = (
             amulet_comb["current_era"]
@@ -957,6 +957,21 @@ with tab2:
             .rename_axis("Era")
             .reset_index(name="Decklists")
         )
+
+        # Era calendar length from ban boundaries: era i spans the previous
+        # ban date to its own; the first era starts at the earliest deck,
+        # the Current era ends at the latest deck.
+        _deck_dates = pd.to_datetime(amulet_comb["Date"], errors="coerce")
+        _bounds = ban_events["date"].tolist()
+        _starts = [_deck_dates.min()] + _bounds[:-1]
+        _ends   = _bounds[:-1] + [_deck_dates.max()]
+        _months = {era: max(( e - s ).days / 30.44, 0.5)
+                   for era, s, e in zip(ban_events["event"], _starts, _ends)}
+        _era_hist["Decks/Month"] = (
+            _era_hist["Decklists"] /
+            _era_hist["Era"].map(_months)
+        ).round(1)
+
         fig_era_hist = px.bar(
             _era_hist, x="Era", y="Decklists",
             title="Decklist Count by Era",
@@ -964,9 +979,20 @@ with tab2:
             text="Decklists",
         )
         fig_era_hist.update_traces(textposition="outside")
+        fig_era_hist.add_trace(go.Scatter(
+            x=_era_hist["Era"], y=_era_hist["Decks/Month"],
+            mode="lines+markers", name="Decks / month",
+            yaxis="y2", line=dict(color="#d62728", width=2),
+            marker=dict(size=7),
+        ))
         fig_era_hist.update_layout(
-            xaxis_tickangle=-45, height=500, showlegend=False,
+            xaxis_tickangle=-45, height=500,
             yaxis_title="Decklists", xaxis_title=None,
+            yaxis2=dict(title="Decks / month", overlaying="y",
+                        side="right", showgrid=False),
+            showlegend=True,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02,
+                        xanchor="right", x=1),
         )
         st.plotly_chart(fig_era_hist, width='stretch')
 

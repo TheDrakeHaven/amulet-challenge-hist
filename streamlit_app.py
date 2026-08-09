@@ -945,6 +945,29 @@ with tab2:
             )
             st.dataframe(name_counts, width='stretch')
 
+        # ── Histogram: decklists per era ──────────────────────────────────
+        st.markdown("**Decklist Count by Era**")
+        _era_hist = (
+            amulet_comb["current_era"]
+            .value_counts()
+            .reindex([e for e in ERA_ORDER
+                      if e in amulet_comb["current_era"].values])
+            .rename_axis("Era")
+            .reset_index(name="Decklists")
+        )
+        fig_era_hist = px.bar(
+            _era_hist, x="Era", y="Decklists",
+            title="Decklist Count by Era",
+            template="plotly_white",
+            text="Decklists",
+        )
+        fig_era_hist.update_traces(textposition="outside")
+        fig_era_hist.update_layout(
+            xaxis_tickangle=-45, height=500, showlegend=False,
+            yaxis_title="Decklists", xaxis_title=None,
+        )
+        st.plotly_chart(fig_era_hist, width='stretch')
+
     with subtab_totals:
         st.subheader("Total Maindeck Card Copies")
         st.markdown(

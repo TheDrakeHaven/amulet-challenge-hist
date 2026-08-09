@@ -996,6 +996,44 @@ with tab2:
         )
         st.plotly_chart(fig_era_hist, width='stretch')
 
+        # ── Stacked histogram: MTGO vs paper decks per era ────────────────
+        st.markdown("**Decklist Count by Era — MTGO vs Paper**")
+        _mtgo_re = re.compile(
+            r"^modern (league|challenge|preliminary|premier|super qualifier|"
+            r"showcase|rc qualifier|qualifier|ptq|mocs|daily|"
+            r"players tour qualifier)")
+        def _deck_source(ev):
+            l = str(ev).lower()
+            return ("MTGO" if (_mtgo_re.match(l) or "mtgo" in l
+                               or "magic online" in l) else "Paper")
+        _src_counts = (
+            pd.DataFrame({
+                "Era": amulet_comb["current_era"],
+                "Source": amulet_comb["Event"].map(_deck_source),
+            })
+            .value_counts()
+            .rename("Decklists")
+            .reset_index()
+        )
+        fig_src_hist = px.bar(
+            _src_counts, x="Era", y="Decklists", color="Source",
+            barmode="stack",
+            category_orders={
+                "Era": [e for e in ERA_ORDER
+                        if e in amulet_comb["current_era"].values],
+                "Source": ["MTGO", "Paper"],
+            },
+            color_discrete_map={"MTGO": "#1f77b4", "Paper": "#ff7f0e"},
+            title="Decklist Count by Era — MTGO vs Paper",
+            template="plotly_white",
+        )
+        fig_src_hist.update_layout(
+            xaxis_tickangle=-45, height=500, xaxis_title=None,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02,
+                        xanchor="right", x=1),
+        )
+        st.plotly_chart(fig_src_hist, width='stretch')
+
     with subtab_totals:
         st.subheader("Total Maindeck Card Copies")
         st.markdown(

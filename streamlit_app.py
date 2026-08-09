@@ -1878,9 +1878,24 @@ with tab8:
         hover_nmds = [c for c in ["Name", "Date", "current_era", "current_set"]
                       if c in ord_nmds.columns]
 
+        # Colorblind-friendly: sample the CVD-safe Viridis scale in
+        # chronological order, so color also encodes time.
+        if color_by_nmds == "current_era":
+            _cats = [e for e in ERA_ORDER if e in ord_nmds["current_era"].values]
+        else:
+            _set_order = modern_sets["set"].tolist()
+            _present = set(ord_nmds[color_by_nmds].dropna().unique())
+            _cats = [s for s in _set_order if s in _present] + \
+                    sorted(_present - set(_set_order))
+        _samples = px.colors.sample_colorscale(
+            "Viridis", [i / max(len(_cats) - 1, 1) for i in range(len(_cats))])
+        cvd_map = dict(zip(_cats, _samples))
+
         fig_n = px.scatter(
             ord_nmds, x="NMDS1", y="NMDS2",
             color=color_by_nmds,
+            color_discrete_map=cvd_map,
+            category_orders={color_by_nmds: _cats},
             hover_data=hover_nmds,
             title=f"NMDS – sites colored by {color_by_nmds}{stress_label}",
             template="plotly_dark",
@@ -1937,8 +1952,8 @@ with tab8:
                     x=sp_top["NMDS1"], y=sp_top["NMDS2"],
                     mode="markers+text", text=sp_top["card"],
                     textposition="top right",
-                    textfont=dict(size=10, color="crimson"),
-                    marker=dict(size=10, symbol="triangle-up", color="crimson",
+                    textfont=dict(size=10, color="#D55E00"),
+                    marker=dict(size=10, symbol="triangle-up", color="#D55E00",
                                 line=dict(width=1, color="white")),
                     name="Card WA scores", showlegend=True,
                 ))
@@ -2139,7 +2154,7 @@ with tab9:
         fig9 = px.scatter(
             plot9, x="NMDS1", y="NMDS2",
             color=selected_card9 if selected_card9 in plot9.columns else None,
-            color_continuous_scale="thermal",
+            color_continuous_scale="Viridis",
             hover_data=[c for c in hover9 if c in plot9.columns],
             title=f"NMDS – sites colored by copies of {selected_card9}",
             template="plotly_dark",
@@ -2209,11 +2224,12 @@ with tab10:
         )].copy()
         wa["card_type"] = wa["card"].apply(get_card_type)
 
+        # Okabe-Ito palette — distinguishable under all common CVD types
         color_map10 = {
-            "Land":     "#2ca02c",
-            "Creature": "#1f77b4",
-            "Spell":    "#ff7f0e",
-            "Unknown":  "#7f7f7f",
+            "Land":     "#009E73",
+            "Creature": "#0072B2",
+            "Spell":    "#E69F00",
+            "Unknown":  "#999999",
         }
 
         fig10 = px.scatter(

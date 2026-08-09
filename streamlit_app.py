@@ -1911,16 +1911,16 @@ with tab8:
             category_orders={color_by_nmds: _cats},
             hover_data=hover_nmds,
             title=f"NMDS – sites colored by {color_by_nmds}{stress_label}",
-            template="plotly_dark",
+            template="plotly_white",
             opacity=0.65,
         )
-        fig_n.update_traces(marker=dict(size=6, line=dict(width=0)))
+        fig_n.update_traces(marker=dict(size=6, line=dict(width=0.5, color="#444")))
         fig_n.update_xaxes(title_text="NMDS1 (no units)", showgrid=True,
-                           gridcolor="#666", zeroline=False)
+                           gridcolor="#ddd", zeroline=False)
         fig_n.update_yaxes(title_text="NMDS2 (no units)", showgrid=True,
-                           gridcolor="#666", zeroline=False)
+                           gridcolor="#ddd", zeroline=False)
         fig_n.update_layout(
-            plot_bgcolor="#4a4a4a", paper_bgcolor="#333333",
+            plot_bgcolor="white", paper_bgcolor="white",
             legend=dict(orientation="v", yanchor="top", y=1,
                         xanchor="left", x=1.01, font=dict(size=11),
                         itemsizing="constant"),
@@ -2170,16 +2170,16 @@ with tab9:
             color_continuous_scale="Viridis",
             hover_data=[c for c in hover9 if c in plot9.columns],
             title=f"NMDS – sites colored by copies of {selected_card9}",
-            template="plotly_dark",
+            template="plotly_white",
             opacity=0.8,
         )
-        fig9.update_traces(marker=dict(size=8))
+        fig9.update_traces(marker=dict(size=8, line=dict(width=0.5, color="#444")))
         fig9.update_xaxes(title_text="NMDS1 (no units)", showgrid=True,
-                          gridcolor="#666", zeroline=False)
+                          gridcolor="#ddd", zeroline=False)
         fig9.update_yaxes(title_text="NMDS2 (no units)", showgrid=True,
-                          gridcolor="#666", zeroline=False)
+                          gridcolor="#ddd", zeroline=False)
         fig9.update_layout(
-            plot_bgcolor="#4a4a4a", paper_bgcolor="#333333", height=800
+            plot_bgcolor="white", paper_bgcolor="white", height=800
         )
         sel9 = st.plotly_chart(fig9, width='stretch', on_select="rerun", key="nmds_plot9")
 
@@ -2255,22 +2255,22 @@ with tab10:
             color="card_type",
             color_discrete_map=color_map10,
             category_orders={"card_type": list(color_map10.keys())},
-            template="plotly_dark",
+            template="plotly_white",
         )
         fig10.update_traces(
             mode="markers+text",
             textposition="top center",
-            textfont=dict(size=9, color="rgba(255,255,255,0.75)"),
-            marker=dict(size=7, line=dict(width=0)),
+            textfont=dict(size=9, color="rgba(0,0,0,0.65)"),
+            marker=dict(size=7, line=dict(width=0.5, color="#444")),
         )
         fig10.update_xaxes(title_text="NMDS1 (no units)", showgrid=True,
-                           gridcolor="#666", zeroline=False)
+                           gridcolor="#ddd", zeroline=False)
         fig10.update_yaxes(title_text="NMDS2 (no units)", showgrid=True,
-                           gridcolor="#666", zeroline=False)
+                           gridcolor="#ddd", zeroline=False)
         fig10.update_layout(
             title="Card WA Scores in NMDS Space",
-            plot_bgcolor="#4a4a4a",
-            paper_bgcolor="#333333",
+            plot_bgcolor="white",
+            paper_bgcolor="white",
             legend_title_text="Card Type",
             legend=dict(font=dict(size=11), itemsizing="constant"),
             height=1000,

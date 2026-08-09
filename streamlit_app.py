@@ -812,7 +812,16 @@ def render_decklist_html(
 # LOAD MAIN SHEET
 # ─────────────────────────────────────────
 
-with st.spinner("Processing main deck sheet…"):
+@st.cache_resource(show_spinner="Processing main deck sheet…")
+def _load_main_sheet():
+    """Load and preprocess the deck sheet ONCE, shared across all sessions.
+
+    cache_resource (not cache_data) so every session reads the same frames
+    instead of receiving its own multi-hundred-MB copy — the dataset outgrew
+    Streamlit Cloud's memory limit when each viewer loaded it separately.
+    Card counts are downcast to int16 to halve the footprint. The returned
+    frames are treated as read-only everywhere (tabs copy before mutating).
+    """
     amulet_df = pd.read_csv("merged_amulet.csv", encoding="utf-8", encoding_errors="replace")
 
     amulet_df = amulet_df.drop_duplicates(keep="first")
@@ -822,12 +831,16 @@ with st.spinner("Processing main deck sheet…"):
     _all_meta = ["row_number", "Name", "Place", "Event", "current_era", "Event_Type", "Date",
                  "NMDS1", "NMDS2", "Maindeck_Total", "Sideboard_Total"]
     meta_cols = [c for c in _all_meta if c in amulet_df.columns]
-    card_cols  = [c for c in amulet_df.columns if c not in meta_cols]
+    card_cols = [c for c in amulet_df.columns if c not in meta_cols]
 
-    for col in card_cols:
-        amulet_df[col] = pd.to_numeric(amulet_df[col], errors="coerce").fillna(0).astype(int)
+    amulet_df[card_cols] = (
+        amulet_df[card_cols]
+        .apply(pd.to_numeric, errors="coerce")
+        .fillna(0)
+        .astype("int16")
+    )
     if "Place" in amulet_df.columns:
-        amulet_df["Place"] = pd.to_numeric(amulet_df["Place"], errors="coerce").fillna(0).astype(int)
+        amulet_df["Place"] = pd.to_numeric(amulet_df["Place"], errors="coerce").fillna(0).astype("int16")
     if "Date" in amulet_df.columns:
         amulet_df["Date"] = pd.to_datetime(amulet_df["Date"], errors="coerce").dt.strftime("%m-%d-%Y")
 
@@ -849,6 +862,10 @@ with st.spinner("Processing main deck sheet…"):
          amulet_int.reset_index(drop=True)],
         axis=1
     )
+    return amulet_df, amulet_env, amulet_int, amulet_comb
+
+
+amulet_df, amulet_env, amulet_int, amulet_comb = _load_main_sheet()
 
 _date_min = pd.to_datetime(amulet_env["Date"], errors="coerce").min()
 _date_max = pd.to_datetime(amulet_env["Date"], errors="coerce").max()

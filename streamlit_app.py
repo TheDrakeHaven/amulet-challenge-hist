@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -814,8 +815,8 @@ def render_decklist_html(
 # LOAD MAIN SHEET
 # ─────────────────────────────────────────
 
-@st.cache_resource(show_spinner="Processing main deck sheet…")
-def _load_main_sheet():
+@st.cache_resource(show_spinner="Processing main deck sheet…", max_entries=1)
+def _load_main_sheet(_csv_mtime):
     """Load and preprocess the deck sheet ONCE, shared across all sessions.
 
     cache_resource (not cache_data) so every session reads the same frames
@@ -867,7 +868,10 @@ def _load_main_sheet():
     return amulet_df, amulet_env, amulet_int, amulet_comb
 
 
-amulet_df, amulet_env, amulet_int, amulet_comb = _load_main_sheet()
+# Cache key includes the CSV's mtime so data-only updates reload the
+# frames; max_entries=1 evicts the previous dataset from memory.
+amulet_df, amulet_env, amulet_int, amulet_comb = _load_main_sheet(
+    os.path.getmtime("merged_amulet.csv"))
 
 _date_min = pd.to_datetime(amulet_env["Date"], errors="coerce").min()
 _date_max = pd.to_datetime(amulet_env["Date"], errors="coerce").max()

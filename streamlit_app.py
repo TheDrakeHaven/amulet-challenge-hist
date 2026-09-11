@@ -816,7 +816,7 @@ def render_decklist_html(
 # ─────────────────────────────────────────
 
 @st.cache_resource(show_spinner="Processing main deck sheet…", max_entries=1)
-def _load_main_sheet(_csv_mtime):
+def _load_main_sheet(csv_mtime):
     """Load and preprocess the deck sheet ONCE, shared across all sessions.
 
     cache_resource (not cache_data) so every session reads the same frames
@@ -869,7 +869,8 @@ def _load_main_sheet(_csv_mtime):
 
 
 # Cache key includes the CSV's mtime so data-only updates reload the
-# frames; max_entries=1 evicts the previous dataset from memory.
+# frames; max_entries=1 evicts the previous dataset from memory. The
+# parameter must NOT start with "_" — Streamlit skips hashing those.
 amulet_df, amulet_env, amulet_int, amulet_comb = _load_main_sheet(
     os.path.getmtime("merged_amulet.csv"))
 
@@ -1037,6 +1038,71 @@ with tab2:
                         xanchor="right", x=1),
         )
         st.plotly_chart(fig_src_hist, width='stretch')
+
+        # ── Monthly bouncelands: average per deck, stacked by land ────────
+        st.markdown("**Average Bouncelands per Deck by Month**")
+        _bounce_colors = {
+            "Simic Growth Chamber": "#17becf",
+            "Gruul Turf":           "#d62728",
+            "Selesnya Sanctuary":   "#2ca02c",
+            "Golgari Rot Farm":     "#8c564b",
+            "Boros Garrison":       "#ff7f0e",
+            "Other bouncelands":    "#7f7f7f",
+        }
+        # Karoos that only show up a handful of times are pooled into "Other".
+        _bounce_other = ["Azorius Chancery", "Dimir Aqueduct", "Izzet Boilerworks",
+                         "Orzhov Basilica", "Rakdos Carnarium"]
+        _bl = pd.DataFrame({
+            land: amulet_comb[land] for land in _bounce_colors
+            if land in amulet_comb.columns
+        })
+        _bl["Other bouncelands"] = amulet_comb[
+            [c for c in _bounce_other if c in amulet_comb.columns]
+        ].sum(axis=1)
+        _bl_lands = [c for c in _bounce_colors if c in _bl.columns]
+        _bl["Month"] = (
+            pd.to_datetime(amulet_comb["Date"], format="%m-%d-%Y", errors="coerce")
+            .dt.to_period("M").dt.to_timestamp()
+        )
+        _bl_grp   = _bl.dropna(subset=["Month"]).groupby("Month")
+        _bl_avg   = _bl_grp[_bl_lands].mean()
+        _bl_decks = _bl_grp.size()
+        # Reindex to every calendar month so months with no decks (e.g. the
+        # post-Bloom-ban gap in 2016) break the total line instead of bridging it.
+        _bl_months = pd.date_range(_bl_avg.index.min(), _bl_avg.index.max(), freq="MS")
+        _bl_avg    = _bl_avg.reindex(_bl_months)
+        _bl_decks  = _bl_decks.reindex(_bl_months, fill_value=0)
+
+        fig_bounce = go.Figure()
+        for land in _bl_lands:
+            if not _bl_avg[land].any():
+                continue
+            fig_bounce.add_trace(go.Bar(
+                x=_bl_avg.index, y=_bl_avg[land], name=land,
+                marker_color=_bounce_colors[land],
+                hovertemplate=f"{land}: %{{y:.2f}}<extra></extra>",
+            ))
+        fig_bounce.add_trace(go.Scatter(
+            x=_bl_avg.index, y=_bl_avg.sum(axis=1, min_count=1), name="Total per deck",
+            mode="lines", line=dict(color="#9467bd", width=2),
+            customdata=_bl_decks.values,
+            hovertemplate="Total: %{y:.2f} (%{customdata} decks)<extra></extra>",
+        ))
+        fig_bounce.update_layout(
+            title="Average Bouncelands per Deck by Month (Maindeck)",
+            template="plotly_white", barmode="stack", bargap=0.1,
+            hovermode="x unified", height=500,
+            yaxis_title="Avg copies per deck", xaxis_title=None,
+            xaxis=dict(hoverformat="%b %Y"),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02,
+                        xanchor="right", x=1, traceorder="normal"),
+        )
+        st.plotly_chart(fig_bounce, width='stretch')
+        st.caption(
+            f"All-time average: {_bl[_bl_lands].sum(axis=1).mean():.2f} "
+            "bouncelands per deck. Months with few decks are noisy; hover "
+            "to see each month's deck count."
+        )
 
     with subtab_totals:
         st.subheader("Total Maindeck Card Copies")

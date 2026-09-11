@@ -1044,9 +1044,9 @@ with tab2:
         _bounce_colors = {
             "Simic Growth Chamber": "#17becf",
             "Gruul Turf":           "#d62728",
-            "Selesnya Sanctuary":   "#2ca02c",
+            "Selesnya Sanctuary":   "#f3e5ab",
             "Golgari Rot Farm":     "#8c564b",
-            "Boros Garrison":       "#ff7f0e",
+            "Boros Garrison":       "#e377c2",
             "Other bouncelands":    "#7f7f7f",
         }
         # Karoos that only show up a handful of times are pooled into "Other".

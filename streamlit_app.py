@@ -1294,7 +1294,8 @@ with tab4:
         "Card inclusion is measured across the whole 75. This is so that"
         "players maindeck and others sideboard (e.g. Ghost Quarter) is assigned "
         "only to its majority zone rather than being double-counted in both. "
-        "Copy counts use the mode among decks that actually play the card. "
+        "Each slot goes to the most widely played card-copy: a card's 3rd copy only "
+        "makes the list if more decks run 3+ copies than run the next-best card at all. "
         "Below the prediction, the **most representative real deck** (era medoid) "
         "shows the actual decklist closest to every other deck in the era."
     )
@@ -1310,78 +1311,65 @@ with tab4:
     md_cols = [c for c in all_card_cols if not c.startswith("sb_")]
     sb_cols_t4 = [c for c in all_card_cols if c.startswith("sb_")]
 
-    def _fill_slots(era_rows, candidates, target):
-        """Greedy-fill `target` slots from {col: (rank_inclusion, copies)},
-        highest inclusion first, then bump counts toward the next most common
-        higher count (rarest current counts first), capped at 4 copies."""
-        result = {}
-        slots_remaining = target
-        for card, (_incl, copies) in sorted(candidates.items(),
-                                            key=lambda kv: -kv[1][0]):
-            if slots_remaining <= 0:
-                break
-            copies = max(1, min(int(copies), slots_remaining))
-            result[card] = copies
-            slots_remaining -= copies
+    def _fill_slots(candidates, target):
+        """Fill `target` slots one card-copy at a time.
 
-        if slots_remaining > 0 and result:
-            changed = True
-            while slots_remaining > 0 and changed:
-                changed = False
-                def count_frequency(card):
-                    return (era_rows[card] == result[card]).sum()
-                eligible = [c for c in result if result[c] < 4]
-                if not eligible:
+        `candidates` maps each card to its per-deck copy counts in this zone.
+        The k-th copy of a card is worth the share of the era's decks running
+        at least k copies, and slots go to the most widely run copies first.
+        A card's count only rises when more decks run that many copies than
+        run the next-best card at all, and no card is cut short to squeeze
+        into the last slots. Taking the top copies this way maximises the
+        average number of cards the list shares with the era's real decks.
+        """
+        basics = {"forest", "island", "mountain", "plains", "swamp", "wastes",
+                  "snow-covered forest", "snow-covered island", "snow-covered mountain",
+                  "snow-covered plains", "snow-covered swamp"}
+        copies = []
+        for card, counts in candidates.items():
+            name = card[3:] if card.startswith("sb_") else card
+            cap = target if name.lower() in basics else 4
+            incl = float((counts >= 1).mean())
+            for k in range(1, cap + 1):
+                share = float((counts >= k).mean())
+                if share <= 0:
                     break
-                for card in sorted(eligible, key=count_frequency):
-                    if slots_remaining <= 0:
-                        break
-                    current = result[card]
-                    higher_counts = era_rows[card][era_rows[card] > current]
-                    if higher_counts.empty:
-                        continue
-                    next_count = int(higher_counts.mode().iloc[0])
-                    next_count = min(next_count, current + slots_remaining, 4)
-                    if next_count > current:
-                        slots_remaining -= (next_count - current)
-                        result[card] = next_count
-                        changed = True
+                copies.append((share, incl, card, k))
+        # Ties: more widely played card first, then name, then lower copy
+        # number, so each card's chosen copies are always 1..n.
+        copies.sort(key=lambda t: (-t[0], -t[1], t[2], t[3]))
+        result = {}
+        for _share, _incl, card, k in copies[:target]:
+            result[card] = max(result.get(card, 0), k)
+        return pd.Series(result, dtype="int64").sort_values(ascending=False)
 
-        return pd.Series(result).sort_values(ascending=False)
-
-    def predict_decklists_joint(era_rows, md_cols, sb_cols,
-                                md_target=60, sb_target=15,
-                                md_min=0.51, sb_min=0.30):
+    def predict_decklists_joint(era_rows, md_cols, sb_cols, md_target=60, sb_target=15):
         """
         Predict maindeck and sideboard TOGETHER so flex cards aren't
         double-counted across zones.
 
-        For each card, inclusion is measured over the whole 75: the share of
-        decks playing it in EITHER zone. A card is then assigned only to its
-        majority zone — it may appear in both zones only when the majority of
-        the decks that play it run copies in both zones simultaneously
-        (e.g. 2 Boseiju main + 1 side), which marginal per-zone inclusion
-        cannot distinguish from a main-or-side flex slot (e.g. Ghost Quarter).
-        Copy counts are the mode among decks that play the card in that zone.
+        Each card is assigned to its majority zone. It may take slots in both
+        zones only when most of the decks that play it run copies in both at
+        once (e.g. 2 Boseiju main + 1 side), which per-zone counts can't tell
+        apart from a main-or-side flex slot (e.g. Ghost Quarter). A flex card
+        is judged on its copies across the whole 75, so splitting it between
+        zones doesn't hide how widely it is played. Slots are then filled by
+        _fill_slots.
         """
-        n = len(era_rows)
-        if n == 0:
+        if len(era_rows) == 0:
             return pd.Series(dtype=float), pd.Series(dtype=float)
 
         md_set, sb_set = set(md_cols), set(sb_cols)
         bases = {c for c in md_cols} | {c[3:] for c in sb_cols}
-
-        def cond_mode(col, mask):
-            vals = era_rows.loc[mask, col]
-            vals = vals[vals > 0]
-            return int(vals.mode().iloc[0]) if not vals.empty else 1
+        zeros = pd.Series(0, index=era_rows.index)
 
         md_cand, sb_cand = {}, {}
         for base in bases:
             mc = base if base in md_set else None
             sc = ("sb_" + base) if ("sb_" + base) in sb_set else None
-            m_in = (era_rows[mc] > 0) if mc else pd.Series(False, index=era_rows.index)
-            s_in = (era_rows[sc] > 0) if sc else pd.Series(False, index=era_rows.index)
+            m_cnt = era_rows[mc] if mc else zeros
+            s_cnt = era_rows[sc] if sc else zeros
+            m_in, s_in = m_cnt > 0, s_cnt > 0
             n_m, n_s = int(m_in.sum()), int(s_in.sum())
             n_both = int((m_in & s_in).sum())
             n_any = n_m + n_s - n_both
@@ -1389,23 +1377,17 @@ with tab4:
                 continue
 
             if mc and sc and n_both / n_any > 0.5:
-                # Genuinely played in both zones at once — allow both,
-                # each judged on its own zone inclusion.
-                if n_m / n >= md_min:
-                    md_cand[mc] = (n_m / n, cond_mode(mc, m_in))
-                if n_s / n >= sb_min:
-                    sb_cand[sc] = (n_s / n, cond_mode(sc, s_in))
+                # Genuinely played in both zones at once: each zone uses its
+                # own copy counts.
+                md_cand[mc] = m_cnt
+                sb_cand[sc] = s_cnt
             elif n_m >= n_s and mc:
-                # Majority-maindeck flex card: full 75-wide inclusion,
-                # maindeck slot only.
-                if n_any / n >= md_min:
-                    md_cand[mc] = (n_any / n, cond_mode(mc, m_in))
+                md_cand[mc] = m_cnt + s_cnt
             elif sc:
-                if n_any / n >= sb_min:
-                    sb_cand[sc] = (n_any / n, cond_mode(sc, s_in))
+                sb_cand[sc] = m_cnt + s_cnt
 
-        return (_fill_slots(era_rows, md_cand, md_target),
-                _fill_slots(era_rows, sb_cand, sb_target))
+        return (_fill_slots(md_cand, md_target),
+                _fill_slots(sb_cand, sb_target))
 
     md_scaled, sb_scaled = predict_decklists_joint(era_rows_t4, md_cols, sb_cols_t4)
 

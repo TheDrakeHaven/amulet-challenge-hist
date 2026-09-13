@@ -1181,8 +1181,8 @@ with tab2:
                 "archetype pages when no Full page survives) showing Goldfish's rolling share of all "
                 "tracked paper and MTGO decks (recent pages state a 30-day window; 2013–14 pages were MTGO only). "
                 "Dotted lines mark the ban and release dates used for the eras above. "
-                "Few snapshots survive from Aug 2016 to Apr 2018. Months with no snapshot that were "
-                "found elsewhere are marked \"entered manually\" (goldfish_meta_share_manual.csv)."
+                "Few snapshots survive from Aug 2016 to Apr 2018. Some months with no snapshot were "
+                "filled in from other sources, named in the hover text (goldfish_meta_share_manual.csv)."
             )
             with st.expander("Yearly averages"):
                 _gf_by_year = _gf_valid.groupby(_gf_valid["Month"].dt.year)

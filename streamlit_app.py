@@ -1129,14 +1129,14 @@ with tab2:
                 x=_gf_share.index, y=_gf_share["meta_pct"], name="Meta share",
                 mode="lines+markers", line=dict(color="#1f77b4", width=2), marker=dict(size=5),
                 customdata=_gf_share[["low", "high", "snapshots_used", "basis"]].to_numpy(dtype=object),
-                hovertemplate=("Meta share: %{y:.2f}% (range %{customdata[0]:.1f}–%{customdata[1]:.1f}%, "
-                               "%{customdata[2]:.0f} snapshot(s), %{customdata[3]})<extra></extra>"),
+                hovertemplate=("%{x|%b %Y}: %{y:.2f}% meta share<br>range %{customdata[0]:.1f}–%{customdata[1]:.1f}%, "
+                               "%{customdata[2]:.0f} snapshot(s), %{customdata[3]}<extra></extra>"),
             ))
             if not _gf_bound.empty:
                 fig_gf.add_trace(go.Scatter(
                     x=_gf_bound["Month"], y=_gf_bound["bound"], name="Not in listed decks (below ▽)",
                     mode="markers", marker=dict(symbol="triangle-down-open", size=9, color="#7f7f7f"),
-                    hovertemplate="Not in Goldfish's listed decks (under %{y:.1f}%)<extra></extra>",
+                    hovertemplate="%{x|%b %Y}: not in Goldfish's listed decks (under %{y:.1f}%)<extra></extra>",
                 ))
             fig_gf.add_trace(go.Scatter(
                 x=_gf_bans["date"], y=[0] * len(_gf_bans), name="Ban / release dates",
@@ -1144,9 +1144,11 @@ with tab2:
                 text=_gf_bans["event"].str.replace(r"^Pre-", "", regex=True),
                 hovertemplate="%{text} (%{x|%b %d, %Y})<extra></extra>",
             ))
+            # "closest", not "x unified": the traces sit on different months, and a unified
+            # tooltip would pair one month's title with a neighbouring month's share.
             fig_gf.update_layout(
                 title="Amulet Titan Meta Share on MTGGoldfish by Month (Modern)",
-                template="plotly_white", hovermode="x unified", height=500,
+                template="plotly_white", hovermode="closest", height=500,
                 yaxis=dict(title="Share of decks", rangemode="tozero", ticksuffix="%"),
                 xaxis=dict(title=None, hoverformat="%b %Y"),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02,

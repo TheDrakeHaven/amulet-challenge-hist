@@ -1112,12 +1112,29 @@ with tab2:
         else:
             _gf_start = pd.Timestamp("2013-09-01")
             _gf = pd.read_csv(_gf_path)
+            # Months found by hand (goldfish_meta_share_manual.csv) fill in or replace harvested months,
+            # so re-harvesting the Wayback data never overwrites them.
+            _gf_manual_path = "goldfish_meta_share_manual.csv"
+            if os.path.exists(_gf_manual_path):
+                _gf_manual = pd.read_csv(_gf_manual_path, dtype={"month": str})
+                _gf = pd.concat([
+                    _gf[~_gf["month"].isin(_gf_manual["month"])],
+                    pd.DataFrame({
+                        "month": _gf_manual["month"], "meta_pct": _gf_manual["meta_pct"],
+                        "low": _gf_manual["meta_pct"], "high": _gf_manual["meta_pct"],
+                        "basis": _gf_manual["note"].fillna("entered manually"),
+                    }),
+                ], ignore_index=True).sort_values("month")
             _gf["Month"] = pd.to_datetime(_gf["month"], format="%Y-%m")
             _gf = _gf[_gf["Month"] >= _gf_start]
             _gf_valid = _gf.dropna(subset=["meta_pct"])
             # Reindex to every calendar month so months without snapshots break the line.
             _gf_months = pd.date_range(_gf_start, _gf["Month"].max(), freq="MS")
             _gf_share = _gf_valid.set_index("Month").reindex(_gf_months)
+            _gf_share["detail"] = [
+                (f"range {lo:.1f}–{hi:.1f}%, {int(n)} snapshot(s), {basis}" if pd.notna(n) else str(basis))
+                for lo, hi, n, basis in _gf_share[["low", "high", "snapshots_used", "basis"]].itertuples(index=False)
+            ]
             # Months where Amulet wasn't among the decks Goldfish listed only give an upper bound.
             _gf_bound = _gf[_gf["meta_pct"].isna() & _gf["upper_bound"].notna()].copy()
             _gf_bound["bound"] = _gf_bound["upper_bound"].str.lstrip("<").astype(float)
@@ -1132,9 +1149,8 @@ with tab2:
             fig_gf.add_trace(go.Scatter(
                 x=_gf_share.index, y=_gf_share["meta_pct"], name="Meta share",
                 mode="lines+markers", line=dict(color="#1f77b4", width=2), marker=dict(size=5),
-                customdata=_gf_share[["low", "high", "snapshots_used", "basis"]].to_numpy(dtype=object),
-                hovertemplate=("%{x|%b %Y}: %{y:.2f}% meta share<br>range %{customdata[0]:.1f}–%{customdata[1]:.1f}%, "
-                               "%{customdata[2]:.0f} snapshot(s), %{customdata[3]}<extra></extra>"),
+                customdata=_gf_share["detail"],
+                hovertemplate="%{x|%b %Y}: %{y:.2f}% meta share<br>%{customdata}<extra></extra>",
             ))
             if not _gf_bound.empty:
                 fig_gf.add_trace(go.Scatter(
@@ -1165,7 +1181,8 @@ with tab2:
                 "archetype pages when no Full page survives) showing Goldfish's rolling share of all "
                 "tracked paper and MTGO decks (recent pages state a 30-day window; 2013–14 pages were MTGO only). "
                 "Dotted lines mark the ban and release dates used for the eras above. "
-                "Few snapshots survive from Aug 2016 to Apr 2018."
+                "Few snapshots survive from Aug 2016 to Apr 2018. Months with no snapshot that were "
+                "found elsewhere are marked \"entered manually\" (goldfish_meta_share_manual.csv)."
             )
             with st.expander("Yearly averages"):
                 _gf_by_year = _gf_valid.groupby(_gf_valid["Month"].dt.year)

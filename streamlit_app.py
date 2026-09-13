@@ -1110,11 +1110,13 @@ with tab2:
         if not os.path.exists(_gf_path):
             st.info(f"{_gf_path} not found; MTGGoldfish meta share chart skipped.")
         else:
+            _gf_start = pd.Timestamp("2013-09-01")
             _gf = pd.read_csv(_gf_path)
             _gf["Month"] = pd.to_datetime(_gf["month"], format="%Y-%m")
+            _gf = _gf[_gf["Month"] >= _gf_start]
             _gf_valid = _gf.dropna(subset=["meta_pct"])
             # Reindex to every calendar month so months without snapshots break the line.
-            _gf_months = pd.date_range(_gf["Month"].min(), _gf["Month"].max(), freq="MS")
+            _gf_months = pd.date_range(_gf_start, _gf["Month"].max(), freq="MS")
             _gf_share = _gf_valid.set_index("Month").reindex(_gf_months)
             # Months where Amulet wasn't among the decks Goldfish listed only give an upper bound.
             _gf_bound = _gf[_gf["meta_pct"].isna() & _gf["upper_bound"].notna()].copy()
@@ -1122,6 +1124,8 @@ with tab2:
             _gf_bans = ban_events[ban_events["date"].between(_gf_months.min(), _gf_months.max())]
 
             fig_gf = go.Figure()
+            # The first measured month is Nov 2013; pin the axis so the chart opens at Sep 2013.
+            fig_gf.update_xaxes(range=[_gf_start, _gf_months.max() + pd.Timedelta(days=20)])
             for _d in _gf_bans["date"]:
                 fig_gf.add_shape(type="line", x0=_d, x1=_d, yref="paper", y0=0, y1=1,
                                  line=dict(color="#c7c7c7", width=1, dash="dot"), layer="below")

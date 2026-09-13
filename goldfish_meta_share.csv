@@ -4,8 +4,8 @@ month,meta_pct,low,high,upper_bound,snapshots_used,basis,names
 2013-05,,,,<2.07,0,not in listed decks,
 2013-07,,,,<2.03,0,not in listed decks,
 2013-11,1.81,1.81,1.81,,1,metagame page,Amulet of Vigor Ramp
-2014-02,2.12,2.1,2.15,,3,metagame page,Amulet of Vigor
-2014-03,2.0,1.45,2.48,,3,metagame page,Amulet of Vigor
+2014-02,2.13,2.1,2.15,,4,metagame page,Amulet of Vigor
+2014-03,2.01,1.45,2.48,,4,metagame page,Amulet of Vigor
 2014-04,2.45,2.34,2.65,,3,metagame page,Amulet of Vigor
 2014-05,1.43,1.43,1.43,,1,metagame page,Amulet of Vigor
 2014-07,1.78,1.78,1.78,,1,metagame page,Amulet of Vigor
@@ -20,17 +20,16 @@ month,meta_pct,low,high,upper_bound,snapshots_used,basis,names
 2015-06,6.35,6.35,6.35,,1,archetype page,modern-bloom-titan
 2015-07,3.05,3.05,3.05,,1,archetype page,modern-amulet-bloom
 2015-08,1.97,0.64,2.69,,3,metagame page,Amulet Bloom
-2015-09,3.31,1.18,5.08,,4,metagame page,Amulet Bloom
-2015-10,6.22,3.74,7.36,,4,metagame page,Amulet Bloom
-2015-11,5.24,3.29,7.68,,4,metagame page,Amulet Bloom / Bloom Titan
+2015-09,3.49,1.18,5.93,,6,metagame page,Amulet Bloom
+2015-10,5.85,3.74,7.36,,5,metagame page,Amulet Bloom
+2015-11,5.57,3.29,7.68,,5,metagame page,Amulet Bloom / Bloom Titan
 2015-12,5.59,3.54,7.61,,4,metagame page,Amulet Bloom
 2016-01,4.08,3.82,4.34,,2,metagame page,Amulet Bloom
-2016-03,0.0,0.0,0.0,,4,metagame page,
-2016-04,0.0,0.0,0.0,,4,metagame page,
-2016-05,0.1,0.0,0.13,,4,metagame page,Amulet Combo
-2016-06,0.0,0.0,0.0,,4,metagame page,
-2016-07,0.0,0.0,0.0,,4,metagame page,
-2016-08,,,,<2.01,0,not in listed decks,
+2016-03,0.0,0.0,0.0,,8,metagame page,
+2016-04,0.02,0.0,0.14,,6,metagame page,Amulet Combo
+2016-05,0.08,0.0,0.13,,8,metagame page,Amulet Combo
+2016-06,0.0,0.0,0.0,,6,metagame page,
+2016-07,0.0,0.0,0.0,,8,metagame page,
 2017-06,,,,<2.03,0,not in listed decks,
 2017-10,,,,<2.04,0,not in listed decks,
 2017-11,,,,<2.12,0,not in listed decks,
@@ -73,7 +72,7 @@ month,meta_pct,low,high,upper_bound,snapshots_used,basis,names
 2022-08,4.6,4.4,4.8,,2,metagame page,Amulet Titan
 2022-10,4.2,4.2,4.2,,1,metagame page,Amulet Titan
 2022-11,4.9,4.2,5.6,,3,metagame page,Amulet Titan
-2022-12,3.54,3.2,4.2,,5,metagame page,Amulet Titan
+2022-12,3.48,3.2,4.2,,9,metagame page,Amulet Titan
 2023-01,3.86,3.3,4.6,,5,metagame page,Amulet Titan
 2023-02,3.98,3.1,4.7,,4,metagame page,Amulet Titan
 2023-03,4.26,4.0,4.5,,5,metagame page,Amulet Titan
@@ -96,14 +95,14 @@ month,meta_pct,low,high,upper_bound,snapshots_used,basis,names
 2024-09,3.58,3.2,3.8,,6,metagame page,Amulet Titan
 2024-10,3.4,3.4,3.4,,1,metagame page,Amulet Titan
 2024-11,2.84,2.4,3.6,,5,metagame page,Amulet Titan
-2024-12,3.28,2.5,3.7,,4,metagame page,Amulet Titan
+2024-12,3.1,1.9,3.7,,8,metagame page,Amulet Titan
 2025-01,3.82,3.4,4.3,,6,metagame page,Amulet Titan
 2025-02,4.6,4.4,4.8,,2,metagame page,Amulet Titan
 2025-03,6.58,5.3,7.0,,5,metagame page,Amulet Titan
 2025-04,6.6,5.4,7.5,,4,metagame page,Amulet Titan
 2025-05,5.6,5.4,5.9,,3,metagame page,Amulet Titan
 2025-06,6.65,6.5,6.8,,2,metagame page,Amulet Titan
-2025-07,5.77,5.2,6.7,,7,metagame page,Amulet Titan
+2025-07,5.53,5.2,6.7,,12,metagame page,Amulet Titan
 2025-08,5.33,5.0,5.6,,3,metagame page,Amulet Titan
 2025-09,4.75,4.2,5.3,,2,metagame page,Amulet Titan
 2025-10,4.7,4.4,4.9,,3,metagame page,Amulet Titan

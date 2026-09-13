@@ -1157,8 +1157,9 @@ with tab2:
             st.plotly_chart(fig_gf, width='stretch')
             st.caption(
                 "Source: MTGGoldfish's Modern metagame pages as archived by the Wayback Machine. "
-                "Each month averages up to four snapshots of Goldfish's rolling share of all tracked "
-                "paper and MTGO decks (recent pages state a 30-day window; 2013–14 pages were MTGO only). "
+                "Each month averages every archived Full metagame page (plus Top Decks pages and early "
+                "archetype pages when no Full page survives) showing Goldfish's rolling share of all "
+                "tracked paper and MTGO decks (recent pages state a 30-day window; 2013–14 pages were MTGO only). "
                 "Dotted lines mark the ban and release dates used for the eras above. "
                 "Few snapshots survive from Aug 2016 to Apr 2018."
             )

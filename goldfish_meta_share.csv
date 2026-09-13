@@ -1,0 +1,120 @@
+month,meta_pct,low,high,upper_bound,snapshots_used,basis,names
+2013-01,,,,<1.92,0,not in listed decks,
+2013-02,,,,<2.23,0,not in listed decks,
+2013-05,,,,<2.07,0,not in listed decks,
+2013-07,,,,<2.03,0,not in listed decks,
+2013-11,1.81,1.81,1.81,,1,metagame page,Amulet of Vigor Ramp
+2014-02,2.12,2.1,2.15,,3,metagame page,Amulet of Vigor
+2014-03,2.0,1.45,2.48,,3,metagame page,Amulet of Vigor
+2014-04,2.45,2.34,2.65,,3,metagame page,Amulet of Vigor
+2014-05,1.43,1.43,1.43,,1,metagame page,Amulet of Vigor
+2014-07,1.78,1.78,1.78,,1,metagame page,Amulet of Vigor
+2014-10,2.92,2.92,2.92,,1,metagame page,Amulet of Vigor
+2014-11,2.62,2.37,2.87,,2,metagame page,Amulet of Vigor
+2014-12,3.38,2.53,3.91,,3,metagame page,Amulet of Vigor
+2015-01,2.19,2.19,2.19,,1,metagame page,Amulet of Vigor
+2015-02,3.41,2.38,4.22,,3,metagame page,Amulet of Vigor
+2015-03,2.87,2.28,3.81,,3,metagame page,Bloom Titan
+2015-04,3.74,3.74,3.74,,2,metagame page,Bloom Titan
+2015-05,3.94,3.94,3.94,,1,metagame page,Bloom Titan
+2015-06,6.35,6.35,6.35,,1,archetype page,modern-bloom-titan
+2015-07,3.05,3.05,3.05,,1,archetype page,modern-amulet-bloom
+2015-08,1.97,0.64,2.69,,3,metagame page,Amulet Bloom
+2015-09,3.31,1.18,5.08,,4,metagame page,Amulet Bloom
+2015-10,6.22,3.74,7.36,,4,metagame page,Amulet Bloom
+2015-11,5.24,3.29,7.68,,4,metagame page,Amulet Bloom / Bloom Titan
+2015-12,5.59,3.54,7.61,,4,metagame page,Amulet Bloom
+2016-01,4.08,3.82,4.34,,2,metagame page,Amulet Bloom
+2016-03,0.0,0.0,0.0,,4,metagame page,
+2016-04,0.0,0.0,0.0,,4,metagame page,
+2016-05,0.1,0.0,0.13,,4,metagame page,Amulet Combo
+2016-06,0.0,0.0,0.0,,4,metagame page,
+2016-07,0.0,0.0,0.0,,4,metagame page,
+2016-08,,,,<2.01,0,not in listed decks,
+2017-06,,,,<2.03,0,not in listed decks,
+2017-10,,,,<2.04,0,not in listed decks,
+2017-11,,,,<2.12,0,not in listed decks,
+2018-05,1.43,1.43,1.43,,1,metagame page,Amulet Titan
+2018-06,,,,<2.14,0,not in listed decks,
+2018-09,,,,<2.3,0,not in listed decks,
+2018-10,2.22,1.99,2.59,,3,metagame page,Amulet Titan / Amulet Titan + Amulet Titan
+2018-11,1.91,1.91,1.91,,1,metagame page,Amulet Titan
+2018-12,2.04,2.03,2.05,,2,metagame page,Amulet Titan
+2019-02,3.87,3.87,3.87,,1,metagame page,Amulet Titan + Amulet Titan + Amulet Titan
+2019-03,3.28,3.28,3.28,,1,metagame page,Amulet Titan
+2019-04,4.03,4.03,4.03,,1,metagame page,Amulet Titan
+2019-05,3.63,3.63,3.63,,1,metagame page,Amulet Titan
+2019-08,1.4,1.4,1.4,,2,archetype page,modern-amulet-titan-88330 / modern-amulet-titan-88661
+2019-09,2.11,2.11,2.11,,1,metagame page,Amulet Titan
+2019-10,4.29,4.19,4.39,,2,metagame page,Amulet Titan
+2019-11,5.95,5.95,5.95,,1,metagame page,Amulet Titan
+2019-12,3.1,3.1,3.1,,1,metagame page,Amulet Titan + Amulet Titan
+2020-02,4.85,4.85,4.85,,1,metagame page,Amulet Titan
+2020-04,3.44,3.36,3.53,,2,metagame page,Amulet Titan
+2020-06,2.88,2.88,2.88,,1,metagame page,Amulet Titan
+2020-08,1.58,1.58,1.58,,1,metagame page,Amulet Titan
+2020-09,2.13,2.13,2.13,,1,metagame page,Amulet Titan
+2020-11,3.47,3.2,3.9,,3,metagame page,Amulet Titan
+2020-12,2.5,2.5,2.5,,1,metagame page,Amulet Titan
+2021-02,2.4,2.4,2.4,,1,metagame page,Amulet Titan
+2021-06,4.4,4.4,4.4,,1,metagame page,Amulet Titan
+2021-07,3.4,2.9,3.9,,2,metagame page,Amulet Titan
+2021-08,1.9,1.8,2.0,,2,metagame page,Amulet Titan
+2021-09,1.6,1.6,1.6,,1,metagame page,Amulet Titan
+2021-10,1.9,1.8,2.0,,3,metagame page,Amulet Titan
+2021-11,3.17,2.4,4.6,,3,metagame page,Amulet Titan
+2021-12,5.3,5.2,5.4,,2,metagame page,Amulet Titan
+2022-01,3.6,3.6,3.6,,1,metagame page,Amulet Titan
+2022-02,4.1,4.1,4.1,,1,metagame page,Amulet Titan
+2022-03,8.5,8.5,8.5,,1,metagame page,Amulet Titan
+2022-04,5.75,5.7,5.8,,2,metagame page,Amulet Titan
+2022-05,5.9,5.9,5.9,,1,metagame page,Amulet Titan
+2022-06,4.85,4.8,4.9,,2,metagame page,Amulet Titan
+2022-08,4.6,4.4,4.8,,2,metagame page,Amulet Titan
+2022-10,4.2,4.2,4.2,,1,metagame page,Amulet Titan
+2022-11,4.9,4.2,5.6,,3,metagame page,Amulet Titan
+2022-12,3.54,3.2,4.2,,5,metagame page,Amulet Titan
+2023-01,3.86,3.3,4.6,,5,metagame page,Amulet Titan
+2023-02,3.98,3.1,4.7,,4,metagame page,Amulet Titan
+2023-03,4.26,4.0,4.5,,5,metagame page,Amulet Titan
+2023-04,3.6,3.4,4.0,,4,metagame page,Amulet Titan
+2023-05,3.38,2.6,4.3,,5,metagame page,Amulet Titan
+2023-06,1.67,1.6,1.7,,3,metagame page,Amulet Titan
+2023-07,3.12,2.7,3.4,,4,metagame page,Amulet Titan
+2023-08,3.26,3.0,3.5,,5,metagame page,Amulet Titan
+2023-09,4.64,4.1,5.0,,5,metagame page,Amulet Titan
+2023-10,5.37,4.5,6.0,,3,metagame page,Amulet Titan
+2023-11,5.17,4.8,5.5,,4,metagame page,Amulet Titan
+2023-12,7.9,5.3,10.5,,4,metagame page,Amulet Titan
+2024-01,7.4,7.2,7.5,,4,metagame page,Amulet Titan
+2024-02,6.7,6.7,6.7,,1,metagame page,Amulet Titan
+2024-04,7.23,7.0,7.6,,3,metagame page,Amulet Titan
+2024-05,7.4,7.3,7.5,,3,metagame page,Amulet Titan
+2024-06,7.33,7.2,7.4,,3,metagame page,Amulet Titan
+2024-07,2.73,2.2,3.0,,3,metagame page,Amulet Titan
+2024-08,1.57,1.4,1.8,,4,metagame page,Amulet Titan
+2024-09,3.58,3.2,3.8,,6,metagame page,Amulet Titan
+2024-10,3.4,3.4,3.4,,1,metagame page,Amulet Titan
+2024-11,2.84,2.4,3.6,,5,metagame page,Amulet Titan
+2024-12,3.28,2.5,3.7,,4,metagame page,Amulet Titan
+2025-01,3.82,3.4,4.3,,6,metagame page,Amulet Titan
+2025-02,4.6,4.4,4.8,,2,metagame page,Amulet Titan
+2025-03,6.58,5.3,7.0,,5,metagame page,Amulet Titan
+2025-04,6.6,5.4,7.5,,4,metagame page,Amulet Titan
+2025-05,5.6,5.4,5.9,,3,metagame page,Amulet Titan
+2025-06,6.65,6.5,6.8,,2,metagame page,Amulet Titan
+2025-07,5.77,5.2,6.7,,7,metagame page,Amulet Titan
+2025-08,5.33,5.0,5.6,,3,metagame page,Amulet Titan
+2025-09,4.75,4.2,5.3,,2,metagame page,Amulet Titan
+2025-10,4.7,4.4,4.9,,3,metagame page,Amulet Titan
+2025-11,8.5,7.1,9.2,,3,metagame page,Amulet Titan
+2025-12,9.3,9.3,9.3,,1,metagame page,Amulet Titan
+2026-01,4.3,3.2,5.3,,3,metagame page,Amulet Titan
+2026-02,3.44,3.3,3.7,,5,metagame page,Amulet Titan
+2026-03,3.62,3.4,3.9,,4,metagame page,Amulet Titan
+2026-04,5.2,5.1,5.3,,3,metagame page,Amulet Titan
+2026-05,5.3,5.3,5.3,,1,metagame page,Amulet Titan
+2026-06,2.27,1.6,3.2,,3,metagame page,Amulet Titan
+2026-07,4.1,4.1,4.1,,1,metagame page,Amulet Titan
+2026-08,2.95,2.3,3.6,,2,metagame page,Amulet Titan
+2026-09,,,,<2.6,0,not in listed decks,

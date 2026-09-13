@@ -1104,6 +1104,71 @@ with tab2:
             "to see each month's deck count."
         )
 
+        # ── MTGGoldfish meta share by month (Wayback Machine snapshots) ───
+        st.markdown("**Amulet Titan Meta Share on MTGGoldfish by Month**")
+        _gf_path = "goldfish_meta_share.csv"
+        if not os.path.exists(_gf_path):
+            st.info(f"{_gf_path} not found; MTGGoldfish meta share chart skipped.")
+        else:
+            _gf = pd.read_csv(_gf_path)
+            _gf["Month"] = pd.to_datetime(_gf["month"], format="%Y-%m")
+            _gf_valid = _gf.dropna(subset=["meta_pct"])
+            # Reindex to every calendar month so months without snapshots break the line.
+            _gf_months = pd.date_range(_gf["Month"].min(), _gf["Month"].max(), freq="MS")
+            _gf_share = _gf_valid.set_index("Month").reindex(_gf_months)
+            # Months where Amulet wasn't among the decks Goldfish listed only give an upper bound.
+            _gf_bound = _gf[_gf["meta_pct"].isna() & _gf["upper_bound"].notna()].copy()
+            _gf_bound["bound"] = _gf_bound["upper_bound"].str.lstrip("<").astype(float)
+            _gf_bans = ban_events[ban_events["date"].between(_gf_months.min(), _gf_months.max())]
+
+            fig_gf = go.Figure()
+            for _d in _gf_bans["date"]:
+                fig_gf.add_shape(type="line", x0=_d, x1=_d, yref="paper", y0=0, y1=1,
+                                 line=dict(color="#c7c7c7", width=1, dash="dot"), layer="below")
+            fig_gf.add_trace(go.Scatter(
+                x=_gf_share.index, y=_gf_share["meta_pct"], name="Meta share",
+                mode="lines+markers", line=dict(color="#1f77b4", width=2), marker=dict(size=5),
+                customdata=_gf_share[["low", "high", "snapshots_used", "basis"]].to_numpy(dtype=object),
+                hovertemplate=("Meta share: %{y:.2f}% (range %{customdata[0]:.1f}–%{customdata[1]:.1f}%, "
+                               "%{customdata[2]:.0f} snapshot(s), %{customdata[3]})<extra></extra>"),
+            ))
+            if not _gf_bound.empty:
+                fig_gf.add_trace(go.Scatter(
+                    x=_gf_bound["Month"], y=_gf_bound["bound"], name="Not in listed decks (below ▽)",
+                    mode="markers", marker=dict(symbol="triangle-down-open", size=9, color="#7f7f7f"),
+                    hovertemplate="Not in Goldfish's listed decks (under %{y:.1f}%)<extra></extra>",
+                ))
+            fig_gf.add_trace(go.Scatter(
+                x=_gf_bans["date"], y=[0] * len(_gf_bans), name="Ban / release dates",
+                mode="markers", marker=dict(symbol="line-ns-open", size=12, color="#999999"),
+                text=_gf_bans["event"].str.replace(r"^Pre-", "", regex=True),
+                hovertemplate="%{text} (%{x|%b %d, %Y})<extra></extra>",
+            ))
+            fig_gf.update_layout(
+                title="Amulet Titan Meta Share on MTGGoldfish by Month (Modern)",
+                template="plotly_white", hovermode="x unified", height=500,
+                yaxis=dict(title="Share of decks", rangemode="tozero", ticksuffix="%"),
+                xaxis=dict(title=None, hoverformat="%b %Y"),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02,
+                            xanchor="right", x=1),
+            )
+            st.plotly_chart(fig_gf, width='stretch')
+            st.caption(
+                "Source: MTGGoldfish's Modern metagame pages as archived by the Wayback Machine. "
+                "Each month averages up to four snapshots of Goldfish's rolling share of all tracked "
+                "paper and MTGO decks (recent pages state a 30-day window; 2013–14 pages were MTGO only). "
+                "Dotted lines mark the ban and release dates used for the eras above. "
+                "Few snapshots survive from Aug 2016 to Apr 2018."
+            )
+            with st.expander("Yearly averages"):
+                _gf_by_year = _gf_valid.groupby(_gf_valid["Month"].dt.year)
+                _gf_year = _gf_by_year["meta_pct"].agg(["mean", "size", "max"]).round(2)
+                _gf_year.columns = ["Avg monthly meta %", "Months with data", "Peak %"]
+                _gf_year["Peak month"] = (
+                    _gf_valid.loc[_gf_by_year["meta_pct"].idxmax(), "Month"].dt.strftime("%b").values
+                )
+                st.dataframe(_gf_year.rename_axis("Year"), width='stretch')
+
     with subtab_totals:
         st.subheader("Total Maindeck Card Copies")
         st.markdown(

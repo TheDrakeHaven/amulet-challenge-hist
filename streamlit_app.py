@@ -1180,6 +1180,28 @@ with tab2:
                 customdata=_gf_share["detail"],
                 hovertemplate="%{x|%b %Y}: %{y:.2f}% meta share<br>%{customdata}<extra></extra>",
             ))
+            # Months with no Goldfish number, estimated from MTGTop8 top-finishing decks
+            # (goldfish_meta_share_estimates.csv). Drawn apart from the measured line.
+            _gf_est_path = "goldfish_meta_share_estimates.csv"
+            _gf_est = pd.DataFrame(columns=["month", "Month", "estimate_pct"])
+            if os.path.exists(_gf_est_path):
+                _gf_est = pd.read_csv(_gf_est_path, dtype={"month": str})
+                _gf_est["Month"] = pd.to_datetime(_gf_est["month"], format="%Y-%m")
+                _gf_est = _gf_est[(_gf_est["Month"] >= _gf_start) & ~_gf_est["month"].isin(_gf_valid["month"])]
+            if not _gf_est.empty:
+                fig_gf.add_trace(go.Scatter(
+                    x=_gf_est["Month"], y=_gf_est["estimate_pct"], name="Estimated from MTGTop8",
+                    mode="markers", marker=dict(symbol="circle-open", size=8, color="#1f77b4", line=dict(width=2)),
+                    error_y=dict(type="data", symmetric=False,
+                                 array=_gf_est["high_pct"] - _gf_est["estimate_pct"],
+                                 arrayminus=_gf_est["estimate_pct"] - _gf_est["low_pct"],
+                                 color="rgba(31,119,180,0.45)", thickness=1.5, width=0),
+                    customdata=_gf_est[["low_pct", "high_pct", "mtgtop8_amulet_decks",
+                                        "mtgtop8_total_decks"]].to_numpy(dtype=object),
+                    hovertemplate=("%{x|%b %Y}: about %{y:.1f}% (estimate)<br>likely %{customdata[0]:.1f}–"
+                                   "%{customdata[1]:.1f}%, from %{customdata[2]} Amulet decks of "
+                                   "%{customdata[3]} on MTGTop8<extra></extra>"),
+                ))
             if not _gf_bound.empty:
                 fig_gf.add_trace(go.Scatter(
                     x=_gf_bound["Month"], y=_gf_bound["bound"], name="Not in listed decks (below ▽)",
@@ -1210,7 +1232,10 @@ with tab2:
                 "tracked paper and MTGO decks (recent pages state a 30-day window; 2013–14 pages were MTGO only). "
                 "Dotted lines mark the ban and release dates used for the eras above. "
                 "Few snapshots survive from Aug 2016 to Apr 2018. Some months with no snapshot were "
-                "filled in from other sources, named in the hover text (goldfish_meta_share_manual.csv)."
+                "filled in from other sources, named in the hover text (goldfish_meta_share_manual.csv). "
+                "Open circles are estimates for months with no Goldfish number, from Amulet's share of "
+                "MTGTop8's top-finishing decks calibrated against the months that have both; bars show "
+                "the likely range (goldfish_meta_share_estimates.csv)."
             )
             with st.expander("Yearly averages"):
                 _gf_by_year = _gf_valid.groupby(_gf_valid["Month"].dt.year)
@@ -1219,6 +1244,20 @@ with tab2:
                 _gf_year["Peak month"] = (
                     _gf_valid.loc[_gf_by_year["meta_pct"].idxmax(), "Month"].dt.strftime("%b").values
                 )
+                if not _gf_est.empty:
+                    _gf_both = pd.concat([
+                        _gf_valid[["Month", "meta_pct"]],
+                        _gf_est[["Month", "estimate_pct"]].rename(columns={"estimate_pct": "meta_pct"}),
+                    ])
+                    _gf_years = sorted(_gf_both["Month"].dt.year.unique())
+                    _gf_year = _gf_year.reindex(_gf_years)
+                    _gf_year["Months with data"] = _gf_year["Months with data"].fillna(0).astype(int)
+                    _gf_year["Estimated months"] = (
+                        _gf_est.groupby(_gf_est["Month"].dt.year).size().reindex(_gf_years).fillna(0).astype(int)
+                    )
+                    _gf_year["Avg incl. estimates"] = (
+                        _gf_both.groupby(_gf_both["Month"].dt.year)["meta_pct"].mean().round(2)
+                    )
                 st.dataframe(_gf_year.rename_axis("Year"), width='stretch')
 
     with subtab_totals:

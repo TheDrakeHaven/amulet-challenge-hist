@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
 import io
 from datetime import date, datetime
 import re
@@ -14,6 +15,33 @@ from scipy.spatial.distance import cdist
 
 st.set_page_config(page_title="Amulet Challenge Analysis", layout="wide")
 st.title("🪬 Amulet Challenge Analysis")
+
+
+@st.cache_resource
+def _warm_plotly_templates():
+    """Build plotly's shared template objects once, in one thread, before any session draws.
+
+    Plotly fills in parts of each template lazily and not thread-safely, so when two sessions
+    draw their first charts at the same moment (e.g. right after the app wakes up) one of them
+    can fail with ValueError("Invalid value") (plotly/plotly.py#3441). st.cache_resource runs
+    this once per process and makes concurrent sessions wait until it has finished.
+    """
+    try:
+        import streamlit.elements.plotly_chart  # noqa: F401  registers the "streamlit" template
+    except ImportError:
+        pass
+    tiny = pd.DataFrame({"x": ["a"], "y": [1]})
+    for name in ("streamlit", "plotly", "plotly_white", "plotly_dark"):
+        if name not in pio.templates:
+            continue
+        go.Figure(layout=dict(template=name))
+        px.bar(tiny, x="x", y="y", template=name)
+        px.scatter(tiny, x="x", y="y", template=name)
+        px.imshow([[1]], template=name)
+    return True
+
+
+_warm_plotly_templates()
 
 # ─────────────────────────────────────────
 # REFERENCE DATA (hard-coded from R script)

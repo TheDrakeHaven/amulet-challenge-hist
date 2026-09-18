@@ -172,18 +172,18 @@ ban_events = pd.DataFrame({
         "2020-01-13",  # Mox Opal + Oko + Lattice ban
 
         # 2020–2026
-        "2020-03-09",
-        "2021-02-15",
-        "2021-06-03",
-        "2022-03-07",
-        "2022-10-11",
+        "2020-03-09", # OUaT Ban
+        "2021-02-15", # Field/Uro Ban
+        "2021-06-03", # MH2 Release
+        "2022-03-07", # Lurrus Ban
+        "2022-10-11", # Yorion Ban
         "2023-06-23",  # LotR release
-        "2023-12-04",
-        "2024-03-11",
-        "2024-06-14",
-        "2024-08-26",
-        "2024-12-16",
-        "2025-03-31",
+        "2023-12-04", # Fury/Bean Ban
+        "2024-03-11", # Outburst Ban
+        "2024-06-14", # MH3 Release
+        "2024-08-26", # Nadu/Grief Ban
+        "2024-12-16", # Ring Ban/ GSZ Unban
+        "2025-03-31", # Breach Ban
         "2026-05-19",  # Phlage + Lotus Field ban
         "2099-12-31"   # "Current" sentinel — must stay last/ascending
     ])

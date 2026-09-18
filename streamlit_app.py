@@ -1174,33 +1174,42 @@ with tab2:
             for _d in _gf_bans["date"]:
                 fig_gf.add_shape(type="line", x0=_d, x1=_d, yref="paper", y0=0, y1=1,
                                  line=dict(color="#c7c7c7", width=1, dash="dot"), layer="below")
-            fig_gf.add_trace(go.Scatter(
-                x=_gf_share.index, y=_gf_share["meta_pct"], name="Meta share",
-                mode="lines+markers", line=dict(color="#1f77b4", width=2), marker=dict(size=5),
-                customdata=_gf_share["detail"],
-                hovertemplate="%{x|%b %Y}: %{y:.2f}% meta share<br>%{customdata}<extra></extra>",
-            ))
-            # Months with no Goldfish number, estimated from MTGTop8 top-finishing decks
-            # (goldfish_meta_share_estimates.csv). Drawn apart from the measured line.
+            # Months with no Goldfish number are estimated from MTGTop8 top-finishing decks
+            # (goldfish_meta_share_estimates.csv) and join the line as open circles.
             _gf_est_path = "goldfish_meta_share_estimates.csv"
             _gf_est = pd.DataFrame(columns=["month", "Month", "estimate_pct"])
             if os.path.exists(_gf_est_path):
                 _gf_est = pd.read_csv(_gf_est_path, dtype={"month": str})
                 _gf_est["Month"] = pd.to_datetime(_gf_est["month"], format="%Y-%m")
                 _gf_est = _gf_est[(_gf_est["Month"] >= _gf_start) & ~_gf_est["month"].isin(_gf_valid["month"])]
+            _gf_line = _gf_share[["meta_pct", "detail"]].copy()
+            _gf_line["estimated"] = False
+            for _r in _gf_est.itertuples(index=False):
+                if _r.Month in _gf_line.index:
+                    _gf_line.loc[_r.Month, "meta_pct"] = _r.estimate_pct
+                    _gf_line.loc[_r.Month, "detail"] = (
+                        f"estimated from MTGTop8: {_r.mtgtop8_amulet_decks} of {_r.mtgtop8_total_decks} "
+                        f"decks (likely {_r.low_pct:.1f}–{_r.high_pct:.1f}%)"
+                    )
+                    _gf_line.loc[_r.Month, "estimated"] = True
+            fig_gf.add_trace(go.Scatter(
+                x=_gf_line.index, y=_gf_line["meta_pct"], name="Meta share",
+                mode="lines+markers", line=dict(color="#1f77b4", width=2),
+                marker=dict(
+                    color="#1f77b4",
+                    size=[8 if e else 5 for e in _gf_line["estimated"]],
+                    symbol=["circle-open" if e else "circle" for e in _gf_line["estimated"]],
+                    line=dict(color="#1f77b4", width=[2 if e else 0 for e in _gf_line["estimated"]]),
+                ),
+                customdata=_gf_line["detail"],
+                hovertemplate="%{x|%b %Y}: %{y:.2f}%<br>%{customdata}<extra></extra>",
+            ))
             if not _gf_est.empty:
+                # Legend key only: the estimates themselves are the open circles on the line above.
                 fig_gf.add_trace(go.Scatter(
-                    x=_gf_est["Month"], y=_gf_est["estimate_pct"], name="Estimated from MTGTop8",
-                    mode="markers", marker=dict(symbol="circle-open", size=8, color="#1f77b4", line=dict(width=2)),
-                    error_y=dict(type="data", symmetric=False,
-                                 array=_gf_est["high_pct"] - _gf_est["estimate_pct"],
-                                 arrayminus=_gf_est["estimate_pct"] - _gf_est["low_pct"],
-                                 color="rgba(31,119,180,0.45)", thickness=1.5, width=0),
-                    customdata=_gf_est[["low_pct", "high_pct", "mtgtop8_amulet_decks",
-                                        "mtgtop8_total_decks"]].to_numpy(dtype=object),
-                    hovertemplate=("%{x|%b %Y}: about %{y:.1f}% (estimate)<br>likely %{customdata[0]:.1f}–"
-                                   "%{customdata[1]:.1f}%, from %{customdata[2]} Amulet decks of "
-                                   "%{customdata[3]} on MTGTop8<extra></extra>"),
+                    x=[None], y=[None], name="Estimated from MTGTop8", mode="markers",
+                    marker=dict(symbol="circle-open", size=8, color="#1f77b4", line=dict(width=2)),
+                    hoverinfo="skip",
                 ))
             if not _gf_bound.empty:
                 fig_gf.add_trace(go.Scatter(
@@ -1233,9 +1242,9 @@ with tab2:
                 "Dotted lines mark the ban and release dates used for the eras above. "
                 "Few snapshots survive from Aug 2016 to Apr 2018. Some months with no snapshot were "
                 "filled in from other sources, named in the hover text (goldfish_meta_share_manual.csv). "
-                "Open circles are estimates for months with no Goldfish number, from Amulet's share of "
-                "MTGTop8's top-finishing decks calibrated against the months that have both; bars show "
-                "the likely range (goldfish_meta_share_estimates.csv)."
+                "Open circles are estimates for months with no Goldfish number: Amulet's share of "
+                "MTGTop8's top-finishing decks, checked against the months that have both; hover one "
+                "to see its likely range (goldfish_meta_share_estimates.csv)."
             )
             with st.expander("Yearly averages"):
                 _gf_by_year = _gf_valid.groupby(_gf_valid["Month"].dt.year)
